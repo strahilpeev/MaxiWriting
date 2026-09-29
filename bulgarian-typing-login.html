@@ -1,0 +1,1835 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Пиши и говори — тренажор по български</title>
+<style>
+  :root{
+    --paper:#FAF5EB;
+    --paper-2:#F1E8D8;
+    --ink:#2A2018;
+    --wine:#7A2E3A;
+    --wine-dark:#5B2029;
+    --gold:#C08A1E;
+    --sage:#4C7A55;
+    --muted:#9C8F7C;
+    --line:#DCCFB2;
+    --font-display: "PT Serif", Georgia, "Times New Roman", serif;
+    --font-body: "Noto Sans", "Segoe UI", system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--font-body);
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .shevitsa{
+    height:14px;
+    width:100%;
+    background-image: repeating-linear-gradient(135deg, var(--wine) 0 3px, transparent 3px 10px),
+                       repeating-linear-gradient(45deg, var(--gold) 0 3px, transparent 3px 10px);
+    background-position: 0 0, 0 0;
+    background-size: 20px 14px, 20px 14px;
+    opacity:.85;
+  }
+
+  header{
+    text-align:center;
+    padding:34px 20px 18px;
+  }
+  header .eyebrow{
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    font-size:12px;
+    color:var(--wine);
+    font-weight:600;
+  }
+  header h1{
+    font-family:var(--font-display);
+    font-size:clamp(28px,4vw,42px);
+    margin:6px 0 4px;
+    color:var(--ink);
+  }
+  header p{
+    margin:0;
+    color:var(--muted);
+    font-size:14.5px;
+  }
+
+  main{
+    max-width:760px;
+    margin:0 auto;
+    padding:10px 20px 60px;
+  }
+
+  .controls{
+    display:flex;
+    gap:10px;
+    justify-content:center;
+    flex-wrap:wrap;
+    margin-bottom:26px;
+  }
+  .toggle{
+    display:flex;
+    background:var(--paper-2);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:4px;
+  }
+  .toggle button{
+    border:none;
+    background:transparent;
+    padding:9px 20px;
+    border-radius:999px;
+    font-family:var(--font-body);
+    font-size:14px;
+    font-weight:600;
+    color:var(--muted);
+    cursor:pointer;
+    transition:background .2s, color .2s;
+  }
+  .toggle button.active{
+    background:var(--wine);
+    color:#fff;
+  }
+
+  select.level{
+    border:1px solid var(--line);
+    background:var(--paper-2);
+    color:var(--ink);
+    border-radius:999px;
+    padding:9px 16px;
+    font-family:var(--font-body);
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+
+  .switch-chip{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    border:1px solid var(--line);
+    background:var(--paper-2);
+    border-radius:999px;
+    padding:9px 16px;
+    font-size:13.5px;
+    font-weight:600;
+    color:var(--ink);
+    cursor:pointer;
+    user-select:none;
+  }
+  .switch-chip input{
+    accent-color:var(--wine);
+    width:15px; height:15px;
+    cursor:pointer;
+  }
+
+  .card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:36px 30px 30px;
+    position:relative;
+    box-shadow: 0 1px 0 var(--line), 0 18px 40px -28px rgba(90,50,30,.35);
+  }
+  .card::before, .card::after{
+    content:"";
+    position:absolute;
+    left:24px; right:24px;
+    height:8px;
+    background-image: repeating-linear-gradient(135deg, var(--wine) 0 3px, transparent 3px 9px);
+    opacity:.5;
+  }
+  .card::before{ top:0; }
+  .card::after{ bottom:0; }
+
+  .progress-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:20px;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .progress-row .count b{ color:var(--wine); }
+  .streak{
+    display:flex; align-items:center; gap:6px;
+  }
+  .points{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-weight:700;
+    color:var(--gold);
+    white-space:nowrap;
+  }
+  .points b{ color:var(--wine-dark); }
+  #levelTitle{
+    color:var(--muted);
+    font-weight:600;
+    font-size:11.5px;
+  }
+
+  .encourage-banner{
+    position:absolute;
+    top:14px;
+    left:50%;
+    background:var(--wine);
+    color:#fff;
+    padding:8px 20px;
+    border-radius:999px;
+    font-weight:700;
+    font-size:14px;
+    opacity:0;
+    pointer-events:none;
+    box-shadow:0 10px 24px -10px rgba(122,46,58,.6);
+    z-index:6;
+    white-space:nowrap;
+  }
+  .encourage-banner.show{
+    animation: bannerPop 1.3s ease;
+  }
+  @keyframes bannerPop{
+    0%{ opacity:0; transform:translate(-50%,-4px) scale(.8); }
+    18%{ opacity:1; transform:translate(-50%,-16px) scale(1.06); }
+    28%{ transform:translate(-50%,-16px) scale(1); }
+    82%{ opacity:1; transform:translate(-50%,-16px) scale(1); }
+    100%{ opacity:0; transform:translate(-50%,-24px) scale(.96); }
+  }
+
+  .confetti-layer{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    overflow:hidden;
+    border-radius:18px;
+    z-index:5;
+  }
+  .confetti-piece{
+    position:absolute;
+    font-size:20px;
+    bottom:42%;
+    animation: confettiFly 900ms ease-out forwards;
+  }
+  @keyframes confettiFly{
+    0%{ transform:translate(0,0) scale(.6) rotate(0deg); opacity:0; }
+    15%{ opacity:1; }
+    100%{ transform:translate(var(--dx), -170px) scale(1.1) rotate(var(--rot)); opacity:0; }
+  }
+
+  .mistake-msg{
+    text-align:center;
+    font-size:13px;
+    font-weight:600;
+    color:var(--wine);
+    min-height:1.4em;
+    margin-top:4px;
+    opacity:0;
+    transition:opacity .15s ease;
+  }
+  .mistake-msg.show{ opacity:1; }
+
+  .target{
+    font-family:var(--font-display);
+    font-size:clamp(46px,8.7vw,66px);
+    line-height:1.35;
+    text-align:center;
+    letter-spacing:.01em;
+    word-spacing:.1em;
+    min-height:1.8em;
+    padding:0 6px;
+  }
+  .target .done{ color:var(--sage); }
+  .target .next{ color:var(--ink); border-bottom:3px solid var(--gold); }
+  .target .todo{ color:#C9BCA0; }
+
+  .syllables{
+    text-align:center;
+    font-family:var(--font-display);
+    font-size:32px;
+    letter-spacing:.16em;
+    color:var(--gold);
+    font-weight:700;
+    margin-top:6px;
+    min-height:1.4em;
+  }
+
+  .translation-panel{
+    display:none;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    margin-top:8px;
+    font-size:16px;
+    color:var(--wine-dark);
+  }
+  .translation-panel.active{ display:flex; }
+  .translation-panel .tr-label{
+    color:var(--muted);
+    font-size:13px;
+  }
+  .translation-panel .tr-word{
+    font-family:var(--font-display);
+    font-weight:700;
+  }
+  .translation-panel .tr-speak{
+    border:none;
+    background:none;
+    cursor:pointer;
+    font-size:15px;
+    color:var(--wine);
+    padding:2px 4px;
+  }
+
+  .image-panel{
+    display:none;
+    justify-content:center;
+    align-items:center;
+    margin:18px auto 6px;
+    max-width:220px;
+    min-height:0;
+  }
+  .image-panel.active{
+    display:flex;
+  }
+  .image-panel .emoji-pic{
+    font-size:76px;
+    line-height:1;
+  }
+  .image-panel img{
+    max-width:200px;
+    max-height:160px;
+    border-radius:12px;
+    border:1px solid var(--line);
+    object-fit:contain;
+    background:var(--paper-2);
+  }
+  .image-panel .no-pic{
+    font-size:13px;
+    color:var(--muted);
+    text-align:center;
+    padding:14px 18px;
+    background:var(--paper-2);
+    border:1px dashed var(--line);
+    border-radius:12px;
+  }
+  .image-panel .loading-pic{
+    font-size:13px;
+    color:var(--muted);
+  }
+
+  .speak-row{
+    display:flex;
+    justify-content:center;
+    gap:10px;
+    margin:20px 0 26px;
+  }
+  .icon-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    border:1px solid var(--line);
+    background:var(--paper-2);
+    color:var(--wine-dark);
+    padding:10px 18px;
+    border-radius:999px;
+    font-family:var(--font-body);
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+    transition:transform .12s, background .15s;
+  }
+  .icon-btn:hover{ background:#EADFC6; }
+  .icon-btn:active{ transform:scale(.96); }
+  .icon-btn svg{ width:16px; height:16px; }
+
+  .type-field{
+    display:flex;
+    justify-content:center;
+  }
+  .type-box{
+    width:100%;
+    max-width:520px;
+    border:2px solid var(--line);
+    border-radius:12px;
+    background:var(--paper-2);
+    padding:16px 18px;
+    font-family:var(--font-display);
+    font-size:29px;
+    letter-spacing:.02em;
+    min-height:44px;
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    cursor:text;
+    outline:none;
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .type-box.focused{
+    border-color:var(--wine);
+    box-shadow:0 0 0 4px rgba(122,46,58,.1);
+  }
+  .type-box .typed{ color:var(--wine-dark); }
+  .type-box .cursor{
+    display:inline-block;
+    width:2px;
+    height:1.15em;
+    background:var(--wine);
+    margin:0 1px;
+    animation:blink 1s step-end infinite;
+    vertical-align:middle;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  .type-box .wrong{
+    color:#C23B3B;
+    background:rgba(194,59,59,.1);
+    border-radius:4px;
+    padding:0 2px;
+    animation:popIn .12s ease-out;
+  }
+  @keyframes popIn{
+    0%{ transform:scale(1.35); }
+    100%{ transform:scale(1); }
+  }
+
+  .hidden-input{
+    position:absolute;
+    opacity:0;
+    pointer-events:none;
+    width:1px; height:1px;
+  }
+
+  .footer-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:26px;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+  .ghost-btn{
+    border:none;
+    background:none;
+    color:var(--muted);
+    font-family:var(--font-body);
+    font-size:13.5px;
+    font-weight:600;
+    cursor:pointer;
+    text-decoration:underline;
+    text-underline-offset:3px;
+  }
+  .next-btn{
+    border:none;
+    background:var(--sage);
+    color:#fff;
+    padding:11px 22px;
+    border-radius:999px;
+    font-family:var(--font-body);
+    font-weight:700;
+    font-size:14px;
+    cursor:pointer;
+    opacity:.35;
+    pointer-events:none;
+    transition:opacity .2s;
+  }
+  .next-btn.ready{
+    opacity:1;
+    pointer-events:auto;
+  }
+
+  .success-flash{
+    position:absolute;
+    inset:0;
+    border-radius:18px;
+    pointer-events:none;
+    background:radial-gradient(circle at 50% 40%, rgba(76,122,85,.14), transparent 70%);
+    opacity:0;
+  }
+  .success-flash.show{
+    animation:flash .55s ease-out;
+  }
+  @keyframes flash{ 0%{opacity:1;} 100%{opacity:0;} }
+
+  .note{
+    text-align:center;
+    color:var(--muted);
+    font-size:12.5px;
+    margin-top:22px;
+    line-height:1.6;
+  }
+
+  /* ---- Profile / auth ---- */
+  .user-bar{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:10px;
+    margin-top:10px;
+    font-size:13px;
+    color:var(--muted);
+  }
+  .user-bar b{ color:var(--wine-dark); }
+  .user-bar button{
+    border:none;
+    background:none;
+    color:var(--wine);
+    font-weight:600;
+    cursor:pointer;
+    text-decoration:underline;
+    font-size:13px;
+  }
+
+  .auth-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(42,32,24,.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:50;
+    padding:20px;
+  }
+  .auth-card{
+    background:var(--paper);
+    border-radius:18px;
+    padding:28px 26px;
+    max-width:360px;
+    width:100%;
+    box-shadow:0 24px 60px -20px rgba(0,0,0,.4);
+    border:1px solid var(--line);
+  }
+  .auth-card h2{
+    font-family:var(--font-display);
+    margin:0 0 6px;
+    font-size:22px;
+    color:var(--ink);
+  }
+  .auth-card p{
+    margin:0 0 18px;
+    font-size:13px;
+    color:var(--muted);
+    line-height:1.5;
+  }
+  .auth-card label{
+    display:block;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--ink);
+    margin-bottom:5px;
+    margin-top:12px;
+  }
+  .auth-card input{
+    width:100%;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:#fff;
+    font-size:14px;
+    font-family:var(--font-body);
+  }
+  .auth-card select{
+    width:100%;
+    padding:10px 12px;
+    border-radius:10px;
+    border:1px solid var(--line);
+    background:#fff;
+    font-size:14px;
+    font-family:var(--font-body);
+  }
+  .auth-actions{
+    display:flex;
+    gap:10px;
+    margin-top:20px;
+  }
+  .auth-actions button{
+    flex:1;
+    border:none;
+    border-radius:999px;
+    padding:11px;
+    font-weight:700;
+    font-size:14px;
+    cursor:pointer;
+    font-family:var(--font-body);
+  }
+  .auth-primary{ background:var(--wine); color:#fff; }
+  .auth-ghost{ background:var(--paper-2); color:var(--ink); }
+  .auth-error{
+    color:#C23B3B;
+    font-size:12.5px;
+    margin-top:10px;
+    min-height:1.2em;
+  }
+  .auth-switch{
+    text-align:center;
+    margin-top:14px;
+    font-size:12.5px;
+    color:var(--muted);
+  }
+  .auth-switch button{
+    border:none;
+    background:none;
+    color:var(--wine);
+    font-weight:700;
+    cursor:pointer;
+    text-decoration:underline;
+    font-size:12.5px;
+  }
+
+  /* ---- History modal ---- */
+  .history-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(42,32,24,.5);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:40;
+    padding:20px;
+  }
+  .history-overlay.open{ display:flex; }
+  .history-card{
+    background:var(--paper);
+    border-radius:18px;
+    padding:22px 22px 18px;
+    max-width:480px;
+    width:100%;
+    max-height:78vh;
+    display:flex;
+    flex-direction:column;
+    border:1px solid var(--line);
+    box-shadow:0 24px 60px -20px rgba(0,0,0,.4);
+  }
+  .history-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:12px;
+  }
+  .history-head h3{
+    font-family:var(--font-display);
+    margin:0;
+    font-size:19px;
+  }
+  .history-head button{
+    border:none;
+    background:none;
+    font-size:20px;
+    cursor:pointer;
+    color:var(--muted);
+    line-height:1;
+  }
+  .history-list{
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .history-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    padding:8px 10px;
+    border-radius:10px;
+    background:var(--paper-2);
+    font-size:13.5px;
+  }
+  .history-item .hi-word{ font-weight:700; color:var(--ink); }
+  .history-item .hi-meta{ color:var(--muted); font-size:11.5px; white-space:nowrap; }
+  .history-empty{
+    text-align:center;
+    color:var(--muted);
+    font-size:13px;
+    padding:24px 0;
+  }
+  .history-clear{
+    margin-top:12px;
+    align-self:center;
+    border:none;
+    background:none;
+    color:var(--wine);
+    font-size:12.5px;
+    font-weight:600;
+    cursor:pointer;
+    text-decoration:underline;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .type-box .cursor{ animation:none; }
+    .success-flash.show{ animation:none; }
+    .encourage-banner.show{ animation:none; opacity:1; transform:translate(-50%,-16px); }
+    .confetti-piece{ animation:none; display:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shevitsa"></div>
+<header>
+  <div class="eyebrow">Клавиатурна практика</div>
+  <h1>Пиши и говори</h1>
+  <p>Упражнения по думи и изречения — на български, английски и немски</p>
+  <div class="user-bar">
+    <span>👤 Профил: <b id="currentUserLabel">Гост</b></span>
+    <button id="switchUserBtn">Смени профил</button>
+  </div>
+</header>
+
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card">
+    <h2 id="authTitle">Вход в профил</h2>
+    <p>Профилът се пази само в този браузър, на това устройство — не е свързан с истински сървър, така че паролата служи само за лична раздяла между потребители на едно и също устройство, не за сериозна защита.</p>
+
+    <label for="authUsernameExisting">Съществуващ профил</label>
+    <select id="authUsernameExisting">
+      <option value="">— избери —</option>
+    </select>
+
+    <label for="authPasswordExisting">Парола</label>
+    <input type="password" id="authPasswordExisting" autocomplete="off">
+
+    <div class="auth-error" id="authErrorExisting"></div>
+
+    <div class="auth-actions">
+      <button class="auth-primary" id="authLoginBtn">Вход</button>
+      <button class="auth-ghost" id="authGuestBtn">Продължи като гост</button>
+    </div>
+
+    <div class="auth-switch">
+      или <button id="authShowCreate">създай нов профил</button>
+    </div>
+
+    <div id="authCreatePanel" style="display:none;">
+      <label for="authUsernameNew">Ново потребителско име</label>
+      <input type="text" id="authUsernameNew" autocomplete="off">
+      <label for="authPasswordNew">Нова парола</label>
+      <input type="password" id="authPasswordNew" autocomplete="off">
+      <div class="auth-error" id="authErrorNew"></div>
+      <div class="auth-actions">
+        <button class="auth-primary" id="authCreateBtn">Създай профил</button>
+        <button class="auth-ghost" id="authBackToLogin">Назад</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="history-overlay" id="historyOverlay">
+  <div class="history-card">
+    <div class="history-head">
+      <h3>История на решените задачи</h3>
+      <button id="historyCloseBtn">✕</button>
+    </div>
+    <div class="history-list" id="historyList"></div>
+    <button class="history-clear" id="historyClearBtn">Изчисти историята</button>
+  </div>
+</div>
+
+<main>
+  <div class="controls">
+    <div class="toggle" id="langToggle">
+      <button id="langBg" class="active">БГ</button>
+      <button id="langEn">EN</button>
+      <button id="langDe">DE</button>
+    </div>
+    <div class="toggle" id="modeToggleWrap">
+      <button id="modeWord" class="active">Дума</button>
+      <button id="modeSentence">Изречение</button>
+    </div>
+    <select id="levelSelect" class="level">
+      <option value="all">Всички нива</option>
+      <option value="1">Най-чести (1–150)</option>
+      <option value="2">Основни (151–400)</option>
+      <option value="3">Разширени (401+)</option>
+      <option value="4">Имена на места и личности</option>
+      <option value="5">Речник — разнообразни думи</option>
+    </select>
+    <label class="switch-chip">
+      <input type="checkbox" id="syllableToggle">
+      <span>Покажи по срички</span>
+    </label>
+    <label class="switch-chip" id="imageToggleWrap">
+      <input type="checkbox" id="imageToggle">
+      <span>Покажи картинка</span>
+    </label>
+    <label class="switch-chip">
+      <input type="checkbox" id="autoAdvanceToggle">
+      <span>Автоматично преминаване</span>
+    </label>
+    <button class="switch-chip" id="historyOpenBtn" style="cursor:pointer;">📜 История</button>
+  </div>
+
+  <div class="card">
+    <div class="success-flash" id="flash"></div>
+
+    <div class="progress-row">
+      <div class="count">Дума <b id="idxNow">1</b> от <span id="idxTotal">1</span></div>
+      <div class="points">⭐ <b id="pointsCount">0</b> <span id="levelTitle">Начинаещ пътник 🌱</span></div>
+      <div class="streak">✓ Написани правилно: <b id="streakCount">0</b></div>
+    </div>
+
+    <div class="encourage-banner" id="encourageBanner"></div>
+    <div class="confetti-layer" id="confettiLayer"></div>
+
+    <div class="target" id="targetText"></div>
+    <div class="syllables" id="syllablesText"></div>
+    <div class="translation-panel" id="translationPanel"></div>
+
+    <div class="image-panel" id="imagePanel"></div>
+
+    <div class="speak-row">
+      <button class="icon-btn" id="speakBtn">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 9v6h4l5 5V4L9 9H5z"/></svg>
+        Изслушай
+      </button>
+      <button class="icon-btn" id="repeatBtn">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.95 7.95 0 0012 4a8 8 0 108 8h-2a6 6 0 11-1.76-4.24L13 11h7V4l-2.35 2.35z"/></svg>
+        Повтори
+      </button>
+    </div>
+
+    <div class="type-field">
+      <div class="type-box" id="typeBox" tabindex="0"></div>
+      <input class="hidden-input" id="hiddenInput" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="mistake-msg" id="mistakeMsg"></div>
+
+    <div class="footer-row">
+      <button class="ghost-btn" id="skipBtn">Пропусни тази дума →</button>
+      <button class="next-btn" id="nextBtn">Следваща дума →</button>
+    </div>
+  </div>
+
+  <p class="note">Пиши с клавиатура с кирилица (или латиница за EN/DE). При грешна буква тя се показва за кратко в червено и се чува как звучи, след което сама изчезва — просто продължи с правилната. Когато думата или изречението са изписани вярно, последната написана сричка се прочита първо, а после цялата дума/изречение. За всяка правилно написана дума получаваш точки (повече, ако няма нито една грешка), а нивото на "пътешественика" расте с натрупаните точки. Разделянето по срички е приблизително (по същия принцип, приложен и към английски/немски) и може да не е точно за всяка дума. Картинките идват от емоджита за познати думи или, ако няма такова, от Уикипедия (на съответния език) — а ако не бъде намерена подходяща снимка, се показва бележка. Основният набор на български съдържа над 500 думи (плюс имена на места и личности), подредени по честота на употреба, плюс над 1300 допълнителни думи от общ речник в нивото "Речник — разнообразни думи". Режимите EN и DE предлагат над 150 думи всеки, с превод на български, срички и произношение — думите не са подредени по честота, а по теми (числа, цветове, семейство, храна, природа, глаголи и др.). Профилите и историята се пазят само локално, в браузъра на това устройство (без сървър) — паролата служи само за разграничаване между хора на едно устройство, не е истинска защита.</p>
+</main>
+
+<script>
+/* ============ WORD BANK ============
+   Curated by frequency tier. Tier 1 = function words & the most common
+   verbs/nouns; Tier 2 = everyday core vocabulary; Tier 3 = broader
+   everyday vocabulary (people, home, nature, food, work, city, body,
+   emotions, time, travel, numbers, colors). */
+
+const TIER1 = ["и","на","за","се","е","не","с","в","то","от","да","като","но","или","ако","защото","когато","къде","кой","коя","кое","кои","какво","как","защо","кога","тук","там","сега","тогава","винаги","никога","често","понякога","вече","още","само","също","дори","между","през","без","след","преди","до","при","върху","под","над","около","срещу","вместо","докато","макар","въпреки","затова","обаче","значи","наистина","може би","сигурно","вероятно","аз","ти","той","тя","ние","вие","те","мен","теб","него","нея","нас","вас","тях","мой","твой","негов","неин","наш","ваш","техен","себе си","всеки","всички","никой","нещо","нищо","някой","някакъв","съм","имам","нямам","искам","мога","трябва"];
+
+const TIER2 = ["правя","ставам","идвам","отивам","тръгвам","връщам се","оставам","живея","работя","уча","играя","спя","ям","пия","говоря","казвам","питам","отговарям","слушам","чувам","гледам","виждам","знам","мисля","помня","забравям","разбирам","обичам","харесвам","мразя","чакам","търся","намирам","губя","давам","вземам","купувам","продавам","плащам","пращам","получавам","пиша","чета","рисувам","пея","танцувам","смея се","плача","радвам се","тъгувам","страхувам се","надявам се","вярвам","мечтая","помагам","започвам","свършвам","продължавам","спирам","отварям","затварям","влизам","излизам","качвам се","слизам","падам","седя","лежа","стоя","вървя","тичам","летя","плувам","карам","паркирам","чистя","готвя","мия","поправям","строя","създавам","планирам","решавам","избирам","обяснявам","човек","дума","живот","време","ден","нощ","година","месец","седмица","час","минута","дом","къща","стая","прозорец","врата","маса","стол","легло","кухня","баня","двор","улица","град","село","страна","държава","свят","земя","небе","слънце","луна","звезда","вода","огън","въздух","планина","река","море","гора","дърво","цвете","трева","дъжд","сняг","вятър"];
+
+const TIER3 = ["майка","баща","дете","брат","сестра","син","дъщеря","семейство","приятел","приятелка","съсед","учител","ученик","лекар","шофьор","продавач","готвач","работник","директор","колега","гост","мъж","жена","момче","момиче","бебе","старец","хляб","мляко","сирене","масло","яйце","месо","риба","плод","зеленчук","ябълка","круша","грозде","домат","картоф","лук","чесън","захар","сол","вода","чай","кафе","сок","супа","салата","закуска","обед","вечеря","глава","ръка","крак","око","ухо","нос","уста","зъб","коса","сърце","стомах","гръб","пръст","рамо","радост","тъга","страх","гняв","любов","надежда","умора","болка","спокойствие","изненада","срам","гордост","работа","заплата","среща","проект","компютър","телефон","имейл","документ","фирма","офис","пазар","магазин","пари","цена","сметка","банка","град","площад","парк","мост","гара","летище","влак","автобус","кола","самолет","кораб","билет","пътуване","почивка","планина","плаж","хотел","карта","компас","едно","две","три","четири","пет","шест","седем","осем","девет","десет","сто","хиляда","първи","втори","последен","много","малко","повече","по-малко","голям","малък","висок","нисък","дълъг","къс","широк","тесен","дебел","тънък","тежък","лек","бърз","бавен","силен","слаб","топъл","студен","горещ","хладен","чист","мръсен","нов","стар","млад","красив","грозен","добър","лош","лесен","труден","важен","интересен","скучен","весел","тъжен","умен","глупав","богат","беден","зает","свободен","готов","уморен","гладен","жаден","болен","здрав","щастлив","нещастен","червен","син","зелен","жълт","черен","бял","кафяв","розов","оранжев","лилав","сив","куче","котка","птица","риба","кон","крава","овца","коза","мечка","вълк","лисица","заек","мишка","пиле","патица","пеперуда","пчела","паяк","змия","училище","библиотека","болница","църква","музей","театър","кино","стадион","университет","детска градина","учебник","тетрадка","молив","химикал","чанта","раница","прозорец","покрив","стена","под","таван","килим","огледало","шкаф","лампа","часовник","ключ","чадър","очила","портфейл","гребен","четка за зъби","сапун","кърпа","възглавница","одеяло","чаша","чиния","лъжица","вилица","нож","тенджера","хладилник","печка","пералня","телевизор","радио","вестник","списание","писмо","подарък","празник","рожден ден","сватба","гроб","църква","молитва","вяра","мечта","идея","въпрос","отговор","проблем","решение","причина","резултат","начало","край","среда","страна","посока","ляво","дясно","напред","назад","горе","долу","вътре","вън","близо","далеч"];
+
+const TIER5 = ["агиограф","агиттабла","агнец","адаптер","адютант","ажур","ажурен","алеите","алувиален","алхимии","амбреаж","амуниции","анаконда","арийка","арменец","асистент","асми","атическа","афоресва","ахкам","ахкащ","ахмак","ахмаци","баби","бавеше","бавите","багрел","байото","байтове","байц","балдъза","балерина","балон","балотаж","баран","барон","бдейки","бдя","бдяха","бебенца","беглец","беда","бедете","бедства","безидеен","безреден","бейзбол","бейска","бекас","бекяр","белел","бели","белина","белих","белова","белтък","беляза","белян","бенефис","бети","бивак","бивша","бикът","бирник","бисер","бисмут","бичът","бишкота","блазе","бледо","блести","близва","блузка","бляла","бобслей","божи","божке","бозана","бози","боил","боила","бойко","бола","болест","бомба","бонус","борба","бордна","борен","бормашина","борч","брадяса","бране","брегът","брич","броели","брони","броня","брошура","бръмка","бръчка","будала","буден","будил","буката","букле","булото","бумтеж","бухай","бухлат","буци","бучаха","бъзльо","бълнува","бързи","бърча","бял","ваели","важно","вазите","вален","валии","валса","ванилии","вариант","вбеси","вбил","вбити","вбиха","вгради","веднъж","везят","велят","верижен","вертеп","весил","вехни","вечна","веща","вещата","взел","взеха","взида","вида","виден","видеше","видов","виете","виеш","вийте","викам","викарии","вила","виме","вирей","вирещ","висели","виси","витата","вкисва","вклещи","влача","вледя","влее","влееш","влезе","влей","влеят","влюбва","вляза","влязла","вода","водач","возил","войни","волейбол","вонели","восък","впива","вратен","врещи","връзва","връча","вряща","всемъдри","всяка","втелява","втрит","втъка","вчелото","вчовечи","външен","върза","вързва","въсиш","въшляса","гаври","гадеше","газа","газета","газят","галант","галех","ганайка","гардже","гасни","гасят","гвинеец","где","гении","гетата","гигават","гилди","гишета","глинен","глист","глогина","глумели","гневът","гневя","гнетен","гниех","гнийте","гноил","големи","голобрад","гонче","гордее","горен","горча","готическа","грабна","грейте","грехът","греша","грешел","гризе","гримът","грозя","губер","гукат","гулия","гъмза","гънел","гърбуша","гърч","гъташ","гътни","гьонове","гюме","гюруци","давих","дадеш","дамове","дарвинист","движи","двоим","двора","дворът","двуосен","делил","делото","дена","денди","депортира","дерейки","джобна","джурка","дивата","дивидент","дикенсов","дифтонг","длан","дневен","добира","добих","добиче","додъвквах","дозите","дойда","документ","долели","долях","домил","допея","допие","допит","доплава","досам","доседи","дошли","доячка","доящи","драпа","дрешка","дробя","друска","дрямва","дуе","дуй","думка","думна","дъвка","дъвче","държел","дърма","дъски","дъхай","дюйма","дюна","дядо","едвам","едрата","едряла","ежечасен","екипа","екнаха","екстра","ела","елина","елите","емайл","емни","емуто","ентропии","епископ","ерите","ерогенен","ероси","ерцхерцог","етажа","етилен","етичен","етична","ефект","ехтях","ечат","жабата","жабешка","жаднее","жалея","жамбон","жежки","женах","женех","жените","живо","жлеб","жлъчен","жужиш","жулим","жълти","забвение","забоен","завира","завъжда","заглави","загрози","загуба","задание","задето","задуя","заедно","заекът","заето","зайки","заклима","залата","залегна","залпов","замята","запей","запостя","запусна","запъва","зарече","засмя","засне","затапи","зачака","зашурти","зашушуква","заявен","заяви","звън","звънва","звънти","зеем","зееше","зелите","земи","зидан","зидат","зимите","зинеш","златя","злъчен","знатна","зобът","зобя","зомби","зрееш","зрелост","зреят","зъбел","зъбил","зъбни","зяпах","иглика","иглута","игрите","иде","идеал","идем","иден","идете","идол","избегна","изби","избрулен","избу","извих","издъхва","иззех","изкапа","изкисва","изколи","изкълва","излича","излъска","излях","изнерви","изпапа","изпия","използва","изпука","изпуща","изпъхтява","изрит","изруча","изръмжа","изръси","изтрае","изули","изуя","изфинен","имани","имахте","имаше","инвазии","интеграл","иригатор","исихастка","иск","искал","исков","италианец","кавказец","кадил","кадих","кажех","казва","каката","калиев","калиш","калкулира","канче","капем","капка","капра","карай","карбол","каси","касира","кафез","каче","качен","качиш","кашав","каютен","квас","квася","кефът","кеца","кецове","кечове","кикот","килим","килограм","кимал","кимион","кимне","кипря","китеха","китоловен","кихат","кичейки","клади","клател","клечка","клеят","клинец","клонът","клюки","клюма","ключица","книги","кован","ковьор","коза","козен","колаци","колая","конкретен","коноп","конюшни","копита","костур","котле","кочан","кочина","крак","краска","кратуна","края","крепи","кривда","кривна","крий","кроасан","крупие","круша","крушка","кулите","кумейки","кумен","куп","купен","купеше","купища","купува","куртоазии","кусан","кусни","кутии","кух","куцат","куцука","кучата","кучи","кучия","където","къклица","кълва","кълн","кълчел","кълчи","къмпинг","къпан","къртел","къта","кътът","кьорфишек","кьоше","кюфте","лавки","лазер","лазят","лайнер","лаков","лами","лампов","ланшен","лаосец","лапан","лева","леген","ледник","ледокоп","лежел","лейка","леките","лекокрил","лели","лелял","лепя","лепят","лешник","леяри","либиец","ливреи","лиза","лилиев","лимфна","липсва","листи","лова","ловът","лозите","ломейки","лона","луд","лукът","лъжец","лъска","лъхтял","лъчове","лъщят","любил","люлка","люпех","люпя","лющил","лягах","лятата","мазол","майка","мак","мамел","мамен","мамих","маникюр","маншът","маркуч","масив","масичка","масла","масло","масов","мата","мацат","мачтов","медал","медичка","медодобив","мезета","мек","мека","мелета","меня","мерзка","мерят","меси","месил","месим","метели","метли","метоси","метра","мецана","мигам","мигрира","миейки","миехме","миеше","мижете","мижеха","мийте","минал","минех","миров","мисли","мисъл","мля","мнителен","могъл","могъщ","можеш","моите","молба","молдовска","момче","морета","мореше","морял","мотопед","мохер","мрежа","мръзна","мръсна","муска","мусон","муши","мушица","мушиш","мъдър","мъже","мъжки","мъниче","мътех","мътня","мякал","навали","навял","нагнои","надума","надъха","нае","нает","наеха","назе","налае","налей","налита","налока","нанадолу","нанета","нанижа","напали","напиша","наплю","напляска","напой","напуха","наравно","нарие","нарои","наронва","насред","настъпи","насят","нататък","натепали","натиск","начел","начин","нашета","нашива","небце","недаващ","недей","недопит","неизлечим","ненаказан","необлечен","неокъпан","неоцапана","неплатен","непосилен","непотопен","нереален","нерушим","несвързан","несесер","нескован","несносен","нета","нетежки","неукрасен","неумолим","неуязвен","нефрит","нефта","низал","низки","низов","низше","нищожен","ногата","нокаут","норма","носите","нотни","нуклеин","някому","оагнят","обвят","обгазен","обезсили","обект","обемът","оберях","обидна","обитава","обици","обкова","облегна","обли","облози","облъха","облях","обозрим","оборел","обося","обрезка","обсеби","обухте","объл","обърка","обятие","овалва","овеси","овята","ограда","огъна","оджак","одраска","оживление","ожъна","окача","окачва","окове","окоти","окръжен","окуми","оливии","олиже","олова","оляла","омаех","омаеш","омел","омесва","омъжи","омършавя","онази","оная","опази","опак","опаки","опако","опвам","опера","опечи","оплешивя","оплоди","оповести","опресни","опция","опърли","ора","орелът","орлета","орни","орталък","осем","оси","осилест","осилът","осияе","осияха","оскотява","ослепи","османлии","отбегна","отвлякла","отдъхва","отдясно","отелена","отлъча","отляво","отново","отнякъде","отплитат","отрепка","отсели","оттули","отчисли","охне","охри","оцети","очовеча","очуква","ояде","пажът","пазен","пазех","пазеше","палач","панът","папах","пасува","патеше","патрул","пеана","пеем","пееща","пека","пекъл","пенита","пенкилер","пенобетон","пенсии","перка","песа","пести","пестник","петно","пехливани","печейки","печка","пещера","пикоч","пингвин","пиршества","писва","писма","писне","писъмца","питеен","пищим","плавен","плагиат","платя","плебеи","пленник","плетни","плота","плъха","плъхът","плюещ","плюс","плячка","побой","повинен","повлачвал","повод","поври","поена","поехте","поеше","пожали","пожизнен","позор","покляка","покоен","полк","полки","полуетаж","помами","помръдва","поожаднял","пооряза","поохлади","попара","попях","порочен","посях","поточе","потъмни","похити","почака","пощя","пребори","превзе","превод","препра","пререди","прехрана","прецъфти","прие","призив","призна","примъква","припуши","прислон","причака","проба","пробна","пробои","продъни","проеча","проза","промъква","проплака","проповед","пропъди","профан","пръчът","пряко","прясна","псе","пулел","пухан","пухка","пушите","пушки","пуща","пъдещ","пъзел","пълнее","пъпен","пъпчаса","пялата","рагу","раз","разбра","размножа","разпука","разхлаби","разхубави","ракиен","расото","ревер","регистри","ред","реден","реене","реехме","режия","рейда","рекла","реконтра","ректор","релета","религии","решел","рибен","рижи","ризи","рили","римска","ритам","ритащ","риторика","родопска","роели","роени","роено","рожби","розобер","роило","роим","роиха","рок","роните","ротна","роял","роях","роящото","рубеола","рудите","рупа","русее","рухни","ръбете","ръбеше","ръжа","ръмжа","рътят","садейки","садих","садят","сайтът","сакото","саксии","салджии","сам","самоанец","сан","сандал","сбере","сбийте","сбогува","сбрал","сваря","свата","свели","свива","свидел","свири","свия","свлече","сводов","сдава","сее","сеещо","сезира","сейфа","секса","серива","сесии","сетех","сефтоса","сеяч","сивина","сизифов","силещ","силите","синята","сипея","сипя","сирни","сиромах","сифилис","сияно","скенер","скиор","скокла","скрива","скръндза","скут","скутове","скуча","скъта","слади","сладур","сласт","слегва","след","слепее","слея","слюда","слюден","сляга","сляно","смахна","смаят","смити","смоли","смукна","смуша","смърди","солен","солеше","соляла","солят","сорта","спална","спецове","спече","спешна","списва","сплета","спогледа","спой","сполука","спояха","сражава","сразя","срив","сръдни","стай","стая","стаяла","стегалка","стерилен","стикове","стока","стометров","сторел","стоя","стрит","стръсва","стържа","сумтели","сухата","сучем","сушав","сушина","сфинкс","счули","събор","съвършен","съдете","съдещ","съдов","съдя","съкласник","съмне","съоръжа","съратник","сърфът","състудент","съсъхнали","съши","същата","сюрии","сяла","табиет","тага","тайфа","тамян","тачи","тачил","твар","тегли","тегота","текло","телевизии","телец","теми","тендер","тепай","терлик","тесла","тесли","теста","течеш","течи","токи","токсин","топил","топна","тостер","траейки","тракции","трепе","трийте","трико","трил","триола","трифазен","трих","трици","троянец","тръбна","трюмът","тулум","тупира","турист","туриш","туфа","тъжиш","тъкми","тъни","тъпее","тъпо","тъча","тюхка","тягата","тясна","убие","уводна","уврят","угнети","угодлив","угоил","удали","удало","ударя","удря","удрят","ужасът","узная","укаже","указът","укахърил","укора","улуча","умисъл","умя","уние","упътя","ура","урвата","урежда","урна","утруди","ушиете","ушихте","фасът","ферма","фидета","фикции","финт","фирмен","фиска","флот","фонотека","форум","фрагмент","фрези","фурии","фут","фърфалак","хабели","хабен","хакът","халба","хамелеон","хапят","хареса","харчел","харчът","хваля","хвоща","хекът","хем","хематит","хепатит","хераклит","хидра","хиляда","хиромант","хит","хлътва","хода","хоросан","хрусна","хрущя","хрянът","хулете","цакат","царства","царял","целещ","целим","целих","цер","церих","цикла","цинков","цитра","циции","цъкна","чаена","чакъл","чаршаф","чаша","чедото","чек","чела","чемшир","чене","череша","чертеж","четка","чешеш","чиния","чипи","чипът","читаци","чифт","чудеса","чукаш","чукче","чул","чупех","чутата","шал","шапа","шапка","шаря","шатри","шегобиец","шета","шетах","шетня","шефка","шибащ","шилест","шипка","шлеп","шлицът","шлюза","шляете","шляхме","шоколад","шопска","шосета","шпаги","шпоря","шпула","шумеше","шумне","шумни","шумти","шумът","шумят","шунки","шушука","шушумига","щадейки","щадете","щадеше","щадиш","щадял","щатна","щатска","щетата","щипе","щифтове","щукни","щурав","щураци","щяха","ъгли","ъгломер","юзини","юнакини","юнакът","юрнат","ютите","юфките","явим","явиш","явката","ядеца","ядоса","язвен","ямболци","янкита","яснозелен","ятак","яхаше","яхвам","яхне","яхтклуб","яшмаци"];
+const WORDS = { 1: TIER1, 2: TIER2, 3: TIER3, 4: null, 5: TIER5 };
+
+/* English & German vocabulary with Bulgarian translations, for the
+   language toggle. Each entry: [word in that language, Bulgarian translation]. */
+const EN_WORDS = [
+  ["one","едно"],["two","две"],["three","три"],["four","четири"],["five","пет"],["six","шест"],["seven","седем"],["eight","осем"],["nine","девет"],["ten","десет"],
+  ["red","червено"],["blue","синьо"],["green","зелено"],["yellow","жълто"],["black","черно"],["white","бяло"],["brown","кафяво"],["pink","розово"],["orange","оранжево"],["purple","лилаво"],["grey","сиво"],
+  ["mother","майка"],["father","баща"],["brother","брат"],["sister","сестра"],["son","син"],["daughter","дъщеря"],["family","семейство"],["friend","приятел"],["grandmother","баба"],["grandfather","дядо"],["child","дете"],["baby","бебе"],
+  ["dog","куче"],["cat","котка"],["bird","птица"],["horse","кон"],["cow","крава"],["sheep","овца"],["goat","коза"],["bear","мечка"],["wolf","вълк"],["fox","лисица"],["rabbit","заек"],["mouse","мишка"],["chicken","пиле"],["duck","патица"],["butterfly","пеперуда"],["bee","пчела"],["spider","паяк"],["snake","змия"],["fish","риба"],["elephant","слон"],["lion","лъв"],["tiger","тигър"],["monkey","маймуна"],
+  ["bread","хляб"],["milk","мляко"],["cheese","сирене"],["butter","масло"],["egg","яйце"],["meat","месо"],["apple","ябълка"],["pear","круша"],["grapes","грозде"],["tomato","домат"],["potato","картоф"],["onion","лук"],["garlic","чесън"],["sugar","захар"],["salt","сол"],["tea","чай"],["coffee","кафе"],["juice","сок"],["soup","супа"],["salad","салата"],["breakfast","закуска"],["lunch","обед"],["dinner","вечеря"],["water","вода"],
+  ["head","глава"],["hand","ръка"],["leg","крак"],["eye","око"],["ear","ухо"],["nose","нос"],["mouth","уста"],["tooth","зъб"],["hair","коса"],["heart","сърце"],
+  ["sun","слънце"],["moon","луна"],["star","звезда"],["sky","небе"],["earth","земя"],["fire","огън"],["air","въздух"],["mountain","планина"],["river","река"],["sea","море"],["forest","гора"],["tree","дърво"],["flower","цвете"],["grass","трева"],["rain","дъжд"],["snow","сняг"],["wind","вятър"],
+  ["house","къща"],["room","стая"],["window","прозорец"],["door","врата"],["table","маса"],["chair","стол"],["bed","легло"],["kitchen","кухня"],["bathroom","баня"],
+  ["to be","съм"],["to have","имам"],["to want","искам"],["can","мога"],["to do","правя"],["to go","отивам"],["to come","идвам"],["to eat","ям"],["to drink","пия"],["to speak","говоря"],["to say","казвам"],["to see","виждам"],["to know","знам"],["to think","мисля"],["to love","обичам"],["to like","харесвам"],["to read","чета"],["to write","пиша"],["to play","играя"],["to sleep","спя"],["to work","работя"],["to learn","уча"],
+  ["big","голям"],["small","малък"],["tall","висок"],["short","нисък"],["long","дълъг"],["fast","бърз"],["slow","бавен"],["strong","силен"],["weak","слаб"],["warm","топъл"],["cold","студен"],["clean","чист"],["dirty","мръсен"],["new","нов"],["old","стар"],["young","млад"],["beautiful","красив"],["ugly","грозен"],["good","добър"],["bad","лош"],["easy","лесен"],["difficult","труден"],["happy","щастлив"],["sad","тъжен"],
+  ["day","ден"],["night","нощ"],["morning","сутрин"],["evening","вечер"],["week","седмица"],["month","месец"],["year","година"],["today","днес"],["tomorrow","утре"],["yesterday","вчера"],
+  ["car","кола"],["train","влак"],["bus","автобус"],["plane","самолет"],["ship","кораб"],["bicycle","колело"],
+  ["school","училище"],["book","книга"],["pen","химикал"],["pencil","молив"],["teacher","учител"],["student","ученик"]
+];
+
+const DE_WORDS = [
+  ["eins","едно"],["zwei","две"],["drei","три"],["vier","четири"],["fünf","пет"],["sechs","шест"],["sieben","седем"],["acht","осем"],["neun","девет"],["zehn","десет"],
+  ["rot","червено"],["blau","синьо"],["grün","зелено"],["gelb","жълто"],["schwarz","черно"],["weiß","бяло"],["braun","кафяво"],["rosa","розово"],["orange","оранжево"],["lila","лилаво"],["grau","сиво"],
+  ["Mutter","майка"],["Vater","баща"],["Bruder","брат"],["Schwester","сестра"],["Sohn","син"],["Tochter","дъщеря"],["Familie","семейство"],["Freund","приятел"],["Großmutter","баба"],["Großvater","дядо"],["Kind","дете"],["Baby","бебе"],
+  ["Hund","куче"],["Katze","котка"],["Vogel","птица"],["Pferd","кон"],["Kuh","крава"],["Schaf","овца"],["Ziege","коза"],["Bär","мечка"],["Wolf","вълк"],["Fuchs","лисица"],["Hase","заек"],["Maus","мишка"],["Huhn","пиле"],["Ente","патица"],["Schmetterling","пеперуда"],["Biene","пчела"],["Spinne","паяк"],["Schlange","змия"],["Fisch","риба"],["Elefant","слон"],["Löwe","лъв"],["Tiger","тигър"],["Affe","маймуна"],
+  ["Brot","хляб"],["Milch","мляко"],["Käse","сирене"],["Butter","масло"],["Ei","яйце"],["Fleisch","месо"],["Apfel","ябълка"],["Birne","круша"],["Trauben","грозде"],["Tomate","домат"],["Kartoffel","картоф"],["Zwiebel","лук"],["Knoblauch","чесън"],["Zucker","захар"],["Salz","сол"],["Tee","чай"],["Kaffee","кафе"],["Saft","сок"],["Suppe","супа"],["Salat","салата"],["Frühstück","закуска"],["Mittagessen","обед"],["Abendessen","вечеря"],["Wasser","вода"],
+  ["Kopf","глава"],["Hand","ръка"],["Bein","крак"],["Auge","око"],["Ohr","ухо"],["Nase","нос"],["Mund","уста"],["Zahn","зъб"],["Haar","коса"],["Herz","сърце"],
+  ["Sonne","слънце"],["Mond","луна"],["Stern","звезда"],["Himmel","небе"],["Erde","земя"],["Feuer","огън"],["Luft","въздух"],["Berg","планина"],["Fluss","река"],["Meer","море"],["Wald","гора"],["Baum","дърво"],["Blume","цвете"],["Gras","трева"],["Regen","дъжд"],["Schnee","сняг"],["Wind","вятър"],
+  ["Haus","къща"],["Zimmer","стая"],["Fenster","прозорец"],["Tür","врата"],["Tisch","маса"],["Stuhl","стол"],["Bett","легло"],["Küche","кухня"],["Badezimmer","баня"],
+  ["sein","съм"],["haben","имам"],["wollen","искам"],["können","мога"],["machen","правя"],["gehen","отивам"],["kommen","идвам"],["essen","ям"],["trinken","пия"],["sprechen","говоря"],["sagen","казвам"],["sehen","виждам"],["wissen","знам"],["denken","мисля"],["lieben","обичам"],["mögen","харесвам"],["lesen","чета"],["schreiben","пиша"],["spielen","играя"],["schlafen","спя"],["arbeiten","работя"],["lernen","уча"],
+  ["groß","голям"],["klein","малък"],["hoch","висок"],["niedrig","нисък"],["lang","дълъг"],["schnell","бърз"],["langsam","бавен"],["stark","силен"],["schwach","слаб"],["warm","топъл"],["kalt","студен"],["sauber","чист"],["schmutzig","мръсен"],["neu","нов"],["alt","стар"],["jung","млад"],["schön","красив"],["hässlich","грозен"],["gut","добър"],["schlecht","лош"],["leicht","лесен"],["schwierig","труден"],["glücklich","щастлив"],["traurig","тъжен"],
+  ["Tag","ден"],["Nacht","нощ"],["Morgen","сутрин"],["Abend","вечер"],["Woche","седмица"],["Monat","месец"],["Jahr","година"],["heute","днес"],["morgen","утре"],["gestern","вчера"],
+  ["Auto","кола"],["Zug","влак"],["Bus","автобус"],["Flugzeug","самолет"],["Schiff","кораб"],["Fahrrad","колело"],
+  ["Schule","училище"],["Buch","книга"],["Kugelschreiber","химикал"],["Bleistift","молив"],["Lehrer","учител"],["Schüler","ученик"]
+];
+
+const SUCCESS_MESSAGES = ["Браво! 🎉","Супер! ✨","Отлично! 🌟","Чудесно! 👏","Точно така! 🙌","Страхотно се справяш! 🚀","Ти си истинска звезда! ⭐","Уникален/на си! 💪","Все по-добре и по-добре! 🌈","Много добре! 🥳"];
+const PERFECT_MESSAGES = ["Без нито една грешка! 🏆","Перфектно от първия път! ✨🌟","Чиста победа! 🎯","Невероятно точно! 💎","Майсторско изпълнение! 🔥"];
+const MISTAKE_MESSAGES = ["Опитай пак, ти можеш! 💪","Почти успя! 🙂","Спокойно, продължавай! 🌤️","Няма страшно, пробвай отново! 🌱","Всеки учи с грешки! 📚","Дишай спокойно и опитай пак! 🍀"];
+
+const LEVELS = [
+  {min:0,   title:"Начинаещ пътник 🌱"},
+  {min:50,  title:"Любител на думите 📖"},
+  {min:150, title:"Малък писар ✍️"},
+  {min:300, title:"Майстор на буквите 🔤"},
+  {min:500, title:"Шампион по български 🏅"},
+  {min:800, title:"Кралица/Крал на думите 👑"},
+  {min:1200,title:"Легенда на българския 🏆"}
+];
+function levelForPoints(p){
+  let cur = LEVELS[0].title;
+  for(const l of LEVELS){ if(p >= l.min) cur = l.title; }
+  return cur;
+}
+
+const TIER4 = ["България","София","Пловдив","Варна","Бургас","Русе","Стара Загора","Плевен","Велико Търново","Шумен","Благоевград","Габрово","Копривщица","Мелник","Несебър","Созопол","Банско","Пампорово","Боровец","Рила","Пирин","Витоша","Стара планина","Родопите","Дунав","Марица","Струма","Искър","Тунджа","Черно море","Седемте рилски езера","Аладжа манастир","Рилски манастир","Бачковски манастир","Царевец","Тракия","Добруджа","Странджа","Крим","Европа","Азия","Америка","Африка","Васил Левски","Христо Ботев","Иван Вазов","Паисий Хилендарски","Георги Раковски","Христо Смирненски","Пенчо Славейков","Елин Пелин","Цар Симеон","Цар Борис","Кирил","Методий","Софроний Врачански","Любен Каравелов","Захари Стоянов","Петко Славейков","Йордан Йовков","Никола Вапцаров","Димчо Дебелянов","Петър Берон"];
+WORDS[4] = TIER4;
+
+/* Emoji fallback pictures for concrete words — instant, offline, no network needed. */
+const EMOJI_MAP = {
+  "човек":"🧑","дете":"🧒","бебе":"👶","майка":"👩","баща":"👨","брат":"👦","сестра":"👧",
+  "дъщеря":"👧","семейство":"👨‍👩‍👧‍👦","приятел":"🧑‍🤝‍🧑","приятелка":"👭",
+  "учител":"🧑‍🏫","ученик":"🎒","лекар":"🩺","шофьор":"🚕","готвач":"👨‍🍳","старец":"🧓",
+  "мъж":"👨","жена":"👩","момче":"👦","момиче":"👧",
+  "дом":"🏠","къща":"🏠","стая":"🚪","прозорец":"🪟","врата":"🚪","маса":"🪑","стол":"🪑",
+  "легло":"🛏️","кухня":"🍳","баня":"🛁","двор":"🏡","улица":"🛣️",
+  "град":"🏙️","село":"🏘️","страна":"🗺️","държава":"🏳️","свят":"🌍","земя":"🌍","небе":"🌌",
+  "слънце":"☀️","луна":"🌙","звезда":"⭐","вода":"💧","огън":"🔥","въздух":"💨",
+  "планина":"⛰️","река":"🏞️","море":"🌊","гора":"🌲","дърво":"🌳","цвете":"🌸","трева":"🌿",
+  "дъжд":"🌧️","сняг":"❄️","вятър":"🌬️",
+  "хляб":"🍞","мляко":"🥛","сирене":"🧀","масло":"🧈","яйце":"🥚","месо":"🥩","риба":"🐟",
+  "плод":"🍎","зеленчук":"🥦","ябълка":"🍎","круша":"🍐","грозде":"🍇","домат":"🍅",
+  "картоф":"🥔","лук":"🧅","чесън":"🧄","захар":"🍬","сол":"🧂","чай":"🍵","кафе":"☕",
+  "сок":"🧃","супа":"🍲","салата":"🥗","закуска":"🍳","обед":"🍽️","вечеря":"🍽️",
+  "глава":"🗣️","ръка":"✋","крак":"🦵","око":"👁️","ухо":"👂","нос":"👃","уста":"👄",
+  "зъб":"🦷","коса":"💇","сърце":"❤️","стомах":"🫃",
+  "радост":"😊","тъга":"😢","страх":"😨","гняв":"😠","любов":"❤️","надежда":"🤞",
+  "умора":"😴","болка":"🤕","изненада":"😲","срам":"😳","гордост":"🥲",
+  "работа":"💼","заплата":"💵","компютър":"💻","телефон":"📱","имейл":"📧","документ":"📄",
+  "офис":"🏢","пазар":"🛒","магазин":"🏬","пари":"💰","банка":"🏦",
+  "площад":"🏛️","парк":"🌳","мост":"🌉","гара":"🚉","летище":"✈️",
+  "влак":"🚆","автобус":"🚌","кола":"🚗","самолет":"✈️","кораб":"🚢","билет":"🎫",
+  "плаж":"🏖️","хотел":"🏨","карта":"🗺️",
+  "едно":"1️⃣","две":"2️⃣","три":"3️⃣","четири":"4️⃣","пет":"5️⃣","шест":"6️⃣",
+  "седем":"7️⃣","осем":"8️⃣","девет":"9️⃣","десет":"🔟","сто":"💯",
+  "червен":"🔴","син":"🔵","зелен":"🟢","жълт":"🟡","черен":"⚫","бял":"⚪",
+  "кафяв":"🟤","розов":"🩷","оранжев":"🟠","лилав":"🟣","сив":"🩶",
+  "куче":"🐶","котка":"🐱","птица":"🐦","кон":"🐴","крава":"🐮","овца":"🐑","коза":"🐐",
+  "мечка":"🐻","вълк":"🐺","лисица":"🦊","заек":"🐰","мишка":"🐭","пиле":"🐤","патица":"🦆",
+  "пеперуда":"🦋","пчела":"🐝","паяк":"🕷️","змия":"🐍"
+};
+
+/* Approximate syllable splitter — same "single consonant moves forward,
+   two-or-more split one-and-rest" rule applied with a language-specific
+   vowel set. This is a simplification for all three languages, closer to
+   how syllables are taught in school than to strict phonetic rules. */
+const VOWEL_SETS = {
+  bg: "аъоуеиюяАЪОУЕИЮЯ",
+  en: "aeiouyAEIOUY",
+  de: "aeiouyäöüAEIOUYÄÖÜ"
+};
+
+function syllabifyWord(word, lang){
+  const vowels = VOWEL_SETS[lang || "bg"];
+  const idx = [];
+  for(let i=0;i<word.length;i++){
+    if(vowels.includes(word[i])) idx.push(i);
+  }
+  if(idx.length < 2) return [word];
+  const syll = [];
+  let start = 0;
+  for(let i=0;i<idx.length-1;i++){
+    const vIdx = idx[i], nextV = idx[i+1];
+    const gap = nextV - vIdx - 1;
+    let splitPoint;
+    if(gap <= 1) splitPoint = vIdx + 1;
+    else splitPoint = vIdx + 2;
+    syll.push(word.slice(start, splitPoint));
+    start = splitPoint;
+  }
+  syll.push(word.slice(start));
+  return syll.filter(s => s.length);
+}
+
+function syllabifyText(text, lang){
+  return text.split(" ").map(tok=>{
+    const clean = tok.replace(/[^\wа-яА-Я]/g,"");
+    if(!clean) return tok;
+    return syllabifyWord(tok, lang).join("·");
+  }).join("  ");
+}
+
+/* Character-offset positions marking the end of each syllable across the
+   whole target (word or sentence), used to trigger audio as each syllable
+   is completed correctly. */
+function computeSyllableBoundaries(text, lang){
+  const boundaries = [];
+  let offset = 0;
+  const tokens = text.split(/( )/);
+  for(const tok of tokens){
+    if(tok === "") continue;
+    if(tok === " "){ offset += 1; continue; }
+    const parts = syllabifyWord(tok, lang);
+    for(const p of parts){
+      offset += p.length;
+      boundaries.push(offset);
+    }
+  }
+  return boundaries;
+}
+
+const SENTENCES = [
+  "Днес времето е много хубаво.",
+  "Обичам да чета книги вечер.",
+  "Тя работи в голяма компания в София.",
+  "Ние ще пътуваме до морето през лятото.",
+  "Моля, затвори вратата, когато излизаш.",
+  "Той говори три чужди езика.",
+  "Децата играят весело в парка.",
+  "Купих пресен хляб и мляко от магазина.",
+  "Всяка сутрин пия чаша топло кафе.",
+  "Баба ми готви вкусна супа с домати.",
+  "Утре имаме важна среща в офиса.",
+  "Приятелите ми ме поканиха на рожден ден.",
+  "Влакът тръгва точно в осем часа.",
+  "Искам да науча повече за българската история.",
+  "Тази книга ми хареса много.",
+  "Времето е студено и духа силен вятър.",
+  "Той работи усърдно, за да завърши проекта навреме.",
+  "Момичето пееше красива песен в двора.",
+  "Есента е любимият ми сезон.",
+  "На масата има ябълки и круши.",
+  "Учителят обясни урока много ясно.",
+  "Вчера гледахме интересен филм заедно.",
+  "Кучето тича бързо след топката.",
+  "Всеки ден уча нови български думи.",
+  "Тя се усмихна щастливо на приятелите си.",
+  "Пътувахме с автобус до планината.",
+  "Сготвих вечеря за цялото семейство.",
+  "Той купи нов компютър за работа.",
+  "Слънцето изгрява рано през лятото.",
+  "Обичам да разхождам кучето си в парка.",
+  "Малкото момче нарисува красива картина.",
+  "Магазинът затваря в осем вечерта.",
+  "Изпихме по чаша чай след вечеря.",
+  "Тя пише писмо на своя приятелка.",
+  "Пътникът чакаше търпеливо на гарата.",
+  "Реката тече тихо през гората.",
+  "Работникът поправи счупения прозорец.",
+  "Учениците слушаха внимателно учителя.",
+  "Той обича да готви италианска храна.",
+  "Времето навън е горещо и слънчево.",
+  "Заекът бързо избяга в гората.",
+  "Пеперудата кацна на цветето.",
+  "Детето плаче, защото е гладно.",
+  "Тя е много добра и внимателна майка.",
+  "Работим заедно, за да завършим проекта.",
+  "Купихме нова маса за кухнята.",
+  "Той свири на китара всяка вечер.",
+  "Морето беше спокойно и синьо.",
+  "Тя се страхува от тъмнината.",
+  "Пътят до планината е дълъг и красив.",
+  "Пекарят приготви прясна погача.",
+  "Момчето играе футбол с приятелите си.",
+  "Тя носи червена рокля на празника.",
+  "Работата му изисква много търпение.",
+  "Слушам музика, докато готвя.",
+  "Той сподели добра новина с всички.",
+  "Птиците пеят рано сутрин.",
+  "Тя е много щастлива от новата работа.",
+  "Пътувахме цяла нощ с влака.",
+  "Учителката похвали ученика за отговора му.",
+  "Той почисти цялата къща сам.",
+  "Тя обича да разглежда стари снимки.",
+  "Дъждът валя цял ден без прекъсване.",
+  "Той е много добър и честен приятел.",
+  "Купихме билети за концерта довечера.",
+  "Момичето подреди книгите на рафта.",
+  "Ние ще посетим баба и дядо утре.",
+  "Той работи като лекар в болницата.",
+  "Тя обича да пътува и да опознава нови места.",
+  "Снегът покри целия град през нощта.",
+  "Той поправи колата си сам.",
+  "Тя приготви торта за рождения ден.",
+  "Всички се събраха на семейната вечеря.",
+  "Той работи усилено през цялата седмица.",
+  "Тя се радва на всеки нов ден.",
+  "Малкото коте спи спокойно на дивана.",
+  "Той разказа интересна история на децата.",
+  "Тя обича да плете топли шалове.",
+  "Вятърът разлюля клоните на дърветата.",
+  "Той купи цветя за своята майка.",
+  "Тя учи усърдно за важния изпит.",
+  "Ние прекарахме прекрасен ден на плажа.",
+  "Той обича спорта и тренира всеки ден.",
+  "Тя пише дневник всяка вечер преди сън.",
+  "Слънцето залезе зад планината.",
+  "Той се грижи внимателно за градината си.",
+  "Тя намери стар часовник на тавана.",
+  "Ние пътувахме с кораб до острова.",
+  "Той обича да фотографира природата.",
+  "Тя сподели рецептата си с приятелките.",
+  "Малкото момче се качи на дървото.",
+  "Той се завърна у дома късно вечерта.",
+  "Тя изпрати картичка на своя приятел.",
+  "Ние гледахме звездите през нощта.",
+  "Той работи в малка фирма в центъра.",
+  "Тя обича да рисува пейзажи.",
+  "Пътуването до морето отне пет часа.",
+  "Той почина си след дългия работен ден.",
+  "Тя се научи да кара колело миналото лято.",
+  "Ние отпразнувахме успешно завършването на проекта.",
+  "Той обича да чете вестници сутрин."
+];
+
+/* ============ STATE ============ */
+
+let lang = "bg"; // "bg" | "en" | "de"
+let mode = "word"; // "word" | "sentence"
+let level = "all";
+let pool = [];
+let poolIdx = 0;
+let target = "";
+let translation = "";
+let typed = "";
+let correctStreak = 0;
+let wrongChar = "";
+let wrongTimer = null;
+let showSyllables = false;
+let showImages = false;
+let imgRequestId = 0;
+let syllableBoundaries = [];
+let points = 0;
+let mistakesThisWord = 0;
+let mistakeMsgTimer = null;
+let autoAdvance = false;
+let autoAdvanceTimer = null;
+
+/* ---- profile / history state ---- */
+let currentUser = null; // null = guest (no persistence)
+let currentProfile = { points: 0, history: [] };
+
+const targetTextEl = document.getElementById("targetText");
+const syllablesTextEl = document.getElementById("syllablesText");
+const translationPanelEl = document.getElementById("translationPanel");
+const imagePanelEl = document.getElementById("imagePanel");
+const typeBoxEl = document.getElementById("typeBox");
+const hiddenInput = document.getElementById("hiddenInput");
+const idxNowEl = document.getElementById("idxNow");
+const idxTotalEl = document.getElementById("idxTotal");
+const streakCountEl = document.getElementById("streakCount");
+const pointsCountEl = document.getElementById("pointsCount");
+const levelTitleEl = document.getElementById("levelTitle");
+const encourageBannerEl = document.getElementById("encourageBanner");
+const confettiLayerEl = document.getElementById("confettiLayer");
+const mistakeMsgEl = document.getElementById("mistakeMsg");
+const nextBtn = document.getElementById("nextBtn");
+const flashEl = document.getElementById("flash");
+const currentUserLabelEl = document.getElementById("currentUserLabel");
+const historyListEl = document.getElementById("historyList");
+const historyOverlayEl = document.getElementById("historyOverlay");
+
+function buildWordPool(){
+  if(lang === "en") return EN_WORDS;
+  if(lang === "de") return DE_WORDS;
+  if(level === "all") return [...TIER1, ...TIER2, ...TIER3, ...TIER4];
+  return WORDS[level];
+}
+
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function loadPool(){
+  const useMode = lang === "bg" ? mode : "word";
+  pool = useMode === "word" ? shuffle(buildWordPool()) : shuffle(SENTENCES);
+  poolIdx = 0;
+  idxTotalEl.textContent = pool.length;
+  setTarget(pool[poolIdx]);
+}
+
+function setTarget(item){
+  if(Array.isArray(item)){
+    target = item[0];
+    translation = item[1];
+  } else {
+    target = item;
+    translation = "";
+  }
+  typed = "";
+  wrongChar = "";
+  mistakesThisWord = 0;
+  clearTimeout(wrongTimer);
+  clearTimeout(autoAdvanceTimer);
+  syllableBoundaries = computeSyllableBoundaries(target, lang);
+  idxNowEl.textContent = poolIdx + 1;
+  renderTarget();
+  renderTypeBox();
+  renderSyllables();
+  renderTranslation();
+  updateImagePanel();
+  nextBtn.classList.remove("ready");
+}
+
+function renderSyllables(){
+  if(!showSyllables){ syllablesTextEl.textContent = ""; return; }
+  syllablesTextEl.textContent = syllabifyText(target, lang);
+}
+
+function renderTranslation(){
+  if(!translation){
+    translationPanelEl.classList.remove("active");
+    translationPanelEl.innerHTML = "";
+    return;
+  }
+  translationPanelEl.classList.add("active");
+  translationPanelEl.innerHTML =
+    `<span class="tr-label">превод:</span> <span class="tr-word">${escapeHtml(translation)}</span> ` +
+    `<button class="tr-speak" id="trSpeakBtn" title="Чуй превода на български">🔊</button>`;
+  document.getElementById("trSpeakBtn").addEventListener("click", ()=>{
+    if(!window.speechSynthesis) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(translation);
+    u.lang = "bg-BG";
+    if(bgVoice) u.voice = bgVoice;
+    u.rate = 0.9;
+    speechSynthesis.speak(u);
+  });
+}
+
+function renderTarget(){
+  const done = target.slice(0, typed.length);
+  const nextChar = target.slice(typed.length, typed.length+1);
+  const rest = target.slice(typed.length+1);
+  targetTextEl.innerHTML =
+    `<span class="done">${escapeHtml(done)}</span>` +
+    (nextChar ? `<span class="next">${escapeHtml(nextChar)}</span>` : "") +
+    `<span class="todo">${escapeHtml(rest)}</span>`;
+}
+
+function renderTypeBox(){
+  const wrongSpan = wrongChar ? `<span class="wrong">${escapeHtml(wrongChar)}</span>` : "";
+  typeBoxEl.innerHTML = `<span class="typed">${escapeHtml(typed)}</span>${wrongSpan}<span class="cursor"></span>`;
+}
+
+function escapeHtml(s){
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function handleChar(ch){
+  if(typed.length >= target.length) return;
+  const expected = target[typed.length];
+  if(ch === expected){
+    wrongChar = "";
+    clearTimeout(wrongTimer);
+    typed += ch;
+    renderTarget();
+    renderTypeBox();
+    if(typed === target){
+      correctStreak++;
+      streakCountEl.textContent = correctStreak;
+      nextBtn.classList.add("ready");
+      flashEl.classList.remove("show");
+      void flashEl.offsetWidth;
+      flashEl.classList.add("show");
+      const perfect = mistakesThisWord === 0;
+      addPoints(perfect ? 15 : 10);
+      recordHistory(perfect);
+      showEncourageBanner(perfect);
+      fireConfetti();
+      speakLastSyllableThenWhole();
+      scheduleAutoAdvance();
+    } else {
+      speakCompletedSyllable();
+    }
+  } else {
+    showWrongChar(ch);
+  }
+}
+
+function showWrongChar(ch){
+  clearTimeout(wrongTimer);
+  wrongChar = ch;
+  mistakesThisWord++;
+  renderTypeBox();
+  speakChar(ch);
+  showMistakeMessage();
+  wrongTimer = setTimeout(()=>{
+    wrongChar = "";
+    renderTypeBox();
+  }, 650);
+}
+
+function showMistakeMessage(){
+  const msg = MISTAKE_MESSAGES[Math.floor(Math.random()*MISTAKE_MESSAGES.length)];
+  mistakeMsgEl.textContent = msg;
+  mistakeMsgEl.classList.add("show");
+  clearTimeout(mistakeMsgTimer);
+  mistakeMsgTimer = setTimeout(()=>{
+    mistakeMsgEl.classList.remove("show");
+  }, 850);
+}
+
+function handleBackspace(){
+  wrongChar = "";
+  clearTimeout(wrongTimer);
+  if(typed.length === 0){ renderTypeBox(); return; }
+  typed = typed.slice(0, -1);
+  renderTarget();
+  renderTypeBox();
+  nextBtn.classList.remove("ready");
+}
+
+function goNext(){
+  clearTimeout(autoAdvanceTimer);
+  poolIdx = (poolIdx + 1) % pool.length;
+  if(poolIdx === 0){
+    const useMode = lang === "bg" ? mode : "word";
+    pool = useMode === "word" ? shuffle(buildWordPool()) : shuffle(SENTENCES);
+  }
+  setTarget(pool[poolIdx]);
+  hiddenInput.focus();
+}
+
+function scheduleAutoAdvance(){
+  clearTimeout(autoAdvanceTimer);
+  if(!autoAdvance) return;
+  const snapshotTarget = target;
+  autoAdvanceTimer = setTimeout(()=>{
+    if(target === snapshotTarget && typed === target) goNext();
+  }, 1800);
+}
+
+function addPoints(n){
+  points += n;
+  pointsCountEl.textContent = points;
+  levelTitleEl.textContent = levelForPoints(points);
+  currentProfile.points = points;
+  saveCurrentProfile();
+}
+
+function recordHistory(perfect){
+  const entry = {
+    text: target,
+    translation: translation || null,
+    lang: lang,
+    mode: (lang === "bg" ? mode : "word"),
+    perfect: perfect,
+    ts: Date.now()
+  };
+  currentProfile.history = currentProfile.history || [];
+  currentProfile.history.unshift(entry);
+  if(currentProfile.history.length > 300) currentProfile.history.length = 300;
+  saveCurrentProfile();
+}
+
+function showEncourageBanner(perfect){
+  const pool = perfect ? PERFECT_MESSAGES : SUCCESS_MESSAGES;
+  const msg = pool[Math.floor(Math.random()*pool.length)];
+  encourageBannerEl.textContent = msg;
+  encourageBannerEl.classList.remove("show");
+  void encourageBannerEl.offsetWidth;
+  encourageBannerEl.classList.add("show");
+}
+
+function fireConfetti(){
+  const emojis = ["⭐","✨","🎉","🌟"];
+  const count = 8;
+  for(let i=0;i<count;i++){
+    const el = document.createElement("span");
+    el.className = "confetti-piece";
+    el.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+    const dx = Math.round(Math.random()*160-80) + "px";
+    const rot = Math.round(Math.random()*180-90) + "deg";
+    el.style.setProperty("--dx", dx);
+    el.style.setProperty("--rot", rot);
+    el.style.left = (42 + Math.random()*16) + "%";
+    confettiLayerEl.appendChild(el);
+    setTimeout(()=> el.remove(), 950);
+  }
+}
+
+/* ============ INPUT WIRING ============ */
+
+typeBoxEl.addEventListener("click", ()=> hiddenInput.focus());
+hiddenInput.addEventListener("focus", ()=> typeBoxEl.classList.add("focused"));
+hiddenInput.addEventListener("blur", ()=>{
+  typeBoxEl.classList.remove("focused");
+  // Полето за писане остава винаги активно, освен когато детето
+  // наистина трябва да пише другаде (логин, история, ключета).
+  setTimeout(()=>{
+    const active = document.activeElement;
+    const exemptIds = [
+      "authUsernameExisting","authPasswordExisting",
+      "authUsernameNew","authPasswordNew",
+      "syllableToggle","imageToggle","autoAdvanceToggle"
+    ];
+    if(active && (
+      (active.id && exemptIds.includes(active.id)) ||
+      (authOverlayEl && authOverlayEl.contains(active)) ||
+      (historyOverlayEl && historyOverlayEl.contains(active))
+    )) return;
+    hiddenInput.focus();
+  }, 10);
+});
+
+hiddenInput.addEventListener("keydown", (e)=>{
+  if(e.key === "Backspace"){
+    e.preventDefault();
+    handleBackspace();
+    return;
+  }
+  if(e.key === "Enter"){
+    e.preventDefault();
+    if(typed === target) goNext();
+    return;
+  }
+  if(e.key.length === 1){
+    e.preventDefault();
+    handleChar(e.key);
+  }
+});
+
+// Fallback for mobile / IME: use input event on a value we always clear
+hiddenInput.addEventListener("input", ()=>{
+  const val = hiddenInput.value;
+  if(val.length){
+    for(const ch of val) handleChar(ch);
+  }
+  hiddenInput.value = "";
+});
+
+nextBtn.addEventListener("click", goNext);
+document.getElementById("skipBtn").addEventListener("click", goNext);
+
+document.addEventListener("click", (e)=>{
+  if(e.target === typeBoxEl || typeBoxEl.contains(e.target)) return;
+});
+
+/* ============ SYLLABLES & IMAGE TOGGLES ============ */
+
+const syllableToggle = document.getElementById("syllableToggle");
+const imageToggle = document.getElementById("imageToggle");
+const imageToggleWrap = document.getElementById("imageToggleWrap");
+
+syllableToggle.addEventListener("change", ()=>{
+  showSyllables = syllableToggle.checked;
+  renderSyllables();
+});
+
+imageToggle.addEventListener("change", ()=>{
+  showImages = imageToggle.checked;
+  updateImagePanel();
+});
+
+async function updateImagePanel(){
+  const myId = ++imgRequestId;
+  const useMode = lang === "bg" ? mode : "word";
+  if(!showImages || useMode !== "word"){
+    imagePanelEl.classList.remove("active");
+    imagePanelEl.innerHTML = "";
+    return;
+  }
+  imagePanelEl.classList.add("active");
+
+  const emojiKey = (lang === "bg" ? target : translation).toLowerCase();
+  const emoji = EMOJI_MAP[emojiKey];
+  if(emoji){
+    imagePanelEl.innerHTML = `<div class="emoji-pic">${emoji}</div>`;
+    return;
+  }
+
+  imagePanelEl.innerHTML = `<div class="loading-pic">Търсене на картинка…</div>`;
+  const wikiDomain = lang === "en" ? "en.wikipedia.org" : lang === "de" ? "de.wikipedia.org" : "bg.wikipedia.org";
+  const src = await fetchWikiImage(target, wikiDomain);
+  if(myId !== imgRequestId) return; // a newer word/sentence has since loaded
+  if(src){
+    imagePanelEl.innerHTML = `<img src="${src}" alt="${escapeHtml(target)}">`;
+  }else{
+    imagePanelEl.innerHTML = `<div class="no-pic">Няма налична картинка за тази дума</div>`;
+  }
+}
+
+async function fetchWikiImage(word, domain){
+  try{
+    const url = `https://${domain}/w/api.php?action=query&titles=${encodeURIComponent(word)}&prop=pageimages&format=json&pithumbsize=260&origin=*`;
+    const res = await fetch(url);
+    if(!res.ok) return null;
+    const data = await res.json();
+    const pages = data.query && data.query.pages;
+    if(!pages) return null;
+    const page = Object.values(pages)[0];
+    if(page && page.thumbnail && page.thumbnail.source) return page.thumbnail.source;
+  }catch(e){ /* offline or blocked — fall back to placeholder */ }
+  return null;
+}
+
+/* ============ LANGUAGE / MODE / LEVEL TOGGLES ============ */
+
+const langBgBtn = document.getElementById("langBg");
+const langEnBtn = document.getElementById("langEn");
+const langDeBtn = document.getElementById("langDe");
+const modeToggleWrap = document.getElementById("modeToggleWrap");
+const modeWordBtn = document.getElementById("modeWord");
+const modeSentenceBtn = document.getElementById("modeSentence");
+const levelSelect = document.getElementById("levelSelect");
+
+function setLanguage(newLang){
+  lang = newLang;
+  langBgBtn.classList.toggle("active", lang === "bg");
+  langEnBtn.classList.toggle("active", lang === "en");
+  langDeBtn.classList.toggle("active", lang === "de");
+
+  const isBg = lang === "bg";
+  modeToggleWrap.style.display = isBg ? "" : "none";
+  levelSelect.style.display = (isBg && mode === "word") ? "" : "none";
+  imageToggleWrap.style.display = (isBg && mode === "sentence") ? "none" : "";
+
+  correctStreak = 0; streakCountEl.textContent = 0;
+  loadPool();
+}
+
+langBgBtn.addEventListener("click", ()=> setLanguage("bg"));
+langEnBtn.addEventListener("click", ()=> setLanguage("en"));
+langDeBtn.addEventListener("click", ()=> setLanguage("de"));
+
+modeWordBtn.addEventListener("click", ()=>{
+  mode = "word";
+  modeWordBtn.classList.add("active");
+  modeSentenceBtn.classList.remove("active");
+  levelSelect.style.display = "";
+  imageToggleWrap.style.display = "";
+  correctStreak = 0; streakCountEl.textContent = 0;
+  loadPool();
+});
+modeSentenceBtn.addEventListener("click", ()=>{
+  mode = "sentence";
+  modeSentenceBtn.classList.add("active");
+  modeWordBtn.classList.remove("active");
+  levelSelect.style.display = "none";
+  imageToggleWrap.style.display = "none";
+  correctStreak = 0; streakCountEl.textContent = 0;
+  loadPool();
+});
+levelSelect.addEventListener("change", ()=>{
+  level = levelSelect.value;
+  loadPool();
+});
+
+/* ============ SPEECH ============ */
+
+const LANG_CODES = { bg: "bg-BG", en: "en-US", de: "de-DE" };
+
+let bgVoice = null;
+let voiceCache = {};
+function pickVoices(){
+  const voices = window.speechSynthesis ? speechSynthesis.getVoices() : [];
+  bgVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith("bg")) || null;
+  voiceCache = {};
+  for(const code of ["bg","en","de"]){
+    voiceCache[code] = voices.find(v => v.lang && v.lang.toLowerCase().startsWith(code)) || null;
+  }
+}
+if(window.speechSynthesis){
+  pickVoices();
+  speechSynthesis.onvoiceschanged = pickVoices;
+}
+
+function currentLangCode(){ return LANG_CODES[lang] || "bg-BG"; }
+function currentVoice(){ return voiceCache[lang] || null; }
+
+function speak(){
+  if(!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(target);
+  u.lang = currentLangCode();
+  const v = currentVoice();
+  if(v) u.voice = v;
+  u.rate = 0.92;
+  speechSynthesis.speak(u);
+}
+
+function speakChar(ch){
+  if(!window.speechSynthesis) return;
+  if(!ch.trim()) return; // skip speaking spaces/punctuation
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(ch);
+  u.lang = currentLangCode();
+  const v = currentVoice();
+  if(v) u.voice = v;
+  u.rate = 0.75;
+  speechSynthesis.speak(u);
+}
+
+function speakCompletedSyllable(){
+  if(!window.speechSynthesis) return;
+  if(!syllableBoundaries.includes(typed.length)) return;
+  const idx = syllableBoundaries.indexOf(typed.length);
+  const startIdx = idx === 0 ? 0 : syllableBoundaries[idx-1];
+  const syll = target.slice(startIdx, typed.length).trim();
+  if(!syll) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(syll);
+  u.lang = currentLangCode();
+  const v = currentVoice();
+  if(v) u.voice = v;
+  u.rate = 0.8;
+  speechSynthesis.speak(u);
+}
+
+function speakLastSyllableThenWhole(){
+  if(!window.speechSynthesis){ return; }
+  const lastIdx = syllableBoundaries.length - 1;
+  const startIdx = lastIdx <= 0 ? 0 : syllableBoundaries[lastIdx-1];
+  const syll = target.slice(startIdx, target.length).trim();
+  speechSynthesis.cancel();
+  if(!syll){
+    speak();
+    return;
+  }
+  const u = new SpeechSynthesisUtterance(syll);
+  u.lang = currentLangCode();
+  const v = currentVoice();
+  if(v) u.voice = v;
+  u.rate = 0.8;
+  u.onend = () => speak();
+  u.onerror = () => speak();
+  speechSynthesis.speak(u);
+}
+
+document.getElementById("speakBtn").addEventListener("click", speak);
+document.getElementById("repeatBtn").addEventListener("click", speak);
+
+/* ============ AUTO-ADVANCE TOGGLE ============ */
+
+const autoAdvanceToggle = document.getElementById("autoAdvanceToggle");
+autoAdvanceToggle.addEventListener("change", ()=>{
+  autoAdvance = autoAdvanceToggle.checked;
+  clearTimeout(autoAdvanceTimer);
+});
+
+/* ============ PROFILES / LOCAL "LOGIN" / HISTORY ============
+   Everything here is stored in this browser's localStorage only.
+   There is no server, so this is NOT real account security — it's a
+   simple way for a few people sharing one device to keep separate
+   histories and progress. Passwords are lightly obscured (not
+   cryptographically secure) before being stored. */
+
+const PROFILES_KEY = "bgTrainerProfiles_v1";
+
+function simpleHash(str){
+  let h = 5381;
+  for(let i=0;i<str.length;i++){
+    h = ((h << 5) + h) + str.charCodeAt(i);
+    h = h | 0;
+  }
+  return String(h);
+}
+
+function loadAllProfiles(){
+  try{
+    const raw = localStorage.getItem(PROFILES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  }catch(e){ return {}; }
+}
+
+function saveAllProfiles(obj){
+  try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(obj)); }
+  catch(e){ /* storage full or unavailable — progress just won't persist */ }
+}
+
+function saveCurrentProfile(){
+  if(!currentUser) return; // guest: nothing persists
+  const all = loadAllProfiles();
+  if(!all[currentUser]) return;
+  all[currentUser].points = currentProfile.points;
+  all[currentUser].history = currentProfile.history;
+  saveAllProfiles(all);
+}
+
+function applyLoadedProfile(){
+  points = currentProfile.points || 0;
+  pointsCountEl.textContent = points;
+  levelTitleEl.textContent = levelForPoints(points);
+  correctStreak = 0;
+  streakCountEl.textContent = 0;
+}
+
+/* ---- Автоматичен вход от общия хъб (ако страницата е отворена през него) ---- */
+function getHubParams(){
+  if(window.__HUB_USER__){
+    return { name: window.__HUB_USER__, pass: "hub-" + window.__HUB_USER__ };
+  }
+  const params = new URLSearchParams(window.location.search);
+  const name = params.get("hubUser");
+  if(!name) return null;
+  return { name: decodeURIComponent(name), pass: params.get("hubPass") || ("hub-" + decodeURIComponent(name)) };
+}
+
+function tryHubAutoLogin(){
+  const hub = getHubParams();
+  if(!hub) return false;
+  const all = loadAllProfiles();
+  const wantedHash = simpleHash(hub.pass);
+  if(!all[hub.name]){
+    all[hub.name] = { passHash: wantedHash, points: 0, history: [] };
+    saveAllProfiles(all);
+  } else if(all[hub.name].passHash !== wantedHash){
+    all[hub.name].passHash = wantedHash; // синхронизираме с хъб паролата
+    saveAllProfiles(all);
+  }
+  const prof = all[hub.name];
+  currentUser = hub.name;
+  currentProfile = { points: prof.points || 0, history: prof.history || [] };
+  currentUserLabelEl.textContent = hub.name;
+  applyLoadedProfile();
+  closeAuthOverlay();
+  return true;
+}
+
+/* ---- Auth UI ---- */
+const authOverlayEl = document.getElementById("authOverlay");
+const authUsernameExisting = document.getElementById("authUsernameExisting");
+const authPasswordExisting = document.getElementById("authPasswordExisting");
+const authErrorExisting = document.getElementById("authErrorExisting");
+const authLoginBtn = document.getElementById("authLoginBtn");
+const authGuestBtn = document.getElementById("authGuestBtn");
+const authShowCreate = document.getElementById("authShowCreate");
+const authCreatePanel = document.getElementById("authCreatePanel");
+const authUsernameNew = document.getElementById("authUsernameNew");
+const authPasswordNew = document.getElementById("authPasswordNew");
+const authErrorNew = document.getElementById("authErrorNew");
+const authCreateBtn = document.getElementById("authCreateBtn");
+const authBackToLogin = document.getElementById("authBackToLogin");
+const switchUserBtn = document.getElementById("switchUserBtn");
+
+function populateUserSelect(){
+  const all = loadAllProfiles();
+  const names = Object.keys(all).sort();
+  authUsernameExisting.innerHTML = '<option value="">— избери —</option>' +
+    names.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+}
+
+function openAuthOverlay(){
+  populateUserSelect();
+  authErrorExisting.textContent = "";
+  authErrorNew.textContent = "";
+  authPasswordExisting.value = "";
+  authUsernameNew.value = "";
+  authPasswordNew.value = "";
+  authCreatePanel.style.display = "none";
+  authOverlayEl.style.display = "flex";
+}
+function closeAuthOverlay(){
+  authOverlayEl.style.display = "none";
+  hiddenInput.focus();
+}
+
+authShowCreate.addEventListener("click", ()=>{
+  authCreatePanel.style.display = "block";
+});
+authBackToLogin.addEventListener("click", ()=>{
+  authCreatePanel.style.display = "none";
+});
+
+authLoginBtn.addEventListener("click", ()=>{
+  const uname = authUsernameExisting.value;
+  const pass = authPasswordExisting.value;
+  if(!uname){ authErrorExisting.textContent = "Избери профил от списъка."; return; }
+  const all = loadAllProfiles();
+  const prof = all[uname];
+  if(!prof){ authErrorExisting.textContent = "Профилът не съществува."; return; }
+  if(prof.passHash !== simpleHash(pass)){ authErrorExisting.textContent = "Грешна парола."; return; }
+  currentUser = uname;
+  currentProfile = { points: prof.points || 0, history: prof.history || [] };
+  currentUserLabelEl.textContent = uname;
+  applyLoadedProfile();
+  closeAuthOverlay();
+});
+
+authGuestBtn.addEventListener("click", ()=>{
+  currentUser = null;
+  currentProfile = { points: 0, history: [] };
+  currentUserLabelEl.textContent = "Гост";
+  applyLoadedProfile();
+  closeAuthOverlay();
+});
+
+authCreateBtn.addEventListener("click", ()=>{
+  const uname = authUsernameNew.value.trim();
+  const pass = authPasswordNew.value;
+  if(!uname){ authErrorNew.textContent = "Въведи потребителско име."; return; }
+  if(uname.length < 2){ authErrorNew.textContent = "Името трябва да е поне 2 символа."; return; }
+  if(!pass || pass.length < 3){ authErrorNew.textContent = "Паролата трябва да е поне 3 символа."; return; }
+  const all = loadAllProfiles();
+  if(all[uname]){ authErrorNew.textContent = "Вече има профил с това име."; return; }
+  all[uname] = { passHash: simpleHash(pass), points: 0, history: [] };
+  saveAllProfiles(all);
+  currentUser = uname;
+  currentProfile = { points: 0, history: [] };
+  currentUserLabelEl.textContent = uname;
+  applyLoadedProfile();
+  closeAuthOverlay();
+});
+
+switchUserBtn.addEventListener("click", openAuthOverlay);
+
+/* ---- History UI ---- */
+const historyOpenBtn = document.getElementById("historyOpenBtn");
+const historyCloseBtn = document.getElementById("historyCloseBtn");
+const historyClearBtn = document.getElementById("historyClearBtn");
+
+function formatTime(ts){
+  const d = new Date(ts);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString("bg-BG", {hour:"2-digit", minute:"2-digit"});
+  if(sameDay) return "днес " + time;
+  return d.toLocaleDateString("bg-BG", {day:"2-digit", month:"2-digit"}) + " " + time;
+}
+
+function renderHistory(){
+  const items = currentProfile.history || [];
+  if(!items.length){
+    historyListEl.innerHTML = '<div class="history-empty">Все още няма решени задачи в тази история.</div>';
+    return;
+  }
+  historyListEl.innerHTML = items.map(it=>{
+    const langTag = it.lang === "bg" ? "БГ" : it.lang === "en" ? "EN" : "DE";
+    const perfectMark = it.perfect ? "✨" : "";
+    const trBit = it.translation ? ` — ${escapeHtml(it.translation)}` : "";
+    return `<div class="history-item">
+      <span class="hi-word">${escapeHtml(it.text)}${trBit} ${perfectMark}</span>
+      <span class="hi-meta">${langTag} · ${formatTime(it.ts)}</span>
+    </div>`;
+  }).join("");
+}
+
+historyOpenBtn.addEventListener("click", ()=>{
+  renderHistory();
+  historyOverlayEl.classList.add("open");
+});
+historyCloseBtn.addEventListener("click", ()=>{
+  historyOverlayEl.classList.remove("open");
+  hiddenInput.focus();
+});
+historyClearBtn.addEventListener("click", ()=>{
+  currentProfile.history = [];
+  saveCurrentProfile();
+  renderHistory();
+});
+
+/* ============ INIT ============ */
+if(!tryHubAutoLogin()){
+  openAuthOverlay();
+}
+loadPool();
+hiddenInput.focus();
+</script>
+</body>
+</html>

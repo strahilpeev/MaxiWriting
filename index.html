@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Моите учебни игри</title>
+
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="shortcut icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Учебни игри">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#5da8e8">
+
+<style>
+  :root{
+    --bg1:#fdf6ec;
+    --bg2:#e8f4ff;
+    --ink:#2c3e50;
+    --card-shadow: 0 6px 14px rgba(44,62,80,0.15);
+    --card-shadow-hover: 0 10px 20px rgba(44,62,80,0.22);
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;
+    padding:0;
+    height:100%;
+    font-family:'Segoe UI', Arial, sans-serif;
+    background:linear-gradient(135deg,var(--bg1),var(--bg2));
+    color:var(--ink);
+    overflow:hidden;
+  }
+  button{font-family:inherit;}
+
+  .screen{
+    height:100%;
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:clamp(1rem, 3vw, 2.2rem);
+    padding:clamp(1rem, 4vw, 3rem);
+    overflow-y:auto;
+  }
+  .screen.active{ display:flex; }
+
+  h1{
+    font-size:clamp(1.6rem, 4.5vw, 3rem);
+    margin:0 0 clamp(0.3rem,1.5vw,1rem) 0;
+    text-align:center;
+  }
+
+  /* ---------- PROFILE SCREEN ---------- */
+  .profile-grid{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:clamp(1rem, 2.5vw, 2rem);
+    width:100%;
+    max-width:900px;
+  }
+  .profile-card{
+    width:clamp(120px, 22vw, 170px);
+    background:#fff;
+    border:3px solid transparent;
+    border-radius:24px;
+    padding:clamp(0.8rem, 2vw, 1.2rem) 0.6rem;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:0.5rem;
+    cursor:pointer;
+    box-shadow:var(--card-shadow);
+    transition:transform .15s ease, box-shadow .15s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .profile-card:active{ transform:scale(0.95); }
+  .profile-card:hover{ transform:translateY(-4px); box-shadow:var(--card-shadow-hover); }
+  .profile-card .avatar{ font-size:clamp(2.4rem, 6vw, 3.4rem); }
+  .profile-card .name{
+    font-size:clamp(0.95rem, 2vw, 1.2rem);
+    font-weight:700;
+    text-align:center;
+    word-break:break-word;
+  }
+  .profile-card .del-btn{
+    margin-top:0.2rem;
+    font-size:0.75rem;
+    color:#b33;
+    background:none;
+    border:none;
+    cursor:pointer;
+    padding:0.2rem 0.5rem;
+    opacity:0.7;
+  }
+  .profile-card .del-btn:hover{ opacity:1; text-decoration:underline; }
+
+  .profile-card.add-new{
+    background:repeating-linear-gradient(135deg,#ffffffaa,#ffffffaa 10px,#f3f3f3aa 10px,#f3f3f3aa 20px);
+    border:3px dashed #b8c2cc;
+  }
+  .profile-card.add-new .avatar{ color:#8a97a3; }
+
+  /* ---------- NEW PROFILE FORM ---------- */
+  .new-profile-box{
+    background:#fff;
+    border-radius:24px;
+    padding:clamp(1.2rem, 3vw, 2rem);
+    box-shadow:var(--card-shadow);
+    display:flex;
+    flex-direction:column;
+    gap:1rem;
+    width:100%;
+    max-width:420px;
+  }
+  .new-profile-box input[type="text"]{
+    font-size:clamp(1rem, 2.4vw, 1.3rem);
+    padding:0.7rem 0.9rem;
+    border-radius:14px;
+    border:2px solid #d7dee5;
+    outline:none;
+  }
+  .new-profile-box input[type="text"]:focus{ border-color:#5da8e8; }
+  .avatar-picker{
+    display:flex;
+    flex-wrap:wrap;
+    gap:0.5rem;
+    justify-content:center;
+  }
+  .avatar-choice{
+    font-size:1.8rem;
+    background:#f2f5f8;
+    border:3px solid transparent;
+    border-radius:14px;
+    padding:0.3rem 0.5rem;
+    cursor:pointer;
+  }
+  .avatar-choice.selected{ border-color:#5da8e8; background:#e5f1fc; }
+  .form-row{ display:flex; gap:0.7rem; }
+  .btn{
+    flex:1;
+    font-size:clamp(1rem, 2.2vw, 1.2rem);
+    font-weight:700;
+    padding:0.7rem 1rem;
+    border:none;
+    border-radius:14px;
+    cursor:pointer;
+    color:#fff;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .btn:active{ transform:scale(0.96); }
+  .btn.save{ background:#4f9350; }
+  .btn.cancel{ background:#8a97a3; }
+
+  /* ---------- MENU SCREEN ---------- */
+  .top-bar{
+    position:fixed;
+    top:clamp(0.6rem, 2vw, 1.2rem);
+    right:clamp(0.6rem, 2vw, 1.2rem);
+    z-index:5;
+  }
+  #switch-profile-btn{
+    background:#fff;
+    color:var(--ink);
+    border:none;
+    border-radius:999px;
+    padding:0.5rem 1rem;
+    font-size:0.95rem;
+    font-weight:700;
+    cursor:pointer;
+    box-shadow:var(--card-shadow);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .tiles{
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:center;
+    gap:clamp(1rem, 3vw, 2.5rem);
+    width:100%;
+    max-width:1100px;
+  }
+  .tile{
+    flex:1 1 260px;
+    max-width:320px;
+    min-height:clamp(180px, 26vw, 260px);
+    border:none;
+    border-radius:28px;
+    cursor:pointer;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:clamp(0.5rem, 1.5vw, 1rem);
+    padding:clamp(1rem, 2.5vw, 1.8rem);
+    color:#fff;
+    box-shadow:var(--card-shadow);
+    transition:transform .15s ease, box-shadow .15s ease;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .tile:active{ transform:scale(0.96); }
+  .tile:hover{ transform:translateY(-4px); box-shadow:var(--card-shadow-hover); }
+  .tile .icon{ font-size:clamp(2.6rem, 7vw, 4.5rem); line-height:1; }
+  .tile .label{ font-size:clamp(1.1rem, 2.6vw, 1.6rem); font-weight:700; text-align:center; }
+  .tile .sub{ font-size:clamp(0.8rem, 1.6vw, 1rem); text-align:center; opacity:0.92; font-weight:400; }
+
+  .tile.srichki{ background:linear-gradient(160deg,#e2b26b,#c98a3f); }
+  .tile.matematika{ background:linear-gradient(160deg,#5da8e8,#2c6fb0); }
+  .tile.pisane{ background:linear-gradient(160deg,#8fbf7a,#4f9350); }
+
+  /* ---------- PROGRESS / HISTORY CARD ---------- */
+  .progress-card{
+    background:#fff;
+    border-radius:24px;
+    padding:clamp(1rem, 2.5vw, 1.6rem);
+    box-shadow:var(--card-shadow);
+    width:100%;
+    max-width:700px;
+    display:flex;
+    flex-direction:column;
+    gap:0.9rem;
+  }
+  .progress-top{
+    display:flex;
+    align-items:center;
+    gap:clamp(0.8rem, 2vw, 1.2rem);
+    flex-wrap:wrap;
+  }
+  .progress-avatar{
+    font-size:clamp(2rem, 5vw, 2.6rem);
+    background:#f2f5f8;
+    border-radius:50%;
+    width:clamp(3rem, 7vw, 3.8rem);
+    height:clamp(3rem, 7vw, 3.8rem);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+  }
+  .progress-stats{
+    display:flex;
+    gap:clamp(0.8rem, 2vw, 1.6rem);
+    flex-wrap:wrap;
+  }
+  .stat{
+    display:flex;
+    align-items:center;
+    gap:0.35rem;
+    font-weight:700;
+    font-size:clamp(0.9rem, 1.8vw, 1.1rem);
+  }
+  .stat-icon{ font-size:1.25em; }
+  .stat-label{ font-weight:400; opacity:0.65; font-size:0.8em; }
+  .progress-toggle{
+    align-self:flex-start;
+    background:#f2f5f8;
+    border:none;
+    border-radius:999px;
+    padding:0.4rem 0.9rem;
+    font-size:0.9rem;
+    font-weight:700;
+    cursor:pointer;
+    color:var(--ink);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .progress-history{
+    display:none;
+    flex-direction:column;
+    gap:0.9rem;
+    max-height:240px;
+    overflow-y:auto;
+  }
+  .progress-history.open{ display:flex; }
+  .progress-section-title{
+    font-size:0.8rem;
+    font-weight:700;
+    opacity:0.65;
+    margin:0 0 0.3rem 0;
+  }
+  .progress-item{
+    display:flex;
+    justify-content:space-between;
+    gap:0.6rem;
+    font-size:0.9rem;
+    padding:0.35rem 0.6rem;
+    border-radius:10px;
+    background:#f8fafc;
+  }
+  .progress-item .pi-time{ opacity:0.6; white-space:nowrap; }
+  .progress-empty{ font-size:0.9rem; opacity:0.65; text-align:center; padding:0.4rem; }
+
+  /* ---------- APP SCREEN ---------- */
+  #app-screen{
+    position:fixed;
+    inset:0;
+    display:none;
+    background:#fff;
+  }
+  #app-screen.active{ display:block; }
+  #app-frame{ width:100%; height:100%; border:none; }
+  #home-btn{
+    position:fixed;
+    top:clamp(0.6rem, 2vw, 1.2rem);
+    left:clamp(0.6rem, 2vw, 1.2rem);
+    z-index:10;
+    background:var(--ink);
+    color:#fff;
+    border:none;
+    border-radius:999px;
+    padding:clamp(0.55rem, 1.6vw, 0.9rem) clamp(1rem, 2.6vw, 1.6rem);
+    font-size:clamp(0.95rem, 2vw, 1.2rem);
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    gap:0.5rem;
+    cursor:pointer;
+    box-shadow:var(--card-shadow);
+    -webkit-tap-highlight-color:transparent;
+  }
+  #home-btn:active{ transform:scale(0.95); }
+
+  @media (max-width:480px){
+    .tiles{ flex-direction:column; align-items:stretch; }
+    .tile{ max-width:none; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- ЕКРАН 1: Избор / създаване на профил -->
+  <div id="profile-screen" class="screen">
+    <h1>Кой играе днес? 😊</h1>
+    <div class="profile-grid" id="profile-grid"></div>
+  </div>
+
+  <!-- ЕКРАН 1б: Нов профил -->
+  <div id="new-profile-screen" class="screen">
+    <h1>Нов профил</h1>
+    <div class="new-profile-box">
+      <input type="text" id="new-profile-name" placeholder="Име на детето" maxlength="20" autocomplete="off">
+      <div class="avatar-picker" id="avatar-picker"></div>
+      <div class="form-row">
+        <button class="btn cancel" onclick="showProfileScreen()">Отказ</button>
+        <button class="btn save" onclick="saveNewProfile()">Готово ✓</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ЕКРАН 2: Меню с игрите -->
+  <div id="menu" class="screen">
+    <div class="top-bar">
+      <button id="switch-profile-btn" onclick="showProfileScreen()">🔄 Смени профила</button>
+    </div>
+    <h1 id="menu-greeting">Какво искаш да поиграем днес? 🌟</h1>
+    <div class="tiles">
+      <button class="tile srichki" onclick="openApp('srichki-razmer.html')">
+        <span class="icon">📖</span>
+        <span class="label">Срички на глас</span>
+        <span class="sub">Четене и произношение</span>
+      </button>
+
+      <button class="tile matematika" onclick="openApp('matematika_sbor_login_preminavane.html')">
+        <span class="icon">➕</span>
+        <span class="label">Сбор на числа</span>
+        <span class="sub">Игра с математика</span>
+      </button>
+
+      <button class="tile pisane" onclick="openApp('bulgarian-typing-login.html')">
+        <span class="icon">⌨️</span>
+        <span class="label">Пиши и говори</span>
+        <span class="sub">Тренажор по писане</span>
+      </button>
+    </div>
+
+    <div class="progress-card" id="progress-card">
+      <div class="progress-top">
+        <div class="progress-avatar" id="progress-avatar">🦊</div>
+        <div class="progress-stats">
+          <div class="stat"><span class="stat-icon">⭐</span><span id="stat-stars">0</span><span class="stat-label">звезди</span></div>
+          <div class="stat"><span class="stat-icon">🔥</span><span id="stat-streak">0</span><span class="stat-label">поредни</span></div>
+          <div class="stat"><span class="stat-icon">✏️</span><span id="stat-points">0</span><span class="stat-label">точки</span></div>
+        </div>
+      </div>
+      <button class="progress-toggle" id="progress-toggle-btn" onclick="toggleProgressHistory()">📜 Виж историята</button>
+      <div class="progress-history" id="progress-history"></div>
+    </div>
+  </div>
+
+  <!-- ЕКРАН 3: Самото приложение (iframe) -->
+  <div id="app-screen">
+    <button id="home-btn" onclick="closeApp()">🏠 Начало</button>
+    <iframe id="app-frame" src="" title="Учебно приложение"></iframe>
+  </div>
+
+<script>
+  const PROFILES_KEY = 'hubChildProfiles_v1';
+  const ACTIVE_KEY = 'hubActiveProfile_v1';
+  const AVATARS = ['🦊','🐻','🐰','🐱','🐼','🦁','🐸','🦄','🌟','🚀','🌈','⚽'];
+
+  const profileScreen = document.getElementById('profile-screen');
+  const newProfileScreen = document.getElementById('new-profile-screen');
+  const menu = document.getElementById('menu');
+  const appScreen = document.getElementById('app-screen');
+  const frame = document.getElementById('app-frame');
+  const profileGrid = document.getElementById('profile-grid');
+  const avatarPicker = document.getElementById('avatar-picker');
+  const menuGreeting = document.getElementById('menu-greeting');
+
+  let selectedAvatar = AVATARS[0];
+
+  function loadProfiles(){
+    try{ return JSON.parse(localStorage.getItem(PROFILES_KEY)) || []; }
+    catch(e){ return []; }
+  }
+  function saveProfiles(list){
+    try{ localStorage.setItem(PROFILES_KEY, JSON.stringify(list)); }catch(e){}
+  }
+  function getActiveProfile(){
+    try{ return JSON.parse(localStorage.getItem(ACTIVE_KEY)); }catch(e){ return null; }
+  }
+  function setActiveProfile(profile){
+    try{ localStorage.setItem(ACTIVE_KEY, JSON.stringify(profile)); }catch(e){}
+  }
+
+  function showScreen(el){
+    [profileScreen, newProfileScreen, menu].forEach(s => s.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function showProfileScreen(){
+    renderProfileGrid();
+    showScreen(profileScreen);
+  }
+
+  function renderProfileGrid(){
+    const profiles = loadProfiles();
+    profileGrid.innerHTML = '';
+    profiles.forEach(p => {
+      const card = document.createElement('button');
+      card.className = 'profile-card';
+      card.innerHTML = `
+        <span class="avatar">${p.avatar}</span>
+        <span class="name">${escapeHtml(p.name)}</span>
+        <button class="del-btn" type="button">✕ изтрий</button>
+      `;
+      card.addEventListener('click', (e) => {
+        if(e.target.classList.contains('del-btn')) return;
+        chooseProfile(p);
+      });
+      card.querySelector('.del-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteProfile(p);
+      });
+      profileGrid.appendChild(card);
+    });
+
+    const addCard = document.createElement('button');
+    addCard.className = 'profile-card add-new';
+    addCard.innerHTML = `<span class="avatar">➕</span><span class="name">Нов профил</span>`;
+    addCard.addEventListener('click', openNewProfileForm);
+    profileGrid.appendChild(addCard);
+  }
+
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, c => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+    }[c]));
+  }
+
+  function deleteProfile(p){
+    if(!confirm('Да изтрия ли профила на "' + p.name + '"? (напредъкът в игрите остава запазен)')) return;
+    const profiles = loadProfiles().filter(x => x.id !== p.id);
+    saveProfiles(profiles);
+    const active = getActiveProfile();
+    if(active && active.id === p.id) localStorage.removeItem(ACTIVE_KEY);
+    renderProfileGrid();
+  }
+
+  function openNewProfileForm(){
+    document.getElementById('new-profile-name').value = '';
+    selectedAvatar = AVATARS[Math.floor(Math.random() * AVATARS.length)];
+    avatarPicker.innerHTML = '';
+    AVATARS.forEach(a => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'avatar-choice' + (a === selectedAvatar ? ' selected' : '');
+      btn.textContent = a;
+      btn.addEventListener('click', () => {
+        selectedAvatar = a;
+        avatarPicker.querySelectorAll('.avatar-choice').forEach(el => el.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+      avatarPicker.appendChild(btn);
+    });
+    showScreen(newProfileScreen);
+    document.getElementById('new-profile-name').focus();
+  }
+
+  function saveNewProfile(){
+    const nameInput = document.getElementById('new-profile-name');
+    const name = nameInput.value.trim();
+    if(!name){ nameInput.focus(); return; }
+    const profiles = loadProfiles();
+    const newProfile = { id: 'p' + Date.now(), name, avatar: selectedAvatar };
+    profiles.push(newProfile);
+    saveProfiles(profiles);
+    chooseProfile(newProfile);
+  }
+
+  function chooseProfile(p){
+    setActiveProfile(p);
+    menuGreeting.textContent = p.avatar + ' Здравей, ' + p.name + '! Какво играем днес?';
+    renderProgressCard(p);
+    showScreen(menu);
+  }
+
+  /* ---- Обща история / напредък от двете игри с профили ---- */
+  const MATH_USERS_KEY = 'mathAppUsers_v1';
+  const TYPING_PROFILES_KEY = 'bgTrainerProfiles_v1';
+
+  function readMathStats(name){
+    try{
+      const users = JSON.parse(localStorage.getItem(MATH_USERS_KEY)) || {};
+      return users[name] || null;
+    }catch(e){ return null; }
+  }
+  function readTypingStats(name){
+    try{
+      const profiles = JSON.parse(localStorage.getItem(TYPING_PROFILES_KEY)) || {};
+      return profiles[name] || null;
+    }catch(e){ return null; }
+  }
+
+  function renderProgressCard(profile){
+    document.getElementById('progress-avatar').textContent = profile.avatar;
+    const math = readMathStats(profile.name);
+    const typing = readTypingStats(profile.name);
+
+    document.getElementById('stat-stars').textContent = math ? (math.stars || 0) : 0;
+    document.getElementById('stat-streak').textContent = math ? (math.streak || 0) : 0;
+    document.getElementById('stat-points').textContent = typing ? (typing.points || 0) : 0;
+
+    const historyEl = document.getElementById('progress-history');
+    const mathHistory = (math && math.history) || [];
+    const typingHistory = (typing && typing.history) || [];
+
+    if(!mathHistory.length && !typingHistory.length){
+      historyEl.innerHTML = '<div class="progress-empty">Тук ще се появи историята, щом поиграеш малко 🙂</div>';
+      return;
+    }
+
+    let html = '';
+    if(mathHistory.length){
+      html += '<div class="progress-section-title">➕ Математика</div>';
+      html += mathHistory.slice(0, 8).map(h => {
+        const mark = h.correct ? '✅' : '❌';
+        return `<div class="progress-item"><span>${h.a} + ${h.b} = ${h.sum} ${mark}</span><span class="pi-time">${escapeHtml(h.time || '')}</span></div>`;
+      }).join('');
+    }
+    if(typingHistory.length){
+      html += '<div class="progress-section-title">⌨️ Пиши и говори</div>';
+      html += typingHistory.slice(0, 8).map(h => {
+        const mark = h.perfect ? '✨' : '';
+        const timeStr = h.ts ? new Date(h.ts).toLocaleTimeString('bg-BG', {hour:'2-digit', minute:'2-digit'}) : '';
+        return `<div class="progress-item"><span>${escapeHtml(h.text)} ${mark}</span><span class="pi-time">${escapeHtml(timeStr)}</span></div>`;
+      }).join('');
+    }
+    historyEl.innerHTML = html;
+  }
+
+  function toggleProgressHistory(){
+    const el = document.getElementById('progress-history');
+    const btn = document.getElementById('progress-toggle-btn');
+    const open = el.classList.toggle('open');
+    btn.textContent = open ? '🔼 Скрий историята' : '📜 Виж историята';
+  }
+
+  function openApp(src){
+    const active = getActiveProfile();
+    const url = active ? (src + '?hubUser=' + encodeURIComponent(active.name)) : src;
+    frame.src = url;
+    appScreen.classList.add('active');
+  }
+
+  function closeApp(){
+    appScreen.classList.remove('active');
+    // изчистваме src след малко, за да спрем звук/таймери във вложеното приложение
+    setTimeout(()=>{ frame.src = ''; }, 50);
+    const active = getActiveProfile();
+    if(active) renderProgressCard(active);
+  }
+
+  window.addEventListener('popstate', closeApp);
+
+  /* ---- Регистрация на Service Worker (offline + инсталация) ---- */
+  if('serviceWorker' in navigator){
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(() => {});
+    });
+  }
+
+  /* ---- Старт ---- */
+  const active = getActiveProfile();
+  if(active){
+    menuGreeting.textContent = active.avatar + ' Здравей, ' + active.name + '! Какво играем днес?';
+    renderProgressCard(active);
+    showScreen(menu);
+  } else {
+    showProfileScreen();
+  }
+</script>
+
+</body>
+</html>

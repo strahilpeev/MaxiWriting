@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<title>Сбор на две числа</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg,#fdf6ec,#e8f4ff);
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 24px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+    padding: 32px;
+    max-width: 620px;
+    width: 100%;
+  }
+  .top-row {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .lang-btn {
+    border: 2px solid #d0d7e2;
+    background: #f5f7fa;
+    border-radius: 10px;
+    padding: 6px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .lang-btn:hover { background: #e8edf3; }
+  .lang-btn.active {
+    background: #2c3e50;
+    color: #fff;
+    border-color: #2c3e50;
+  }
+  h1 {
+    text-align: center;
+    color: #2c3e50;
+    font-size: 26px;
+    margin-top: 0;
+  }
+  .section-label {
+    text-align: center;
+    font-size: 13px;
+    color: #7f8c8d;
+    margin: 10px 0 4px;
+  }
+  /* ---------- Потребителски панел ---------- */
+  .user-panel {
+    background: #f4f7fb;
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+  .user-form {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+  }
+  .user-form input[type="text"], .user-form input[type="password"] {
+    padding: 6px 10px;
+    border: 2px solid #d0d7e2;
+    border-radius: 8px;
+    font-size: 14px;
+    width: 130px;
+  }
+  .user-form button {
+    border: none;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 14px;
+    cursor: pointer;
+    color: #fff;
+  }
+  .btn-login { background: #27ae60; }
+  .btn-register { background: #2980b9; }
+  .btn-logout { background: #c0392b; }
+  .user-status {
+    text-align: center;
+    font-size: 13px;
+    margin-top: 6px;
+    min-height: 16px;
+  }
+  .user-status.error { color: #e74c3c; }
+  .user-status.success { color: #27ae60; }
+  .logged-in-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .local-note {
+    text-align: center;
+    font-size: 11px;
+    color: #a5aeb8;
+    margin-top: 4px;
+  }
+  /* ---------- Статус: серия / звезди ---------- */
+  .status-row {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    background: #fff3e0;
+    border-radius: 12px;
+    padding: 6px 14px;
+    font-size: 15px;
+    font-weight: bold;
+    color: #e67e22;
+  }
+  .grade-toggle {
+    text-align: center;
+    font-size: 13px;
+    color: #7f8c8d;
+    margin-bottom: 6px;
+  }
+  #gradePanel {
+    text-align: center;
+    background: #eafaf1;
+    border-radius: 12px;
+    padding: 8px;
+    margin: 8px 0;
+    font-weight: bold;
+    color: #27ae60;
+    display: none;
+  }
+  #gradePanel.show { display: block; }
+  #stars {
+    text-align: center;
+    font-size: 20px;
+    min-height: 26px;
+    margin-bottom: 4px;
+    letter-spacing: 2px;
+  }
+  .star-pop {
+    display: inline-block;
+    animation: pop 0.5s ease;
+  }
+  @keyframes pop {
+    0% { transform: scale(0); opacity: 0; }
+    60% { transform: scale(1.4); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  /* ---------- Задача ---------- */
+  .problem {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    font-size: 62px;
+    font-weight: bold;
+    color: #34495e;
+    margin: 20px 0;
+    flex-wrap: wrap;
+  }
+  .num-box {
+    background: #eef6ff;
+    border-radius: 16px;
+    padding: 10px 20px;
+    min-width: 115px;
+    text-align: center;
+  }
+  input#answer {
+    width: 130px;
+    font-size: 52px;
+    text-align: center;
+    border: 3px solid #a0c4ff;
+    border-radius: 12px;
+    padding: 4px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  input#answer.wrong-digit {
+    border-color: #e74c3c;
+    background: #fdecea;
+    animation: shake 0.3s;
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
+  .breakdown {
+    background: #fff8e6;
+    border-radius: 16px;
+    padding: 16px;
+    margin: 18px 0;
+    display: none;
+  }
+  .breakdown.show { display: block; }
+  .breakdown h3 { margin: 4px 0 10px; color: #b8860b; }
+  table.place-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+    font-size: 18px;
+  }
+  table.place-table th {
+    background: #ffe9a8;
+    padding: 6px;
+    border-radius: 6px;
+  }
+  table.place-table td {
+    padding: 8px;
+    font-weight: bold;
+    color: #444;
+  }
+  /* ---------- Нива и тип задачи ---------- */
+  .levels, .carry-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+  .carry-row {
+    margin-bottom: 34px;
+  }
+  .level-btn {
+    border: 2px solid #a0c4ff;
+    background: #eef6ff;
+    color: #2c3e50;
+    border-radius: 10px;
+    padding: 6px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .level-btn:hover { background: #dceaff; }
+  .level-btn.active {
+    background: #3498db;
+    color: #fff;
+    border-color: #3498db;
+  }
+  .carry-btn {
+    border: 2px solid #c9a0ff;
+    background: #f5edff;
+    color: #2c3e50;
+    border-radius: 10px;
+    padding: 6px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .carry-btn:hover { background: #ece0ff; }
+  .carry-btn.active {
+    background: #8e44ad;
+    color: #fff;
+    border-color: #8e44ad;
+  }
+  /* ---------- История ---------- */
+  .history-panel {
+    background: #eef7ff;
+    border-radius: 16px;
+    padding: 14px;
+    margin: 18px 0;
+    display: none;
+  }
+  .history-panel.show { display: block; }
+  .history-panel h3 { margin: 0 0 10px; color: #2c6ea6; text-align: center; }
+  .history-list {
+    max-height: 220px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .history-item {
+    background: #fff;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 14px;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .history-item.correct-item { border-left: 4px solid #2ecc71; }
+  .history-item.wrong-item { border-left: 4px solid #e74c3c; }
+  .history-time { color: #95a5a6; font-size: 12px; white-space: nowrap; }
+  .history-empty { text-align: center; color: #95a5a6; font-size: 14px; }
+  .btn-clear-history {
+    display: block;
+    margin: 10px auto 0;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 16px;
+    background: #e74c3c;
+    color: #fff;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  /* ---------- Бутони ---------- */
+  .buttons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 20px;
+  }
+  button.action {
+    border: none;
+    border-radius: 14px;
+    padding: 12px 20px;
+    font-size: 17px;
+    cursor: pointer;
+    color: white;
+    transition: transform 0.1s;
+  }
+  button.action:active { transform: scale(0.95); }
+  .btn-check { background: #4CAF50; }
+  .btn-new { background: #3498db; }
+  .btn-new-big {
+    display: block;
+    margin: 16px auto 4px;
+    font-size: 23px;
+    padding: 16px 34px;
+    border-radius: 18px;
+  }
+  .btn-speak { background: #f39c12; }
+  .btn-show { background: #9b59b6; }
+  .btn-history { background: #16a085; }
+  #feedback {
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    min-height: 30px;
+    margin-top: 10px;
+  }
+  .correct { color: #2ecc71; }
+  .wrong { color: #e74c3c; }
+  .score {
+    text-align: center;
+    color: #7f8c8d;
+    margin-top: 8px;
+    font-size: 15px;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="top-row" id="langRow"></div>
+
+  <h1 id="titleText">➕ Сбор на две числа</h1>
+
+  <div class="user-panel" id="userPanel"></div>
+
+  <div class="status-row">
+    <div class="badge">🔥 <span id="streakLabelText">Серия</span>: <span id="streakValue">0</span></div>
+  </div>
+  <div id="stars"></div>
+
+  <div class="section-label" id="levelLabelText">Ниво (сбор)</div>
+  <div class="levels" id="levels"></div>
+
+  <div class="section-label" id="carryLabelText">Вид на задачите</div>
+  <div class="carry-row" id="carryRow"></div>
+
+  <div class="problem">
+    <div class="num-box" id="num1">--</div>
+    <div>+</div>
+    <div class="num-box" id="num2">--</div>
+    <div>=</div>
+    <input type="number" id="answer" placeholder="?">
+  </div>
+
+  <div id="feedback"></div>
+
+  <button class="action btn-new btn-new-big" id="newBtnText" onclick="newProblem()">Нова задача</button>
+
+  <div class="score">
+    <span id="scoreLabelText">Верни отговори</span>: <span id="score">0</span> / <span id="total">0</span>
+  </div>
+
+  <div class="grade-toggle">
+    <label>
+      <input type="checkbox" id="gradeToggle">
+      <span id="gradeToggleLabelText">Показвай оценка</span>
+    </label>
+  </div>
+  <div id="gradePanel">
+    <span id="gradeLabelText">Оценка</span>: <span id="gradeValue">-</span>
+  </div>
+
+  <div class="breakdown" id="breakdown">
+    <h3 id="breakdownTitleText">Разбивка по разряди</h3>
+    <table class="place-table" id="place-table"></table>
+  </div>
+
+  <div class="history-panel" id="historyPanel">
+    <h3 id="historyTitleText">История</h3>
+    <div class="history-list" id="historyList"></div>
+    <button class="btn-clear-history" id="clearHistoryBtnText" onclick="clearHistory()">Изчисти история</button>
+  </div>
+
+  <div class="buttons">
+    <button class="action btn-check" id="checkBtnText" onclick="checkAnswer()">Провери</button>
+    <button class="action btn-show" id="breakdownBtnText" onclick="toggleBreakdown()">Разбивка</button>
+    <button class="action btn-history" id="historyBtnText" onclick="toggleHistory()">История</button>
+    <button class="action btn-speak" id="speakBtnText" onclick="speakProblem()">🔊 Изговори</button>
+  </div>
+</div>
+
+<script>
+/* ================== Състояние ================== */
+let a, b, sum, score = 0, total = 0;
+let streak = 0, stars = 0;
+let history = [];
+let currentLang = 'bg';
+let showGrade = false;
+let audioCtx = null;
+let currentUser = null;
+let currentLevel = 0;
+let currentCarry = 'all';
+
+const USERS_KEY = 'mathAppUsers_v1';
+
+/* ================== Преводи ================== */
+const translations = {
+  bg: {
+    flag: '🇧🇬 БГ',
+    title: '➕ Сбор на две числа',
+    check: 'Провери',
+    newProblem: 'Нова задача',
+    breakdown: 'Разбивка',
+    speak: '🔊 Изговори',
+    scoreLabel: 'Верни отговори',
+    gradeToggle: 'Показвай оценка',
+    gradeLabel: 'Оценка',
+    streakLabel: 'Серия',
+    breakdownTitle: 'Разбивка по разряди',
+    tableHeaders: ['Число','Стотици','Десетици','Единици'],
+    wrongDigitWord: 'грешно',
+    questionSuffix: 'прави колко?',
+    plusWord: 'плюс',
+    praiseCorrect: ['Точно така!','Браво!','Отлично!','Супер си!','Много добре!','Страхотно!'],
+    praiseWrong: ['Опитай пак.','Почти беше!','Провери отново.','Пробвай пак!'],
+    gradeTiers: ['Отличен 6','Много добър 5','Добър 4','Среден 3','Слаб 2'],
+    levelLabel: 'Ниво (сбор)',
+    carryLabel: 'Вид на задачите',
+    carryAll: 'Всички',
+    carryWithout: 'Без преминаване',
+    carryWith: 'С преминаване',
+    historyTitle: 'История',
+    historyBtn: 'История',
+    historyEmpty: 'Все още няма решени задачи.',
+    clearHistoryBtn: 'Изчисти история',
+    answerLabel: 'твой отговор',
+    usernamePh: 'Потребител',
+    passwordPh: 'Парола',
+    loginBtn: 'Вход',
+    registerBtn: 'Регистрация',
+    logoutBtn: 'Изход',
+    loggedInAs: 'Влязъл като',
+    registerSuccess: 'Регистрацията е успешна!',
+    userExists: 'Този потребител вече съществува.',
+    loginError: 'Грешно потребителско име или парола.',
+    fillFields: 'Моля, попълни потребител и парола.',
+    localNote: '(данните се пазят само в този браузър)'
+  },
+  de: {
+    flag: '🇩🇪 DE',
+    title: '➕ Addition zweier Zahlen',
+    check: 'Prüfen',
+    newProblem: 'Neue Aufgabe',
+    breakdown: 'Aufschlüsselung',
+    speak: '🔊 Vorlesen',
+    scoreLabel: 'Richtige Antworten',
+    gradeToggle: 'Note anzeigen',
+    gradeLabel: 'Note',
+    streakLabel: 'Serie',
+    breakdownTitle: 'Aufschlüsselung nach Stellenwert',
+    tableHeaders: ['Zahl','Hunderter','Zehner','Einer'],
+    wrongDigitWord: 'falsch',
+    questionSuffix: 'ist wie viel?',
+    plusWord: 'plus',
+    praiseCorrect: ['Genau richtig!','Super gemacht!','Ausgezeichnet!','Klasse!','Sehr gut!','Toll!'],
+    praiseWrong: ["Versuch's nochmal.",'Fast geschafft!','Schau nochmal genau hin.','Probier es erneut!'],
+    gradeTiers: ['Sehr gut (1)','Gut (2)','Befriedigend (3)','Ausreichend (4)','Ungenügend (5)'],
+    levelLabel: 'Stufe (Summe)',
+    carryLabel: 'Aufgabentyp',
+    carryAll: 'Alle',
+    carryWithout: 'Ohne Übertrag',
+    carryWith: 'Mit Übertrag',
+    historyTitle: 'Verlauf',
+    historyBtn: 'Verlauf',
+    historyEmpty: 'Noch keine gelösten Aufgaben.',
+    clearHistoryBtn: 'Verlauf löschen',
+    answerLabel: 'deine Antwort',
+    usernamePh: 'Benutzername',
+    passwordPh: 'Passwort',
+    loginBtn: 'Anmelden',
+    registerBtn: 'Registrieren',
+    logoutBtn: 'Abmelden',
+    loggedInAs: 'Angemeldet als',
+    registerSuccess: 'Registrierung erfolgreich!',
+    userExists: 'Dieser Benutzer existiert bereits.',
+    loginError: 'Falscher Benutzername oder falsches Passwort.',
+    fillFields: 'Bitte Benutzername und Passwort eingeben.',
+    localNote: '(Daten werden nur in diesem Browser gespeichert)'
+  },
+  en: {
+    flag: '🇬🇧 EN',
+    title: '➕ Addition of Two Numbers',
+    check: 'Check',
+    newProblem: 'New Problem',
+    breakdown: 'Breakdown',
+    speak: '🔊 Speak',
+    scoreLabel: 'Correct answers',
+    gradeToggle: 'Show grade',
+    gradeLabel: 'Grade',
+    streakLabel: 'Streak',
+    breakdownTitle: 'Place value breakdown',
+    tableHeaders: ['Number','Hundreds','Tens','Units'],
+    wrongDigitWord: 'wrong',
+    questionSuffix: 'equals what?',
+    plusWord: 'plus',
+    praiseCorrect: ["That's right!",'Great job!','Excellent!','Well done!','Awesome!','Nice work!'],
+    praiseWrong: ['Try again.','So close!','Check again.','Give it another go!'],
+    gradeTiers: ['Excellent (A)','Very good (B)','Good (C)','Average (D)','Needs practice (F)'],
+    levelLabel: 'Level (sum)',
+    carryLabel: 'Problem type',
+    carryAll: 'All',
+    carryWithout: 'Without carrying',
+    carryWith: 'With carrying',
+    historyTitle: 'History',
+    historyBtn: 'History',
+    historyEmpty: 'No solved problems yet.',
+    clearHistoryBtn: 'Clear history',
+    answerLabel: 'your answer',
+    usernamePh: 'Username',
+    passwordPh: 'Password',
+    loginBtn: 'Login',
+    registerBtn: 'Register',
+    logoutBtn: 'Logout',
+    loggedInAs: 'Logged in as',
+    registerSuccess: 'Registration successful!',
+    userExists: 'This user already exists.',
+    loginError: 'Incorrect username or password.',
+    fillFields: 'Please enter a username and password.',
+    localNote: '(data is stored only in this browser)'
+  }
+};
+
+const speechLangMap = { bg: 'bg-BG', de: 'de-DE', en: 'en-US' };
+
+function t() { return translations[currentLang]; }
+
+/* ================== Езиков избор ================== */
+function renderLanguages() {
+  const row = document.getElementById('langRow');
+  row.innerHTML = '';
+  Object.keys(translations).forEach(code => {
+    const btn = document.createElement('button');
+    btn.className = 'lang-btn' + (code === currentLang ? ' active' : '');
+    btn.textContent = translations[code].flag;
+    btn.onclick = () => setLanguage(code);
+    row.appendChild(btn);
+  });
+}
+
+function setLanguage(code) {
+  currentLang = code;
+  const tr = t();
+  document.getElementById('titleText').textContent = tr.title;
+  document.getElementById('checkBtnText').textContent = tr.check;
+  document.getElementById('newBtnText').textContent = tr.newProblem;
+  document.getElementById('breakdownBtnText').textContent = tr.breakdown;
+  document.getElementById('speakBtnText').textContent = tr.speak;
+  document.getElementById('scoreLabelText').textContent = tr.scoreLabel;
+  document.getElementById('gradeToggleLabelText').textContent = tr.gradeToggle;
+  document.getElementById('gradeLabelText').textContent = tr.gradeLabel;
+  document.getElementById('streakLabelText').textContent = tr.streakLabel;
+  document.getElementById('breakdownTitleText').textContent = tr.breakdownTitle;
+  document.getElementById('levelLabelText').textContent = tr.levelLabel;
+  document.getElementById('carryLabelText').textContent = tr.carryLabel;
+  document.getElementById('historyTitleText').textContent = tr.historyTitle;
+  document.getElementById('historyBtnText').textContent = tr.historyBtn;
+  document.getElementById('clearHistoryBtnText').textContent = tr.clearHistoryBtn;
+  renderLanguages();
+  renderCarryOptions();
+  renderUserPanel();
+  renderHistory();
+  if (document.getElementById('breakdown').classList.contains('show')) {
+    buildBreakdownTable();
+  }
+  updateGradeDisplay();
+}
+
+/* ================== Нива на трудност (диапазон на сбора) ================== */
+const levels = [];
+for (let i = 0; i < 100; i += 10) {
+  levels.push({ min: i, max: Math.min(i + 10, 100), label: i + '-' + Math.min(i + 10, 100) });
+}
+
+function renderLevels() {
+  const container = document.getElementById('levels');
+  container.innerHTML = '';
+  levels.forEach((lvl, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'level-btn' + (idx === currentLevel ? ' active' : '');
+    btn.textContent = lvl.label;
+    btn.onclick = () => {
+      currentLevel = idx;
+      renderLevels();
+      newProblem();
+    };
+    container.appendChild(btn);
+  });
+}
+
+/* ================== Тип задачи: с / без преминаване ================== */
+function renderCarryOptions() {
+  const tr = t();
+  const options = [
+    { key: 'all', label: tr.carryAll },
+    { key: 'without', label: tr.carryWithout },
+    { key: 'with', label: tr.carryWith }
+  ];
+  const container = document.getElementById('carryRow');
+  container.innerHTML = '';
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'carry-btn' + (opt.key === currentCarry ? ' active' : '');
+    btn.textContent = opt.label;
+    btn.onclick = () => {
+      currentCarry = opt.key;
+      renderCarryOptions();
+      newProblem();
+    };
+    container.appendChild(btn);
+  });
+}
+
+function hasCarry(x, y) {
+  let carry = 0;
+  const dx = String(x).padStart(3, '0').split('').reverse().map(Number);
+  const dy = String(y).padStart(3, '0').split('').reverse().map(Number);
+  let carried = false;
+  for (let i = 0; i < 3; i++) {
+    const total = dx[i] + dy[i] + carry;
+    if (total >= 10) { carry = 1; carried = true; } else carry = 0;
+  }
+  return carried;
+}
+
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+/* ================== Задачи ================== */
+function newProblem() {
+  const lvl = levels[currentLevel];
+  let s, x, y, attempts = 0;
+  do {
+    s = randInt(lvl.min, lvl.max);
+    x = randInt(0, s);
+    y = s - x;
+    attempts++;
+  } while (
+    attempts < 300 &&
+    ((currentCarry === 'with' && !hasCarry(x, y)) || (currentCarry === 'without' && hasCarry(x, y)))
+  );
+  sum = s; a = x; b = y;
+
+  document.getElementById('num1').textContent = a;
+  document.getElementById('num2').textContent = b;
+  document.getElementById('answer').value = '';
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = '';
+  document.getElementById('breakdown').classList.remove('show');
+  document.getElementById('answer').focus();
+}
+
+function placesOf(n) {
+  const hundreds = Math.floor(n / 100);
+  const tens = Math.floor((n % 100) / 10);
+  const units = n % 10;
+  return { hundreds, tens, units };
+}
+
+function toggleBreakdown() {
+  const el = document.getElementById('breakdown');
+  const showing = el.classList.toggle('show');
+  if (showing) buildBreakdownTable();
+}
+
+function buildBreakdownTable() {
+  const pa = placesOf(a);
+  const pb = placesOf(b);
+  const ps = placesOf(sum);
+  const h = t().tableHeaders;
+  const table = document.getElementById('place-table');
+  table.innerHTML = `
+    <tr><th>${h[0]}</th><th>${h[1]}</th><th>${h[2]}</th><th>${h[3]}</th></tr>
+    <tr><td>${a}</td><td>${pa.hundreds}</td><td>${pa.tens}</td><td>${pa.units}</td></tr>
+    <tr><td>${b}</td><td>${pb.hundreds}</td><td>${pb.tens}</td><td>${pb.units}</td></tr>
+    <tr style="background:#fff0c2;"><td>${sum}</td><td>${ps.hundreds}</td><td>${ps.tens}</td><td>${ps.units}</td></tr>
+  `;
+}
+
+/* ================== Оценяване ================== */
+document.getElementById('gradeToggle').addEventListener('change', function () {
+  showGrade = this.checked;
+  document.getElementById('gradePanel').classList.toggle('show', showGrade);
+  updateGradeDisplay();
+});
+
+function updateGradeDisplay() {
+  if (!showGrade) return;
+  if (total === 0) {
+    document.getElementById('gradeValue').textContent = '-';
+    return;
+  }
+  const pct = Math.round((score / total) * 100);
+  const tiers = t().gradeTiers;
+  let idx;
+  if (pct >= 90) idx = 0;
+  else if (pct >= 75) idx = 1;
+  else if (pct >= 60) idx = 2;
+  else if (pct >= 40) idx = 3;
+  else idx = 4;
+  document.getElementById('gradeValue').textContent = tiers[idx] + ' (' + pct + '%)';
+}
+
+/* ================== Серия и звезди ================== */
+function updateStreakDisplay() {
+  document.getElementById('streakValue').textContent = streak;
+}
+
+function renderStars(animateLast) {
+  const container = document.getElementById('stars');
+  container.innerHTML = '';
+  for (let i = 0; i < stars; i++) {
+    const span = document.createElement('span');
+    span.textContent = '⭐';
+    if (animateLast && i === stars - 1) span.className = 'star-pop';
+    container.appendChild(span);
+  }
+}
+
+/* ================== Звук ================== */
+function playTone(freq, duration) {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch (e) { /* тихо игнориране */ }
+}
+
+/* ================== История на решените задачи ================== */
+function toggleHistory() {
+  const el = document.getElementById('historyPanel');
+  const showing = el.classList.toggle('show');
+  if (showing) renderHistory();
+}
+
+function addHistoryEntry(userAnswer, correct) {
+  history.unshift({
+    time: new Date().toLocaleTimeString(),
+    a, b, sum, userAnswer, correct
+  });
+  if (history.length > 100) history.pop();
+  renderHistory();
+  persistCurrentUser();
+}
+
+function renderHistory() {
+  const tr = t();
+  const list = document.getElementById('historyList');
+  if (history.length === 0) {
+    list.innerHTML = '<div class="history-empty">' + tr.historyEmpty + '</div>';
+    return;
+  }
+  list.innerHTML = history.map(item => {
+    const cls = item.correct ? 'correct-item' : 'wrong-item';
+    const mark = item.correct ? '✅' : ('❌ (' + tr.answerLabel + ': ' + item.userAnswer + ')');
+    return '<div class="history-item ' + cls + '"><span>' + item.a + ' + ' + item.b + ' = ' + item.sum + ' ' + mark + '</span><span class="history-time">' + item.time + '</span></div>';
+  }).join('');
+}
+
+function clearHistory() {
+  history = [];
+  renderHistory();
+  persistCurrentUser();
+}
+
+/* ================== Проверка на отговор ================== */
+function checkAnswer() {
+  const rawVal = document.getElementById('answer').value;
+  const val = parseInt(rawVal, 10);
+  const feedback = document.getElementById('feedback');
+  const tr = t();
+  total++;
+
+  if (val === sum) {
+    score++;
+    streak++;
+    if (streak % 5 === 0) { stars++; }
+    const praise = tr.praiseCorrect[randInt(0, tr.praiseCorrect.length - 1)];
+    feedback.textContent = '✅ ' + praise + ' ' + a + ' + ' + b + ' = ' + sum;
+    feedback.className = 'correct';
+    speak(praise + '. ' + numberWords(sum, currentLang));
+    playTone(880, 0.15);
+    renderStars(true);
+    addHistoryEntry(rawVal, true);
+  } else {
+    streak = 0;
+    const praise = tr.praiseWrong[randInt(0, tr.praiseWrong.length - 1)];
+    feedback.textContent = '❌ ' + praise;
+    feedback.className = 'wrong';
+    speak(praise);
+    playTone(220, 0.2);
+    addHistoryEntry(rawVal, false);
+  }
+
+  document.getElementById('score').textContent = score;
+  document.getElementById('total').textContent = total;
+  updateStreakDisplay();
+  updateGradeDisplay();
+  persistCurrentUser();
+}
+
+/* ================== Изговаряне на числа по езици ================== */
+function bgWords(n) {
+  const units = ['', 'едно', 'две', 'три', 'четири', 'пет', 'шест', 'седем', 'осем', 'девет'];
+  const teens = ['десет','единадесет','дванадесет','тринадесет','четиринадесет','петнадесет','шестнадесет','седемнадесет','осемнадесет','деветнадесет'];
+  const tensWords = ['', '', 'двадесет','тридесет','четиридесет','петдесет','шестдесет','седемдесет','осемдесет','деветдесет'];
+  if (n === 0) return 'нула';
+  if (n === 100) return 'сто';
+  let result = '';
+  const hundreds = Math.floor(n / 100);
+  const rest = n % 100;
+  if (hundreds > 0) {
+    if (hundreds === 1) result += 'сто ';
+    else if (hundreds === 2) result += 'двеста ';
+    else result += units[hundreds] + 'стотин ';
+  }
+  if (rest >= 10 && rest < 20) {
+    result += teens[rest - 10];
+  } else {
+    const tt = Math.floor(rest / 10);
+    const u = rest % 10;
+    if (tt > 0) result += tensWords[tt] + ' ';
+    if (u > 0) result += units[u];
+  }
+  return result.trim();
+}
+
+function deWords(n) {
+  const units = ['', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun'];
+  const teens = ['zehn','elf','zwölf','dreizehn','vierzehn','fünfzehn','sechzehn','siebzehn','achtzehn','neunzehn'];
+  const tensWords = ['', '', 'zwanzig','dreißig','vierzig','fünfzig','sechzig','siebzig','achtzig','neunzig'];
+  if (n === 0) return 'null';
+  if (n === 100) return 'hundert';
+  if (n < 10) return units[n];
+  if (n < 20) return teens[n - 10];
+  const tt = Math.floor(n / 10);
+  const u = n % 10;
+  if (u === 0) return tensWords[tt];
+  const unitWord = units[u] === 'eins' ? 'ein' : units[u];
+  return unitWord + 'und' + tensWords[tt];
+}
+
+function enWords(n) {
+  const units = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+  const teens = ['ten','eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+  const tensWords = ['', '', 'twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+  if (n === 0) return 'zero';
+  if (n === 100) return 'one hundred';
+  if (n < 10) return units[n];
+  if (n < 20) return teens[n - 10];
+  const tt = Math.floor(n / 10);
+  const u = n % 10;
+  return tensWords[tt] + (u ? '-' + units[u] : '');
+}
+
+function numberWords(n, lang) {
+  if (lang === 'de') return deWords(n);
+  if (lang === 'en') return enWords(n);
+  return bgWords(n);
+}
+
+function digitWord(d, lang) {
+  const map = {
+    bg: ['нула','едно','две','три','четири','пет','шест','седем','осем','девет'],
+    de: ['null','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun'],
+    en: ['zero','one','two','three','four','five','six','seven','eight','nine']
+  };
+  const list = map[lang] || map.bg;
+  return list[parseInt(d, 10)] || d;
+}
+
+/* ================== Синтез на реч ================== */
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  const langCode = speechLangMap[currentLang] || 'bg-BG';
+  utter.lang = langCode;
+  const voices = window.speechSynthesis.getVoices();
+  const matchVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith(currentLang));
+  if (matchVoice) utter.voice = matchVoice;
+  utter.rate = 0.9;
+  window.speechSynthesis.speak(utter);
+}
+
+function speakProblem() {
+  const tr = t();
+  const text = numberWords(a, currentLang) + ' ' + tr.plusWord + ' ' + numberWords(b, currentLang) + ' ' + tr.questionSuffix;
+  speak(text);
+}
+
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+
+/* ================== Потребители (localStorage) ================== */
+function simpleHash(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return hash.toString(36);
+}
+
+function loadUsers() {
+  try {
+    return JSON.parse(localStorage.getItem(USERS_KEY) || '{}');
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveUsers(users) {
+  try {
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function persistCurrentUser() {
+  if (!currentUser) return;
+  const users = loadUsers();
+  if (!users[currentUser]) return;
+  users[currentUser].score = score;
+  users[currentUser].total = total;
+  users[currentUser].streak = streak;
+  users[currentUser].stars = stars;
+  users[currentUser].history = history;
+  saveUsers(users);
+}
+
+function resetSessionStats() {
+  score = 0; total = 0; streak = 0; stars = 0; history = [];
+  document.getElementById('score').textContent = score;
+  document.getElementById('total').textContent = total;
+  updateStreakDisplay();
+  renderStars(false);
+  renderHistory();
+  updateGradeDisplay();
+}
+
+function setUserStatus(message, type) {
+  const status = document.getElementById('userStatus');
+  if (!status) return;
+  status.textContent = message || '';
+  status.className = 'user-status' + (type ? ' ' + type : '');
+}
+
+/* ---- Автоматичен вход от общия хъб (ако страницата е отворена през него) ---- */
+function getHubParams() {
+  if (window.__HUB_USER__) {
+    return { name: window.__HUB_USER__, pass: 'hub-' + window.__HUB_USER__ };
+  }
+  const params = new URLSearchParams(window.location.search);
+  const name = params.get('hubUser');
+  if (!name) return null;
+  return { name: decodeURIComponent(name), pass: params.get('hubPass') || ('hub-' + decodeURIComponent(name)) };
+}
+
+function tryHubAutoLogin() {
+  const hub = getHubParams();
+  if (!hub) return false;
+  const users = loadUsers();
+  const wantedHash = simpleHash(hub.pass);
+  if (!users[hub.name]) {
+    users[hub.name] = { passwordHash: wantedHash, score: 0, total: 0, streak: 0, stars: 0, history: [] };
+    saveUsers(users);
+  } else if (users[hub.name].passwordHash !== wantedHash) {
+    users[hub.name].passwordHash = wantedHash; // синхронизираме с хъб паролата
+    saveUsers(users);
+  }
+  const record = users[hub.name];
+  currentUser = hub.name;
+  score = record.score || 0;
+  total = record.total || 0;
+  streak = record.streak || 0;
+  stars = record.stars || 0;
+  history = record.history || [];
+  document.getElementById('score').textContent = score;
+  document.getElementById('total').textContent = total;
+  updateStreakDisplay();
+  renderStars(false);
+  renderHistory();
+  updateGradeDisplay();
+  return true;
+}
+
+function registerUser(username, password) {
+  const tr = t();
+  if (!username || !password) { setUserStatus(tr.fillFields, 'error'); return; }
+  const users = loadUsers();
+  if (users[username]) { setUserStatus(tr.userExists, 'error'); return; }
+  users[username] = {
+    passwordHash: simpleHash(password),
+    score: 0, total: 0, streak: 0, stars: 0, history: []
+  };
+  saveUsers(users);
+  currentUser = username;
+  resetSessionStats();
+  setUserStatus(tr.registerSuccess, 'success');
+  renderUserPanel();
+}
+
+function loginUser(username, password) {
+  const tr = t();
+  if (!username || !password) { setUserStatus(tr.fillFields, 'error'); return; }
+  const users = loadUsers();
+  const record = users[username];
+  if (!record || record.passwordHash !== simpleHash(password)) {
+    setUserStatus(tr.loginError, 'error');
+    return;
+  }
+  currentUser = username;
+  score = record.score || 0;
+  total = record.total || 0;
+  streak = record.streak || 0;
+  stars = record.stars || 0;
+  history = record.history || [];
+  document.getElementById('score').textContent = score;
+  document.getElementById('total').textContent = total;
+  updateStreakDisplay();
+  renderStars(false);
+  renderHistory();
+  updateGradeDisplay();
+  setUserStatus('', null);
+  renderUserPanel();
+}
+
+function logoutUser() {
+  persistCurrentUser();
+  currentUser = null;
+  resetSessionStats();
+  renderUserPanel();
+}
+
+function renderUserPanel() {
+  const tr = t();
+  const panel = document.getElementById('userPanel');
+  if (currentUser) {
+    panel.innerHTML = `
+      <div class="logged-in-row">
+        <span>👤 ${tr.loggedInAs}: <strong>${currentUser}</strong></span>
+        <button class="btn-logout" onclick="logoutUser()">${tr.logoutBtn}</button>
+      </div>
+      <div class="local-note">${tr.localNote}</div>
+    `;
+  } else {
+    panel.innerHTML = `
+      <div class="user-form">
+        <input type="text" id="usernameInput" placeholder="${tr.usernamePh}">
+        <input type="password" id="passwordInput" placeholder="${tr.passwordPh}">
+        <button class="btn-login" onclick="handleLogin()">${tr.loginBtn}</button>
+        <button class="btn-register" onclick="handleRegister()">${tr.registerBtn}</button>
+      </div>
+      <div class="user-status" id="userStatus"></div>
+      <div class="local-note">${tr.localNote}</div>
+    `;
+  }
+}
+
+function handleLogin() {
+  const u = document.getElementById('usernameInput').value.trim();
+  const p = document.getElementById('passwordInput').value;
+  loginUser(u, p);
+}
+
+function handleRegister() {
+  const u = document.getElementById('usernameInput').value.trim();
+  const p = document.getElementById('passwordInput').value;
+  registerUser(u, p);
+}
+
+/* ================== Въвеждане на отговор ================== */
+const answerInput = document.getElementById('answer');
+
+answerInput.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') checkAnswer();
+});
+
+// Курсорът остава в полето за отговор, освен ако потребителят не пише в потребител/парола
+answerInput.addEventListener('blur', function () {
+  setTimeout(() => {
+    const active = document.activeElement;
+    if (active && (active.id === 'usernameInput' || active.id === 'passwordInput')) return;
+    answerInput.focus();
+  }, 10);
+});
+
+answerInput.addEventListener('input', function (e) {
+  if (e.inputType && e.inputType.startsWith('delete')) return;
+
+  const val = this.value;
+  if (val.length === 0) return;
+
+  const sumStr = String(sum);
+  const idx = val.length - 1;
+  const enteredDigit = val[idx];
+  const correctDigit = sumStr[idx];
+
+  if (enteredDigit === undefined || !/^[0-9]$/.test(enteredDigit)) return;
+
+  if (idx >= sumStr.length || enteredDigit !== correctDigit) {
+    speak(digitWord(enteredDigit, currentLang) + ' ' + t().wrongDigitWord);
+    this.value = val.slice(0, idx);
+    this.classList.remove('wrong-digit');
+    void this.offsetWidth;
+    this.classList.add('wrong-digit');
+    setTimeout(() => this.classList.remove('wrong-digit'), 350);
+  } else if (val.length === sumStr.length) {
+    setTimeout(checkAnswer, 200);
+  }
+});
+
+/* ================== Стартиране ================== */
+renderLanguages();
+renderLevels();
+renderCarryOptions();
+tryHubAutoLogin();
+renderUserPanel();
+renderHistory();
+newProblem();
+</script>
+
+</body>
+</html>

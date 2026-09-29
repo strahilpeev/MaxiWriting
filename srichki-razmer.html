@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Срички на глас</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Marck+Script&family=PT+Sans:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --board:#1e3d32;
+    --board-dark:#142a22;
+    --chalk:#f5f3e7;
+    --paper:#faf6ec;
+    --paper-line:#e3ddc8;
+    --yellow:#f2c94c;
+    --coral:#ef8354;
+    --blue:#6fb3d2;
+    --pink:#e8a0bf;
+    --green:#8bc78e;
+    --tape:#e8e2c9;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at top left, rgba(255,255,255,0.03), transparent 60%),
+      radial-gradient(ellipse at bottom right, rgba(255,255,255,0.03), transparent 60%),
+      var(--board);
+    font-family:'PT Sans', sans-serif;
+    color:var(--chalk);
+    padding:32px 16px 60px;
+  }
+  .wrap{max-width:920px; margin:0 auto; position:relative; z-index:1;}
+  header{text-align:center; margin-bottom:30px;}
+  header h1{
+    font-family:'Marck Script', cursive;
+    font-size:clamp(2.4rem, 6vw, 3.8rem);
+    margin:0 0 6px;
+    color:var(--chalk);
+    transform:rotate(-1.5deg);
+    letter-spacing:1px;
+  }
+  header p{margin:0; opacity:0.75; font-size:0.98rem;}
+
+  .card{
+    background:var(--paper);
+    color:#33312a;
+    border-radius:6px;
+    padding:24px 26px;
+    margin-bottom:28px;
+    box-shadow:0 8px 16px rgba(0,0,0,0.3), 0 2px 0 rgba(0,0,0,0.05);
+    position:relative;
+    transform:rotate(-0.4deg);
+  }
+  .card:nth-of-type(2){transform:rotate(0.4deg);}
+  .tape{position:absolute; width:70px; height:26px; background:var(--tape); opacity:0.85; top:-14px; box-shadow:0 2px 4px rgba(0,0,0,0.2);}
+  .tape.left{left:36px; transform:rotate(-8deg);}
+  .tape.right{right:36px; transform:rotate(6deg);}
+
+  .card h2{
+    font-family:'Marck Script', cursive;
+    font-size:1.6rem;
+    margin:0 0 14px;
+    color:#3d5a4c;
+  }
+
+  textarea{
+    width:100%;
+    min-height:120px;
+    resize:vertical;
+    border:none;
+    border-radius:4px;
+    background:linear-gradient(var(--paper) 27px, var(--paper-line) 28px);
+    background-size:100% 28px;
+    line-height:28px;
+    padding:6px 12px;
+    font-family:'PT Sans', sans-serif;
+    font-size:1.05rem;
+    color:#33312a;
+    outline:none;
+  }
+  textarea:focus{box-shadow:0 0 0 3px rgba(111,179,210,0.4);}
+
+  .row{display:flex; flex-wrap:wrap; gap:12px; margin-top:14px; align-items:center;}
+
+  button, .file-btn{
+    font-family:'PT Sans', sans-serif;
+    font-weight:700;
+    font-size:0.95rem;
+    padding:10px 18px;
+    border-radius:30px;
+    border:2px dashed #3d5a4c;
+    background:transparent;
+    color:#3d5a4c;
+    cursor:pointer;
+    transition:transform 0.12s ease, background 0.15s ease, color 0.15s ease;
+  }
+  button:hover, .file-btn:hover{background:#3d5a4c; color:var(--paper);}
+  button:active{transform:scale(0.96);}
+  button.primary{border-style:solid; background:var(--coral); color:#2b1a10; border-color:var(--coral);}
+  button.primary:hover{background:#d96f3f; color:#fff;}
+  button:disabled{opacity:0.35; cursor:not-allowed; transform:none;}
+
+  input[type=file]{display:none;}
+
+  .controls-line{display:flex; flex-wrap:wrap; gap:18px; align-items:center; margin-top:16px; font-size:0.9rem;}
+  select{padding:6px 10px; border-radius:6px; border:1px solid #c9c2a5; background:#fff; color:#33312a;}
+
+  .hint{font-size:0.85rem; opacity:0.65; margin-top:10px; font-style:italic;}
+  .mode-row{align-items:center; gap:20px;}
+  .mode-label{font-weight:700; font-size:0.9rem; color:#3d5a4c;}
+  .mode-option{
+    display:flex; align-items:center; gap:6px;
+    font-size:0.92rem; cursor:pointer;
+    padding:6px 12px; border-radius:20px;
+    border:1px solid #c9c2a5; background:#fff;
+    transition:background 0.15s ease, border-color 0.15s ease;
+  }
+  .mode-option:has(input:checked){
+    background:rgba(239,131,84,0.15);
+    border-color:var(--coral);
+    font-weight:700;
+  }
+  .mode-option input{accent-color:var(--coral); cursor:pointer;}
+
+  /* ---- Книга / страници ---- */
+  /* Автоматично, непрекъснато оразмеряване: всички размери се изчисляват динамично
+     спрямо реалната ширина/височина на екрана (clamp между минимум и максимум),
+     вместо фиксирани стъпки за "телефон" или "таблет" - така всяко устройство
+     получава точния за него размер, а завъртането на екрана се преизчислява само. */
+  .book{position:relative; margin-top:4px;}
+  .page-viewport{
+    overflow:hidden;
+    border-radius:8px;
+    background:var(--paper);
+    height:clamp(230px, 58vh, 680px);
+    box-shadow:inset 0 0 0 1px var(--paper-line), inset 0 2px 10px rgba(0,0,0,0.05);
+    position:relative;
+  }
+  .page-viewport .placeholder{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    text-align:center; padding:clamp(16px, 3vw, 30px);
+    font-style:italic; opacity:0.5; font-size:clamp(0.85rem, 1.6vw, 1rem);
+  }
+  .pages{
+    height:100%;
+    column-gap:0;
+    column-fill:auto;
+    transition:transform 0.18s ease-out;
+    will-change:transform;
+    padding:clamp(12px, 2.6vw, 30px) clamp(16px, 3.6vw, 42px);
+    line-height:clamp(1.9, 1.6vw + 1.4, 2.5);
+    font-size:calc(clamp(1rem, 1vw + 0.75rem, 1.45rem) * var(--font-scale, 1));
+  }
+  .word{
+    display:inline-block;
+    margin:4px 8px 10px 0;
+    padding:2px 3px;
+    border-radius:6px;
+    cursor:pointer;
+    position:relative;
+    break-inside:avoid;
+    -webkit-column-break-inside:avoid;
+    transition:background 0.15s ease, transform 0.1s ease;
+  }
+  .word:hover{background:rgba(61,90,76,0.1);}
+  .word.tapped{transform:scale(0.94);}
+  .sentence{
+    display:block;
+    margin-bottom:0.85em;
+    padding-left:0.2em;
+    border-left:3px solid rgba(61,90,76,0.15);
+    break-inside:avoid;
+    -webkit-column-break-inside:avoid;
+  }
+  .sentence:last-child{margin-bottom:0;}
+  .syll{position:relative; padding:0 1px;}
+  .syll.c0{color:#b3541e;}
+  .syll.c1{color:#2d6f8e;}
+  .syll.c2{color:#a5468a;}
+  .syll.c3{color:#3d7a3f;}
+  .syll::after{
+    content:"";
+    position:absolute; left:2px; right:2px; bottom:-3px; height:6px;
+    border-bottom:2px solid currentColor;
+    border-radius:0 0 50% 50%/0 0 100% 100%;
+    opacity:0.55;
+  }
+  .word .syll:not(:last-child)::before{
+    content:"·"; position:absolute; right:-3px; bottom:-2px;
+    color:#33312a; opacity:0.4; font-size:0.7em;
+  }
+
+  .page-nav{
+    display:flex; align-items:center; justify-content:center;
+    gap:clamp(10px, 2vw, 20px);
+    margin-top:clamp(10px, 2vw, 16px);
+  }
+  .page-nav button{
+    min-width:clamp(88px, 12vw, 120px);
+    min-height:clamp(42px, 6vw, 48px);
+    font-size:clamp(0.88rem, 1.2vw, 1rem);
+  }
+  #pageIndicator{
+    font-family:'Marck Script', cursive;
+    font-size:clamp(1.05rem, 1.8vw, 1.3rem);
+    color:var(--chalk);
+    min-width:130px;
+    text-align:center;
+  }
+  .font-size-group{display:flex; gap:6px; margin-left:8px;}
+  .font-size-group button{
+    min-width:auto; padding:8px 14px; font-family:'PT Sans', sans-serif;
+  }
+
+  footer{text-align:center; font-size:0.8rem; opacity:0.55; margin-top:14px;}
+
+  @media (prefers-reduced-motion: reduce){* {transition:none !important;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Срички на глас</h1>
+    <p>Качи или напиши текст → раздели на срички → чети страница по страница → чуй го на глас</p>
+    <p id="hubGreeting" style="display:none;font-weight:700;"></p>
+  </header>
+
+  <section class="card">
+    <span class="tape left"></span><span class="tape right"></span>
+    <h2>1. Текстът</h2>
+    <textarea id="inputText" placeholder="Напиши или постави текст тук... например: Иван отиде на училище."></textarea>
+    <div class="row">
+      <label class="file-btn" for="fileInput">📄 Качи .txt файл</label>
+      <input type="file" id="fileInput" accept=".txt">
+      <button id="clearBtn">Изчисти</button>
+      <button id="splitBtn" class="primary">Раздели на срички ✂️</button>
+    </div>
+    <div class="row mode-row">
+      <span class="mode-label">Стил на сричките:</span>
+      <label class="mode-option"><input type="radio" name="syllMode" value="colored" checked> 🎨 Цветно, с подчертаване</label>
+      <label class="mode-option"><input type="radio" name="syllMode" value="hyphen"> ✂️ С тирета (ко-тка)</label>
+    </div>
+    <p class="hint">Текст, поставен в { фигурни скоби }, се премахва автоматично заедно със скобите.</p>
+  </section>
+
+  <section class="card">
+    <span class="tape left"></span><span class="tape right"></span>
+    <h2>2. Книга със срички</h2>
+
+    <div class="book">
+      <div class="page-viewport" id="pageViewport">
+        <div class="placeholder" id="placeholderText">Разделеният на срички текст ще се появи тук, подреден на страници.</div>
+        <div class="pages" id="pagesContainer"></div>
+      </div>
+    </div>
+
+    <div class="page-nav">
+      <button id="prevPage" disabled>‹ Предишна</button>
+      <span id="pageIndicator">Страница 0 от 0</span>
+      <button id="nextPage" disabled>Следваща ›</button>
+      <span class="font-size-group">
+        <button id="fontDecBtn" title="По-малък шрифт">A−</button>
+        <button id="fontIncBtn" title="По-голям шрифт">A+</button>
+      </span>
+    </div>
+
+    <div class="controls-line">
+      <button id="playBtn">▶ Прочети без прекъсване</button>
+      <button id="pauseBtn" disabled>⏸ Пауза</button>
+      <button id="stopBtn" disabled>■ Стоп</button>
+      <label>Скорост:
+        <input type="range" id="rateRange" min="0.5" max="1.5" step="0.1" value="0.85">
+      </label>
+      <label>Глас:
+        <select id="voiceSelect"></select>
+      </label>
+    </div>
+    <p class="hint">💡 Кликни върху коя да е дума в книгата, за да чуеш само нея.</p>
+    <p class="hint">📱 На Android, ако изобщо няма звук: Настройки → Достъпност (или Език и въвеждане) → Синтезатор на текст в говор — увери се, че Google Text-to-Speech е избран и инсталиран български глас.</p>
+  </section>
+
+  <footer>Разделянето на срички е по опростено фонетично правило и е ориентировъчно за учебни цели. Страниците се оразмеряват спрямо екрана — оптимизирано за 10-инчов таблет.</footer>
+</div>
+
+<script>
+const inputText = document.getElementById('inputText');
+const fileInput = document.getElementById('fileInput');
+const splitBtn = document.getElementById('splitBtn');
+const clearBtn = document.getElementById('clearBtn');
+const pageViewport = document.getElementById('pageViewport');
+const pagesContainer = document.getElementById('pagesContainer');
+const placeholderText = document.getElementById('placeholderText');
+const prevPageBtn = document.getElementById('prevPage');
+const nextPageBtn = document.getElementById('nextPage');
+const fontDecBtn = document.getElementById('fontDecBtn');
+const fontIncBtn = document.getElementById('fontIncBtn');
+const pageIndicator = document.getElementById('pageIndicator');
+const playBtn = document.getElementById('playBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const stopBtn = document.getElementById('stopBtn');
+const rateRange = document.getElementById('rateRange');
+const voiceSelect = document.getElementById('voiceSelect');
+
+// ---------- Файл ----------
+fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => { inputText.value = reader.result; };
+  reader.readAsText(file, 'utf-8');
+});
+
+clearBtn.addEventListener('click', () => {
+  inputText.value = '';
+  resetBook();
+});
+
+function resetBook(){
+  pagesContainer.innerHTML = '';
+  pagesContainer.style.transform = 'translateX(0)';
+  placeholderText.style.display = 'flex';
+  placeholderText.textContent = 'Разделеният на срички текст ще се появи тук, подреден на страници.';
+  currentWordSpans = [];
+  wordRanges = [];
+  lastCleanText = '';
+  totalPages = 1;
+  currentPage = 0;
+  updatePageUI();
+}
+
+// ---------- Почистване на текста ----------
+// Премахва всичко в { } заедно със самите скоби, и стеснява получените двойни интервали.
+function getCleanText(){
+  return inputText.value
+    .replace(/\{[^}]*\}/g, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+
+// ---------- Сричкоделене (опростено българско правило) ----------
+const VOWELS = 'аъоуеияюАЪОУЕИЯЮ';
+const SONORANTS = 'рлмнйРЛМНЙ';
+const isVowel = c => VOWELS.includes(c);
+const isSonorant = c => SONORANTS.includes(c);
+const isCyrillicLetter = c => /[а-яА-ЯёЁ]/.test(c);
+
+function splitWordIntoSyllables(word) {
+  const chars = word.split('');
+  const vowelIdx = [];
+  chars.forEach((c, i) => { if (isVowel(c)) vowelIdx.push(i); });
+  if (vowelIdx.length <= 1) return [word];
+
+  const syllables = [];
+  let start = 0;
+  for (let k = 0; k < vowelIdx.length - 1; k++) {
+    const v1 = vowelIdx[k];
+    const v2 = vowelIdx[k + 1];
+    const clusterStart = v1 + 1;
+    const clusterEnd = v2 - 1;
+    const clusterLen = clusterEnd - clusterStart + 1;
+    let boundary;
+    if (clusterLen <= 0) {
+      boundary = v1 + 1;
+    } else if (clusterLen === 1) {
+      boundary = v1 + 1;
+    } else {
+      const last = chars[clusterEnd];
+      const secondLast = chars[clusterEnd - 1];
+      if (isSonorant(last) && !isSonorant(secondLast)) {
+        boundary = clusterEnd - 1;
+      } else {
+        boundary = clusterEnd;
+      }
+    }
+    syllables.push(chars.slice(start, boundary).join(''));
+    start = boundary;
+  }
+  syllables.push(chars.slice(start).join(''));
+  return syllables;
+}
+
+let currentWordSpans = [];
+let wordRanges = []; // {start, end, span} - позиции на думите в изчистения текст, за синхронизация с четенето
+let totalPages = 1;
+let currentPage = 0;
+
+function buildOutput(text, mode) {
+  pagesContainer.innerHTML = '';
+  placeholderText.style.display = 'none';
+  const tokens = text.split(/(\s+)/);
+  let wordIndex = 0;
+  let pos = 0;
+  const wordSpans = [];
+  const ranges = [];
+
+  // текстът се групира по изречения - всяко изречение е собствен блок,
+  // за да е ясно визуално отделено на страницата, а не един сплошен поток от думи
+  let sentenceDiv = document.createElement('div');
+  sentenceDiv.className = 'sentence';
+  pagesContainer.appendChild(sentenceDiv);
+
+  tokens.forEach(token => {
+    if (/^\s+$/.test(token) || token === '') {
+      sentenceDiv.appendChild(document.createTextNode(token));
+      pos += token.length;
+      return;
+    }
+    const match = token.match(/^([^\p{L}]*)([\p{L}\-']*)([^\p{L}]*)$/u);
+    const [, lead, core, trail] = match || ['', '', token, ''];
+
+    const wordSpan = document.createElement('span');
+    wordSpan.className = 'word';
+    wordSpan.dataset.plain = token;
+    wordSpan.dataset.index = wordIndex;
+
+    if (lead) wordSpan.appendChild(document.createTextNode(lead));
+
+    let sylls = null;
+    if (core && isCyrillicLetter(core[0])) {
+      sylls = splitWordIntoSyllables(core);
+      if (mode === 'hyphen') {
+        wordSpan.appendChild(document.createTextNode(sylls.join('-')));
+      } else {
+        sylls.forEach((s, i) => {
+          const sp = document.createElement('span');
+          sp.className = 'syll c' + (i % 4);
+          sp.textContent = s;
+          wordSpan.appendChild(sp);
+        });
+      }
+    } else if (core) {
+      wordSpan.appendChild(document.createTextNode(core));
+    }
+
+    if (trail) wordSpan.appendChild(document.createTextNode(trail));
+
+    wordSpan.addEventListener('click', () => {
+      wordSpan.classList.add('tapped');
+      setTimeout(() => wordSpan.classList.remove('tapped'), 120);
+      speakSingleWord(token, sylls);
+    });
+    sentenceDiv.appendChild(wordSpan);
+    wordSpans.push(wordSpan);
+    ranges.push({ start: pos, end: pos + token.length, span: wordSpan });
+    pos += token.length;
+    wordIndex++;
+
+    // край на изречение (. ! ? …) - започваме нов блок за следващото изречение
+    if (/[.!?…]+$/.test(token)) {
+      sentenceDiv = document.createElement('div');
+      sentenceDiv.className = 'sentence';
+      pagesContainer.appendChild(sentenceDiv);
+    }
+  });
+
+  wordRanges = ranges;
+  return wordSpans;
+
+}
+
+let lastCleanText = '';
+
+function getSelectedMode(){
+  const checked = document.querySelector('input[name="syllMode"]:checked');
+  return checked ? checked.value : 'colored';
+}
+
+splitBtn.addEventListener('click', () => {
+  const text = getCleanText();
+  if (!text) {
+    resetBook();
+    placeholderText.textContent = 'Няма въведен текст — напиши нещо горе първо 🙂';
+    return;
+  }
+  lastCleanText = text;
+  currentWordSpans = buildOutput(text, getSelectedMode());
+  requestAnimationFrame(paginate);
+});
+
+// смяна на стила на сричките автоматично опреснява вече разделения текст
+document.querySelectorAll('input[name="syllMode"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    if (!lastCleanText) return;
+    currentWordSpans = buildOutput(lastCleanText, getSelectedMode());
+    requestAnimationFrame(paginate);
+  });
+});
+
+// ---------- Пагинация (страници чрез CSS колони) ----------
+// Проблемът беше, че отстъпът (padding) на текста важеше само за самия
+// край на цялото съдържание (първата и последната "страница"), а не за
+// всяка отделна видима страница - затова видимият прозорец и реалната
+// текстова колона не съвпадаха по размер. Сега колоната се смалява точно
+// с толкова, колкото е отстъпът, а разликата се разпределя като "процеп"
+// (column-gap) между колоните - той на практика носи по половин отстъп
+// за края на текущата страница и половин за началото на следващата.
+function paginate(){
+  const w = pageViewport.clientWidth;
+  if (w === 0) return;
+  pagesContainer.style.transform = 'translateX(0)';
+
+  const cs = getComputedStyle(pagesContainer);
+  const insetLeft = parseFloat(cs.paddingLeft) || 0;
+  const insetRight = parseFloat(cs.paddingRight) || 0;
+  const colWidth = Math.max(40, w - insetLeft - insetRight);
+
+  pagesContainer.style.columnWidth = colWidth + 'px';
+  pagesContainer.style.columnGap = (insetLeft + insetRight) + 'px';
+  pagesContainer.style.width = 'auto';
+
+  requestAnimationFrame(() => {
+    const naturalWidth = pagesContainer.scrollWidth;
+    totalPages = Math.max(1, Math.round(naturalWidth / w));
+    // фиксираме точната обща ширина спрямо изчисления брой страници,
+    // за да съвпадат прецизно видимите и текстовите страници (без остатъчно празно място)
+    pagesContainer.style.width = (totalPages * w) + 'px';
+    currentPage = 0;
+    updatePageUI();
+  });
+}
+
+function updatePageUI(){
+  const w = pageViewport.clientWidth;
+  pagesContainer.style.transform = `translateX(-${currentPage * w}px)`;
+  pageIndicator.textContent = `Страница ${totalPages ? currentPage + 1 : 0} от ${totalPages}`;
+  prevPageBtn.disabled = currentPage === 0;
+  nextPageBtn.disabled = currentPage >= totalPages - 1;
+}
+
+prevPageBtn.addEventListener('click', () => {
+  if (currentPage > 0) { currentPage--; updatePageUI(); }
+});
+nextPageBtn.addEventListener('click', () => {
+  if (currentPage < totalPages - 1) { currentPage++; updatePageUI(); }
+});
+
+// ---------- Размер на шрифта (ръчно, над автоматичното оразмеряване) ----------
+let fontScale = 1.3;
+const FONT_SCALE_MIN = 0.75;
+const FONT_SCALE_MAX = 1.8;
+const FONT_SCALE_STEP = 0.1;
+
+function applyFontScale(){
+  document.documentElement.style.setProperty('--font-scale', fontScale.toFixed(2));
+  fontDecBtn.disabled = fontScale <= FONT_SCALE_MIN + 0.001;
+  fontIncBtn.disabled = fontScale >= FONT_SCALE_MAX - 0.001;
+  // размерът на шрифта променя колко текст се събира на страница - преизчисляваме пагинацията
+  if (currentWordSpans.length) requestAnimationFrame(paginate);
+}
+
+fontIncBtn.addEventListener('click', () => {
+  fontScale = Math.min(FONT_SCALE_MAX, +(fontScale + FONT_SCALE_STEP).toFixed(2));
+  applyFontScale();
+});
+fontDecBtn.addEventListener('click', () => {
+  fontScale = Math.max(FONT_SCALE_MIN, +(fontScale - FONT_SCALE_STEP).toFixed(2));
+  applyFontScale();
+});
+applyFontScale();
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight') nextPageBtn.click();
+  if (e.key === 'ArrowLeft') prevPageBtn.click();
+});
+
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (currentWordSpans.length) paginate();
+  }, 200);
+});
+
+// ---------- Гласове ----------
+let voices = [];
+
+function loadVoices() {
+  voices = speechSynthesis.getVoices();
+  voiceSelect.innerHTML = '';
+  const bgVoices = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('bg'));
+  const list = bgVoices.length ? bgVoices : voices;
+  list.forEach((v) => {
+    const opt = document.createElement('option');
+    opt.value = voices.indexOf(v);
+    opt.textContent = `${v.name} (${v.lang})`;
+    voiceSelect.appendChild(opt);
+  });
+  if (!bgVoices.length && voices.length) {
+    const note = document.createElement('option');
+    note.disabled = true;
+    note.textContent = '— няма български глас, избери друг —';
+    voiceSelect.prepend(note);
+  }
+}
+speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+function applyVoiceAndRate(utter){
+  const voiceIdx = voiceSelect.value;
+  if (voiceIdx !== '' && voices[voiceIdx]) utter.voice = voices[voiceIdx];
+  utter.lang = (utter.voice && utter.voice.lang) || 'bg-BG';
+  utter.rate = parseFloat(rateRange.value);
+}
+
+// Android Chrome има познат бъг: ако speak() се извика веднага след cancel(),
+// говорът често се пропуска мълчаливо. Малко забавяне след cancel() го заобикаля.
+// Друг бъг: ако SpeechSynthesisUtterance обектът не се задържи някъде извън локалния
+// scope, някои версии на Android го "събират" (garbage collection) преди да довърши -
+// затова пазим текущите utterance-и в глобален масив, докато не приключат.
+let activeUtterances = [];
+
+function speakQueued(texts, extraSetup){
+  if (speechSynthesis.speaking || speechSynthesis.pending) {
+    speechSynthesis.cancel();
+  }
+  const utters = texts.map((t) => {
+    const u = new SpeechSynthesisUtterance(t);
+    applyVoiceAndRate(u);
+    if (extraSetup) extraSetup(u);
+    return u;
+  });
+  activeUtterances = utters;
+  setTimeout(() => {
+    utters.forEach(u => speechSynthesis.speak(u));
+  }, 100);
+  return utters;
+}
+
+// keep-alive хак за Android/Chrome: при по-дълъг текст говорът понякога спира сам след
+// известно време мълчание в опашката - периодичното pause/resume го поддържа активен.
+let keepAliveTimer = null;
+function startKeepAlive(){
+  stopKeepAlive();
+  keepAliveTimer = setInterval(() => {
+    if (speechSynthesis.speaking) {
+      speechSynthesis.pause();
+      speechSynthesis.resume();
+    }
+  }, 9000);
+}
+function stopKeepAlive(){
+  if (keepAliveTimer) { clearInterval(keepAliveTimer); keepAliveTimer = null; }
+}
+
+// клик върху отделна дума - чете първо сричка по сричка, после цялата дума наведнъж (двойна скорост)
+// Забележка: сричките се подават като ЕДНО изречение (разделени с интервал), а не като отделни
+// изговаряния - отделните utterance-и имат собствено стартово забавяне, което създаваше голяма пауза.
+function speakSingleWord(text, sylls) {
+  pauseBtn.disabled = true;
+  stopBtn.disabled = true;
+
+  const texts = [];
+  if (sylls && sylls.length > 1) texts.push(sylls.join(', '));
+  texts.push(text);
+
+  speakQueued(texts, (u) => { u.rate = u.rate * 2; });
+}
+
+// "Прочети без прекъсване" - целият текст се подава като ЕДНО изречение на synth,
+// затова звукът е гладък и бърз, без паузи между думите.
+playBtn.addEventListener('click', () => {
+  const text = getCleanText();
+  if (!text) return;
+
+  const [utter] = speakQueued([text], (u) => {
+    u.onend = () => {
+      stopKeepAlive();
+      pauseBtn.disabled = true;
+      stopBtn.disabled = true;
+      pauseBtn.textContent = '⏸ Пауза';
+    };
+    u.onstart = () => startKeepAlive();
+  });
+
+  pauseBtn.disabled = false;
+  stopBtn.disabled = false;
+});
+
+pauseBtn.addEventListener('click', () => {
+  if (speechSynthesis.speaking && !speechSynthesis.paused) {
+    speechSynthesis.pause();
+    pauseBtn.textContent = '▶ Продължи';
+  } else if (speechSynthesis.paused) {
+    speechSynthesis.resume();
+    pauseBtn.textContent = '⏸ Пауза';
+  }
+});
+
+stopBtn.addEventListener('click', () => {
+  stopKeepAlive();
+  speechSynthesis.cancel();
+  pauseBtn.disabled = true;
+  stopBtn.disabled = true;
+  pauseBtn.textContent = '⏸ Пауза';
+});
+
+updatePageUI();
+
+/* ============ Приветствие при отваряне от хъба ============ */
+(function(){
+  let name = window.__HUB_USER__ || null;
+  if(!name){
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get('hubUser');
+    if(raw) name = decodeURIComponent(raw);
+  }
+  if(name){
+    const greetEl = document.getElementById('hubGreeting');
+    greetEl.textContent = 'Здравей, ' + name + '! 👋';
+    greetEl.style.display = 'block';
+  }
+})();
+</script>
+</body>
+</html>
