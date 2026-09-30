@@ -754,6 +754,11 @@
       <option value="4">Имена на места и личности</option>
       <option value="5">Речник — разнообразни думи</option>
     </select>
+    <select id="syllableSelect" class="level">
+      <option value="all">Всички дължини</option>
+      <option value="2">Само 2 срички</option>
+      <option value="3">Само 3 срички</option>
+    </select>
     <label class="switch-chip">
       <input type="checkbox" id="syllableToggle">
       <span>Покажи по срички</span>
@@ -1087,6 +1092,7 @@ const SENTENCES = [
 let lang = "bg"; // "bg" | "en" | "de"
 let mode = "word"; // "word" | "sentence"
 let level = "all";
+let syllableFilter = "all"; // "all" | "2" | "3"
 let pool = [];
 let poolIdx = 0;
 let target = "";
@@ -1130,10 +1136,21 @@ const historyListEl = document.getElementById("historyList");
 const historyOverlayEl = document.getElementById("historyOverlay");
 
 function buildWordPool(){
-  if(lang === "en") return EN_WORDS;
-  if(lang === "de") return DE_WORDS;
-  if(level === "all") return [...TIER1, ...TIER2, ...TIER3, ...TIER4];
-  return WORDS[level];
+  let list;
+  if(lang === "en") list = EN_WORDS;
+  else if(lang === "de") list = DE_WORDS;
+  else if(level === "all") list = [...TIER1, ...TIER2, ...TIER3, ...TIER4];
+  else list = WORDS[level];
+
+  if(syllableFilter !== "all"){
+    const wantSyll = parseInt(syllableFilter, 10);
+    const filtered = list.filter(item=>{
+      const word = Array.isArray(item) ? item[0] : item;
+      return syllabifyWord(word, lang).length === wantSyll;
+    });
+    if(filtered.length) list = filtered;
+  }
+  return list;
 }
 
 function shuffle(arr){
@@ -1478,6 +1495,7 @@ const modeToggleWrap = document.getElementById("modeToggleWrap");
 const modeWordBtn = document.getElementById("modeWord");
 const modeSentenceBtn = document.getElementById("modeSentence");
 const levelSelect = document.getElementById("levelSelect");
+const syllableSelect = document.getElementById("syllableSelect");
 
 function setLanguage(newLang){
   lang = newLang;
@@ -1488,6 +1506,7 @@ function setLanguage(newLang){
   const isBg = lang === "bg";
   modeToggleWrap.style.display = isBg ? "" : "none";
   levelSelect.style.display = (isBg && mode === "word") ? "" : "none";
+  syllableSelect.style.display = (mode === "word") ? "" : "none";
   imageToggleWrap.style.display = (isBg && mode === "sentence") ? "none" : "";
 
   correctStreak = 0; streakCountEl.textContent = 0;
@@ -1502,7 +1521,8 @@ modeWordBtn.addEventListener("click", ()=>{
   mode = "word";
   modeWordBtn.classList.add("active");
   modeSentenceBtn.classList.remove("active");
-  levelSelect.style.display = "";
+  levelSelect.style.display = (lang === "bg") ? "" : "none";
+  syllableSelect.style.display = "";
   imageToggleWrap.style.display = "";
   correctStreak = 0; streakCountEl.textContent = 0;
   loadPool();
@@ -1512,12 +1532,17 @@ modeSentenceBtn.addEventListener("click", ()=>{
   modeSentenceBtn.classList.add("active");
   modeWordBtn.classList.remove("active");
   levelSelect.style.display = "none";
+  syllableSelect.style.display = "none";
   imageToggleWrap.style.display = "none";
   correctStreak = 0; streakCountEl.textContent = 0;
   loadPool();
 });
 levelSelect.addEventListener("change", ()=>{
   level = levelSelect.value;
+  loadPool();
+});
+syllableSelect.addEventListener("change", ()=>{
+  syllableFilter = syllableSelect.value;
   loadPool();
 });
 
