@@ -1,4 +1,4 @@
-const CACHE_NAME = 'uchebni-igri-v5';
+const CACHE_NAME = 'uchebni-igri-v6';
 const APP_SHELL = [
   './',
   './index.html',
@@ -8,6 +8,13 @@ const APP_SHELL = [
   './matematika_izvazhdane_login_zaemane.html',
   './bulgarian-typing-login.html',
   './firebase-shared.js',
+  './maxi-common.js',
+  './maxi-common.css',
+  './chetene.html',
+  './chisla-i-pari.html',
+  './vnimanie.html',
+  './govorya.html',
+  './dvizhenie.html',
   './icons/icon-96.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
@@ -40,7 +47,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
       const fetchPromise = fetch(event.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseClone = networkResponse.clone();

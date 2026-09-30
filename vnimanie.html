@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Внимание и памет</title>
+<link rel="stylesheet" href="maxi-common.css">
+<script src="maxi-common.js"></script>
+<style>
+  /* Memory */
+  .mem-grid{ display:grid; gap:clamp(0.4rem,1.4vw,0.8rem); width:100%; max-width:760px; }
+  .mem-card{ perspective:600px; border:none; background:none; padding:0; cursor:pointer; aspect-ratio:1/1; }
+  .mem-inner{ position:relative; width:100%; height:100%; transition:transform .35s ease; transform-style:preserve-3d; }
+  .mem-card.open .mem-inner, .mem-card.matched .mem-inner{ transform:rotateY(180deg); }
+  .mem-face{
+    position:absolute; inset:0; border-radius:18px; backface-visibility:hidden; -webkit-backface-visibility:hidden;
+    display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow);
+  }
+  .mem-back{ background:linear-gradient(160deg,#b28be0,#7a52b3); color:#fff; font-size:clamp(1.6rem,4vw,2.4rem); }
+  .mem-front{ background:#fff; transform:rotateY(180deg); font-size:clamp(2rem,6vw,3.4rem); border:3px solid var(--line); }
+  .mem-front.word{ font-size:calc(clamp(1rem,2.6vw,1.5rem) * var(--ts)); font-weight:900; padding:0.2rem; text-align:center; }
+  .mem-card.matched .mem-front{ border-color:var(--ok); background:var(--ok-bg); }
+  .moves{ font-weight:800; color:var(--ink-soft); }
+  /* Сортиране */
+  .sort-item{ font-size:clamp(4rem,12vw,6.5rem); line-height:1.1; min-height:1.2em; display:flex; align-items:center; justify-content:center; }
+  .sort-item.small{ font-size:clamp(1.8rem,5vw,2.6rem); }
+  .sort-item.bad{ animation:mx-shake .3s; }
+  .baskets{ display:flex; gap:clamp(0.6rem,2vw,1.2rem); flex-wrap:wrap; justify-content:center; width:100%; }
+  .basket{
+    flex:1 1 200px; max-width:300px; min-height:clamp(150px,22vw,200px);
+    border:4px solid var(--line); border-radius:24px; background:#f8fafc; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:0.3rem; padding:0.6rem;
+  }
+  .basket:active{ transform:scale(0.97); }
+  .basket .bh{ font-size:clamp(2rem,5vw,2.8rem); }
+  .basket .bl{ font-weight:900; font-size:calc(clamp(1.1rem,2.6vw,1.4rem) * var(--ts)); }
+  .basket .bin{ display:flex; flex-wrap:wrap; justify-content:center; gap:0.2rem; font-size:1.6rem; }
+  .progress-dots{ display:flex; gap:6px; }
+  .progress-dots i{ width:14px; height:14px; border-radius:50%; background:#d7dee5; display:block; }
+  .progress-dots i.on{ background:var(--ok); }
+  /* Различното */
+  .odd-grid{ display:grid; gap:clamp(0.3rem,1vw,0.6rem); width:100%; max-width:640px; }
+  .odd-cell{
+    aspect-ratio:1/1; border:3px solid var(--line); border-radius:16px; background:#fff; cursor:pointer;
+    font-size:clamp(1.8rem,5.5vw,3.2rem); display:flex; align-items:center; justify-content:center; padding:0;
+  }
+  .odd-cell.ok{ border-color:var(--ok); background:var(--ok-bg); }
+  .odd-cell.bad{ border-color:var(--bad); background:var(--bad-bg); animation:mx-shake .3s; }
+  /* Какво липсва / Последователности */
+  .show-row{ display:flex; gap:clamp(0.4rem,1.6vw,1rem); flex-wrap:wrap; justify-content:center; }
+  .show-cell{
+    width:clamp(86px,14vw,130px); height:clamp(86px,14vw,130px); border-radius:20px; background:#fff; border:3px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:clamp(2.6rem,7vw,4rem); box-shadow:0 3px 8px rgba(44,62,80,0.08);
+  }
+  .show-cell.q{ border-style:dashed; color:#b8c2cc; }
+  .seq-slots{ display:flex; gap:0.6rem; flex-wrap:wrap; justify-content:center; }
+  .seq-slot{
+    width:clamp(110px,17vw,160px); min-height:clamp(120px,18vw,170px); border:3px dashed #b8c2cc; border-radius:20px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.2rem; position:relative; padding:0.3rem;
+  }
+  .seq-slot .num{ position:absolute; top:6px; left:10px; font-weight:900; color:#b8c2cc; }
+  .seq-slot.filled{ border-style:solid; border-color:var(--ok); background:var(--ok-bg); }
+  .seq-card{
+    width:clamp(110px,17vw,160px); min-height:clamp(120px,18vw,170px); border:3px solid var(--line); border-radius:20px; background:#fff;
+    cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.2rem; padding:0.3rem;
+    box-shadow:0 3px 8px rgba(44,62,80,0.08);
+  }
+  .seq-card.used{ visibility:hidden; }
+  .seq-card.bad{ animation:mx-shake .3s; border-color:var(--bad); }
+  .seq-e{ font-size:clamp(2.4rem,6vw,3.6rem); line-height:1.1; }
+  .seq-t{ font-weight:800; font-size:calc(clamp(0.85rem,1.9vw,1.05rem) * var(--ts)); text-align:center; }
+</style>
+</head>
+<body>
+
+<header class="mx-top">
+  <div class="mx-title">🧠 Внимание и памет</div>
+  <span class="mx-badge">⭐ <span id="mx-stars">0</span></span>
+  <span class="mx-badge">🔥 <span id="mx-streak">0</span></span>
+  <button id="mx-back" class="mx-pill" hidden onclick="goMenu()">↩ Игри</button>
+</header>
+
+<section id="menu" class="mx-screen active">
+  <h1 class="mx-h1">Внимание и памет 🧠</h1>
+  <p class="mx-sub">Избери игра</p>
+  <div class="mx-tiles">
+    <button class="mx-tile g5" onclick="openMode('memory')"><span class="i">🃏</span><span class="l">Намери двойките</span><span class="s">Memory</span></button>
+    <button class="mx-tile g4" onclick="openMode('sortirane')"><span class="i">🧺</span><span class="l">Подреди в кошниците</span><span class="s">Сортиране</span></button>
+    <button class="mx-tile g2" onclick="openMode('razlichno')"><span class="i">🔍</span><span class="l">Кое е различното?</span><span class="s">Гледай внимателно</span></button>
+    <button class="mx-tile g3" onclick="openMode('lipsva')"><span class="i">❓</span><span class="l">Какво липсва?</span><span class="s">Запомни и намери</span></button>
+    <button class="mx-tile g6" onclick="openMode('poredica')"><span class="i">1️⃣2️⃣3️⃣</span><span class="l">Какво става после?</span><span class="s">Подреди картинките</span></button>
+  </div>
+</section>
+
+<section id="play" class="mx-screen">
+  <div class="mx-levels" id="levels"></div>
+  <div class="mx-card">
+    <div class="mx-prompt"><span id="prompt"></span><button class="mx-say" onclick="sayPrompt()" aria-label="Кажи пак">🔊</button></div>
+    <div id="area" style="display:flex;flex-direction:column;align-items:center;gap:1rem;width:100%;"></div>
+    <div id="answer"></div>
+    <div id="keypad"></div>
+    <div class="mx-feedback" id="fb"></div>
+    <div class="mx-row">
+      <button class="mx-btn orange" id="hintBtn" onclick="hint()" hidden>💡 Подсказка</button>
+      <button class="mx-btn green" id="nextBtn" onclick="newRound()" hidden>Още веднъж ▶</button>
+    </div>
+  </div>
+</section>
+
+<script>
+const M = window.Maxi;
+const store = M.createStore('maxiVnimanie_v1');
+const area = document.getElementById('area');
+let G;
+
+const PICS = [['🐶','куче'],['🐱','котка'],['🐰','зайче'],['🐻','мечка'],['🦊','лисица'],['🐸','жаба'],['🐤','пиленце'],['🐟','рибка'],
+  ['🍎','ябълка'],['🍌','банан'],['🍓','ягода'],['🍇','грозде'],['🚗','кола'],['🚌','автобус'],['🚀','ракета'],['⚽','топка'],
+  ['🎈','балон'],['⭐','звезда'],['🌙','луна'],['☀️','слънце'],['🌸','цвете'],['🏠','къща'],['🧸','мече'],['🎁','подарък']];
+
+const SORTS = [
+  { name:'Плодове / Зеленчуци', baskets:[['🍎','Плодове',['🍎','🍌','🍓','🍇','🍐','🍊','🍒','🍉','🍋','🥝']],['🥕','Зеленчуци',['🥕','🥒','🍅','🥔','🌽','🥦','🧅','🫑','🥬','🧄']]] },
+  { name:'Животни / Превозни средства', baskets:[['🐶','Животни',['🐶','🐱','🐮','🐷','🐴','🐑','🐔','🐰','🐻','🦁']],['🚗','Превозни средства',['🚗','🚌','🚆','✈️','🚢','🚲','🚀','🚜','🚒','🏍️']]] },
+  { name:'Цветове', baskets:[['🔴','Червено',['🍎','🍓','🍒','🌹','🚒','❤️','🍅','🎈']],['🔵','Синьо',['🫐','🐳','💙','👖','🧢','💎','🌊','🔷']],['🟡','Жълто',['🍌','🌻','⭐','🐤','🍋','🌽','🧀','☀️']]] },
+  { name:'Голямо / Малко', size:true, baskets:[['🐘','Голямо',[]],['🐭','Малко',[]]], pool:['🐶','🍎','⚽','🚗','⭐','🐱','🎈','🌸','🧸','🐟'] },
+  { name:'Храна / Животни / Играчки', baskets:[['🍽️','Храна',['🍞','🧀','🍎','🍪','🥛','🍕','🥚','🍝']],['🐾','Животни',['🐶','🐱','🐮','🐸','🐟','🐦','🐒','🐢']],['🧸','Играчки',['🧸','⚽','🪀','🎲','🪁','🎈','🚂','🧩']]] }
+];
+
+const ODD_EASY = [['🍎','🍌'],['🐶','🐱'],['⭐','🌙'],['🚗','🚌'],['🌸','🍄'],['⚽','🏀'],['🐟','🐸'],['🎈','🎁']];
+const ODD_HARD = [['😀','😃'],['🐤','🐥'],['🌼','🌻'],['🚗','🚙'],['🕐','🕑'],['⬆️','⬇️'],['🍏','🍎'],['🔵','🟣'],['👍','👎'],['🌕','🌝'],['🐱','😺'],['➡️','⬅️']];
+
+const SEQ3 = [
+  [['🥚','яйце'],['🐣','излюпва се'],['🐤','пиленце']],
+  [['🌱','семе покълва'],['🌿','расте'],['🌳','дърво']],
+  [['🥣','вземам купичка'],['🥛','сипвам мляко'],['😋','ям']],
+  [['🧦','обувам чорапи'],['👟','обувам обувки'],['🚪','излизам']],
+  [['🛒','пазарувам'],['💶','плащам'],['🏠','прибирам се']],
+  [['🐭','малко'],['🐶','по-голямо'],['🐘','най-голямо']],
+  [['🎁','получавам подарък'],['📦','отварям го'],['🧸','играя']],
+  [['🧼','сапунисвам ръцете'],['🚰','изплаквам ги'],['🧻','избърсвам ги']]
+];
+const SEQ4 = [
+  [['😴','събуждам се'],['🪥','мия зъбите'],['🥣','закусвам'],['🎒','тръгвам на училище']],
+  [['🌅','сутрин'],['☀️','обед'],['🌇','вечер'],['🌙','нощ']],
+  [['❄️','вали сняг'],['⛄','правя снежен човек'],['☀️','грее слънце'],['💧','снежният човек се стопява']],
+  [['🥚','яйце'],['🐣','излюпва се'],['🐤','пиленце'],['🐓','петел']],
+  [['🌱','засаждам семе'],['💧','поливам'],['🌷','цветето расте'],['💐','правя букет']],
+  [['🍞','вземам хляб'],['🧈','мажа масло'],['🍯','слагам мед'],['😋','ям']],
+  [['🐛','гъсеница'],['🍃','яде листа'],['😴','спи в пашкул'],['🦋','пеперуда']]
+];
+
+const MODES = {
+  /* ---------- Memory ---------- */
+  memory: {
+    levels: ['4 карти', '8 карти', '12 карти', '16 карти', 'Картинка + дума'],
+    round(){
+      const words = G.level === 4;
+      const pairs = words ? 4 : [2, 4, 6, 8][G.level];
+      const chosen = M.sample(PICS, pairs);
+      let cards = [];
+      chosen.forEach(([e, w], id) => {
+        cards.push({ id, face: e, word: false, say: w });
+        cards.push({ id, face: words ? w : e, word: words, say: w });
+      });
+      cards = M.shuffle(cards);
+      const cols = cards.length <= 4 ? 2 : 4;
+      G.setPrompt('Намери еднаквите двойки', words ? 'Намери картинката и думата, които си пасват.' : 'Обърни две карти и намери еднаквите.');
+      const moves = document.createElement('div'); moves.className = 'moves'; moves.textContent = 'Ходове: 0';
+      const grid = document.createElement('div'); grid.className = 'mem-grid';
+      grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0,1fr))`;
+      grid.style.maxWidth = cards.length <= 4 ? '360px' : (cards.length <= 8 ? '600px' : (cards.length <= 12 ? '560px' : '500px'));
+      let open = [], busy = false, found = 0, count = 0;
+      cards.forEach(c => {
+        const b = document.createElement('button');
+        b.className = 'mem-card';
+        b.innerHTML = `<div class="mem-inner"><div class="mem-face mem-back">❔</div><div class="mem-face mem-front${c.word ? ' word' : ''}">${M.escapeHtml(c.face)}</div></div>`;
+        b.onclick = () => {
+          if(busy || b.classList.contains('open') || b.classList.contains('matched')) return;
+          b.classList.add('open');
+          M.click();
+          M.speak(c.say, { rate: 1 });
+          open.push([b, c]);
+          if(open.length === 2){
+            count++; moves.textContent = 'Ходове: ' + count;
+            const [[b1, c1], [b2, c2]] = open;
+            if(c1.id === c2.id){
+              setTimeout(() => {
+                b1.classList.add('matched'); b2.classList.add('matched');
+                b1.classList.remove('open'); b2.classList.remove('open');
+                M.good();
+              }, 350);
+              open = []; found++;
+              if(found === pairs) setTimeout(() => complete(pairs + ' двойки за ' + count + ' хода', count, 'Намери всички двойки!', { noAuto: true }), 700);
+            } else {
+              busy = true;
+              setTimeout(() => { b1.classList.remove('open'); b2.classList.remove('open'); open = []; busy = false; }, 1100);
+            }
+          }
+        };
+        grid.appendChild(b);
+      });
+      area.appendChild(moves);
+      area.appendChild(grid);
+    }
+  },
+
+  /* ---------- Сортиране ---------- */
+  sortirane: {
+    levels: SORTS.map(s => s.name),
+    round(){
+      const cfg = SORTS[G.level];
+      const total = 6;
+      let items;
+      if(cfg.size){
+        items = Array.from({ length: total }, () => ({ e: M.pick(cfg.pool), k: Math.random() < 0.5 ? 0 : 1 }));
+      } else {
+        items = [];
+        const perBasket = cfg.baskets.map(b => M.shuffle(b[2]));
+        for(let i = 0; i < total; i++){
+          const k = i % cfg.baskets.length;
+          items.push({ e: perBasket[k][Math.floor(i / cfg.baskets.length) % perBasket[k].length], k });
+        }
+        items = M.shuffle(items);
+      }
+      const names = cfg.baskets.map(b => b[1].toLowerCase());
+      G.setPrompt('Сложи всяко нещо в правилната кошница', 'Сложи всяко нещо в правилната кошница: ' + names.join(' или ') + '.');
+      const dots = document.createElement('div'); dots.className = 'progress-dots';
+      dots.innerHTML = '<i></i>'.repeat(total);
+      const itemEl = document.createElement('div'); itemEl.className = 'sort-item';
+      const baskets = document.createElement('div'); baskets.className = 'baskets';
+      let idx = 0;
+      const showItem = () => {
+        const it = items[idx];
+        itemEl.textContent = it.e;
+        itemEl.classList.toggle('small', !!cfg.size && it.k === 1);
+      };
+      cfg.baskets.forEach(([bh, bl], k) => {
+        const b = document.createElement('button');
+        b.className = 'basket';
+        b.innerHTML = `<span class="bh">${bh}</span><span class="bl">${bl}</span><span class="bin"></span>`;
+        b.onclick = () => {
+          if(G.done() || idx >= items.length) return;
+          const it = items[idx];
+          if(it.k === k){
+            b.querySelector('.bin').insertAdjacentHTML('beforeend', `<span class="mx-pop">${it.e}</span>`);
+            dots.children[idx].classList.add('on');
+            M.click();
+            idx++;
+            if(idx === items.length){ itemEl.textContent = '🎉'; itemEl.classList.remove('small'); complete(cfg.name, total - G.mistakes + '/' + total, 'Всичко е подредено!'); }
+            else { M.speak(bl, { rate: 1 }); showItem(); }
+          } else {
+            G.mistakes++;
+            M.bad();
+            itemEl.classList.remove('bad'); void itemEl.offsetWidth; itemEl.classList.add('bad');
+            M.speak('Не тук. Опитай в другата кошница.');
+          }
+        };
+        baskets.appendChild(b);
+      });
+      area.appendChild(dots); area.appendChild(itemEl); area.appendChild(baskets);
+      showItem();
+    }
+  },
+
+  /* ---------- Кое е различното? ---------- */
+  razlichno: {
+    levels: ['9 картинки', '16 картинки', '25 трудно'],
+    round(){
+      const size = [3, 4, 5][G.level];
+      const pool = G.level === 0 ? ODD_EASY : (G.level === 1 ? ODD_EASY.concat(ODD_HARD) : ODD_HARD);
+      const pair = M.shuffle(M.pick(pool));
+      const [same, odd] = pair;
+      const oddAt = M.randInt(0, size * size - 1);
+      G.setPrompt('Намери различната картинка');
+      const grid = document.createElement('div'); grid.className = 'odd-grid';
+      grid.style.gridTemplateColumns = `repeat(${size}, minmax(0,1fr))`;
+      grid.style.maxWidth = [340, 440, 500][G.level] + 'px';
+      for(let i = 0; i < size * size; i++){
+        const b = document.createElement('button');
+        b.className = 'odd-cell';
+        b.textContent = i === oddAt ? odd : same;
+        b.onclick = () => {
+          if(G.done()) return;
+          if(i === oddAt){ b.classList.add('ok'); complete(same + ' / ' + odd, odd); }
+          else {
+            G.mistakes++;
+            M.bad();
+            b.classList.remove('bad'); void b.offsetWidth; b.classList.add('bad');
+            M.speak('Тази е като другите. Търси още.');
+          }
+        };
+        grid.appendChild(b);
+      }
+      area.appendChild(grid);
+      G.setHint(() => {
+        const cells = M.$$('.odd-cell', grid);
+        const row = Math.floor(oddAt / size);
+        cells.forEach((c, i) => { if(Math.floor(i / size) !== row) c.style.opacity = '0.3'; });
+        M.speak('Търси в този ред.');
+      });
+    }
+  },
+
+  /* ---------- Какво липсва? ---------- */
+  lipsva: {
+    levels: ['3 картинки', '4 картинки', '5 картинки'],
+    round(){
+      const n = G.level + 3;
+      const items = M.sample(PICS, n);
+      const missIdx = M.randInt(0, n - 1);
+      const missing = items[missIdx];
+      const row = document.createElement('div'); row.className = 'show-row';
+      const draw = (hide) => {
+        row.innerHTML = items.map((it, i) => `<div class="show-cell${hide && i === missIdx ? ' q' : ''}">${hide && i === missIdx ? '❓' : it[0]}</div>`).join('');
+      };
+      draw(false);
+      G.setPrompt('Запомни картинките', 'Разгледай и запомни картинките. После натисни Готов съм.');
+      area.appendChild(row);
+      const ready = document.createElement('button');
+      ready.className = 'mx-btn green'; ready.textContent = 'Готов съм ✓';
+      area.appendChild(ready);
+      ready.onclick = () => {
+        ready.remove();
+        draw(true);
+        G.setPrompt('Какво липсва?');
+        const others = M.sample(PICS.filter(p => !items.includes(p)), 2);
+        optionButtons(M.shuffle([missing].concat(others)).map(([e, w]) => ({
+          html: `<span class="e">${e}</span>`, value: e, label: w, speakOk: 'Липсваше ' + missing[1] + '.', speakBad: w + ' го нямаше.'
+        })), missing[0], items.map(i => i[0]).join('') + ' без ' + missing[0], (it) => { if(it.value === missing[0]) draw(false); });
+      };
+    }
+  },
+
+  /* ---------- Последователности ---------- */
+  poredica: {
+    levels: ['3 картинки', '4 картинки'],
+    round(){
+      const seq = M.pick(G.level === 0 ? SEQ3 : SEQ4);
+      G.setPrompt('Какво става първо, после и накрая?', 'Подреди картинките. Какво става първо?');
+      const slots = document.createElement('div'); slots.className = 'seq-slots';
+      seq.forEach((s, i) => { slots.insertAdjacentHTML('beforeend', `<div class="seq-slot"><span class="num">${i + 1}</span></div>`); });
+      let order = seq.map((s, i) => i);
+      for(let g = 0; g < 10 && order.every((v, i) => v === i); g++) order = M.shuffle(order);
+      const cards = document.createElement('div'); cards.className = 'seq-slots';
+      let next = 0;
+      order.forEach(i => {
+        const b = document.createElement('button');
+        b.className = 'seq-card';
+        b.innerHTML = `<span class="seq-e">${seq[i][0]}</span><span class="seq-t">${seq[i][1]}</span>`;
+        b.onclick = () => {
+          if(G.done() || b.classList.contains('used')) return;
+          if(i === next){
+            b.classList.add('used');
+            const slot = slots.children[next];
+            slot.classList.add('filled');
+            slot.insertAdjacentHTML('beforeend', `<span class="seq-e">${seq[i][0]}</span><span class="seq-t">${seq[i][1]}</span>`);
+            next++;
+            if(next === seq.length) complete(seq.map(s => s[0]).join(' → '), '', seq.map(s => s[1]).join(', ') + '.');
+            else { M.click(); M.speak(seq[i][1] + '. После?'); }
+          } else {
+            G.mistakes++;
+            M.bad();
+            b.classList.remove('bad'); void b.offsetWidth; b.classList.add('bad');
+            M.speak(seq[i][1] + ' — не още. ' + (next === 0 ? 'Какво става първо?' : 'Какво става после?'));
+          }
+        };
+        cards.appendChild(b);
+      });
+      area.appendChild(slots);
+      area.appendChild(cards);
+    }
+  }
+};
+
+G = M.createGame(store, MODES);
+M.show('menu');
+</script>
+</body>
+</html>

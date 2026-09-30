@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Числа и пари</title>
+<link rel="stylesheet" href="maxi-common.css">
+<script src="maxi-common.js"></script>
+<style>
+  .obj-grid{ display:flex; flex-wrap:wrap; justify-content:center; gap:clamp(0.4rem,1.4vw,0.9rem); max-width:760px; }
+  .obj-group{ display:flex; gap:clamp(0.3rem,1vw,0.6rem); padding:0.3rem 0.5rem; border-radius:16px; background:#f6f9fc; }
+  .obj{
+    position:relative; border:none; background:none; cursor:pointer;
+    font-size:clamp(2.4rem,6.5vw,3.6rem); line-height:1.1; padding:0.1rem;
+    transition:transform .12s ease, opacity .2s ease;
+  }
+  .obj:active{ transform:scale(0.9); }
+  .obj.counted{ opacity:0.45; }
+  .obj .n{
+    position:absolute; right:-4px; top:-4px; background:#3498db; color:#fff; border-radius:999px;
+    font-size:0.9rem; font-weight:800; min-width:1.6em; height:1.6em; display:flex; align-items:center; justify-content:center;
+  }
+  .cmp{ display:flex; align-items:center; justify-content:center; gap:clamp(0.6rem,3vw,2rem); flex-wrap:wrap; }
+  .cmp-box{
+    background:#eef6ff; border-radius:20px; padding:0.6rem 1.2rem; min-width:clamp(120px,22vw,200px);
+    display:flex; flex-direction:column; align-items:center; gap:0.3rem;
+  }
+  .cmp-num{ font-size:clamp(3rem,9vw,5.5rem); font-weight:800; line-height:1.1; }
+  .dots{ display:flex; flex-wrap:wrap; gap:4px; max-width:150px; justify-content:center; }
+  .dots i{ width:14px; height:14px; border-radius:50%; background:#e8845d; display:block; }
+  .cmp-slot{
+    width:clamp(70px,12vw,100px); height:clamp(70px,12vw,100px); border:3px dashed #b8c2cc; border-radius:18px;
+    display:flex; align-items:center; justify-content:center; font-size:clamp(2.4rem,6vw,3.6rem); font-weight:800;
+  }
+  .sign-btn .e{ font-size:clamp(2.4rem,6vw,3.4rem); font-weight:900; }
+  .sign-btn .w{ font-size:calc(0.95rem * var(--ts)); font-weight:700; }
+  .numline{ width:100%; max-width:960px; touch-action:manipulation; }
+  .numline text{ font-family:'Segoe UI', Arial, sans-serif; font-weight:800; }
+  .money-row{ display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:clamp(0.4rem,1.4vw,0.9rem); max-width:900px; }
+  .money-item{ display:flex; flex-direction:column; align-items:center; gap:0.2rem; transition:transform .15s ease; }
+  .money-item .lbl{ font-weight:800; font-size:calc(0.95rem * var(--ts)); color:var(--ink-soft); min-height:1.3em; }
+  .money-item.hl{ transform:scale(1.08); }
+  .money svg, svg.money{ display:block; filter:drop-shadow(0 2px 3px rgba(0,0,0,0.18)); }
+  .shop{ display:flex; align-items:center; justify-content:center; gap:1rem; flex-wrap:wrap; }
+  .price-tag{
+    background:#fff8e6; border:3px solid #f2c14e; border-radius:16px; padding:0.4rem 1rem;
+    font-size:clamp(1.8rem,5vw,2.8rem); font-weight:900;
+  }
+  .wallet{ display:flex; flex-wrap:wrap; justify-content:center; gap:0.6rem; background:#f4f7fb; border-radius:20px; padding:0.8rem; }
+  .wallet button{ border:none; background:none; cursor:pointer; padding:0.1rem; border-radius:12px; }
+  .wallet button:active{ transform:scale(0.92); }
+  .tray{
+    min-height:110px; width:100%; max-width:900px; border:3px dashed #b8c2cc; border-radius:20px;
+    display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:0.5rem; padding:0.6rem;
+  }
+  .tray:empty::before{ content:'Докосни парите в портмонето, за да ги сложиш тук'; color:#98a4b0; font-weight:700; text-align:center; }
+  .tray button{ border:none; background:none; cursor:pointer; padding:0; }
+  .tray-sum{ font-weight:800; color:var(--ink-soft); min-height:1.3em; }
+  .clock-opt{ padding:0.4rem; }
+  .digital{ font-family:'Segoe UI', Arial, sans-serif; font-size:clamp(2.2rem,6vw,3.4rem); font-weight:900; letter-spacing:0.04em;
+    background:#2c3e50; color:#7CFC9A; border-radius:14px; padding:0.2rem 0.9rem; }
+  .vs{ font-size:clamp(1.6rem,4vw,2.4rem); font-weight:900; color:var(--ink-soft); }
+  .wallet-box{ background:#f4f7fb; border-radius:20px; padding:0.7rem; display:flex; flex-direction:column; align-items:center; gap:0.4rem; cursor:pointer; border:3px solid transparent; }
+  .wallet-box.ok{ border-color:var(--ok); background:var(--ok-bg); }
+  .wallet-box.bad{ border-color:var(--bad); background:var(--bad-bg); animation:mx-shake .3s; }
+  .hint-line{ font-weight:800; font-size:calc(1.3rem * var(--ts)); color:#8e44ad; min-height:1.4em; text-align:center; }
+</style>
+</head>
+<body>
+
+<header class="mx-top">
+  <div class="mx-title">💶 Числа и пари</div>
+  <span class="mx-badge">⭐ <span id="mx-stars">0</span></span>
+  <span class="mx-badge">🔥 <span id="mx-streak">0</span></span>
+  <button id="mx-back" class="mx-pill" hidden onclick="goMenu()">↩ Игри</button>
+</header>
+
+<section id="menu" class="mx-screen active">
+  <h1 class="mx-h1">Числа и пари 💶</h1>
+  <p class="mx-sub">Избери игра</p>
+  <div class="mx-section-title">🔢 Числа</div>
+  <div class="mx-tiles">
+    <button class="mx-tile g2" onclick="openMode('broene')"><span class="i">🍎</span><span class="l">Броене</span><span class="s">Докосни и преброй</span></button>
+    <button class="mx-tile g3" onclick="openMode('sravnenie')"><span class="i">⚖️</span><span class="l">По-малко или повече</span><span class="s">&lt;  =  &gt;</span></button>
+    <button class="mx-tile g6" onclick="openMode('prava')"><span class="i">📏</span><span class="l">Числова права</span><span class="s">Намери числото</span></button>
+    <button class="mx-tile g5" onclick="openMode('chasovnik')"><span class="i">🕒</span><span class="l">Часовник</span><span class="s">Колко е часът?</span></button>
+  </div>
+  <div class="mx-section-title">💶 Евро</div>
+  <div class="mx-tiles">
+    <button class="mx-tile g8" onclick="openMode('razpoznavane')"><span class="i">🪙</span><span class="l">Монети и банкноти</span><span class="s">Коя е тази?</span></button>
+    <button class="mx-tile g4" onclick="openMode('kolko')"><span class="i">💰</span><span class="l">Колко пари има?</span><span class="s">Събери сумата</span></button>
+    <button class="mx-tile g1" onclick="openMode('plati')"><span class="i">🛒</span><span class="l">Плати точно</span><span class="s">Пазаруване</span></button>
+    <button class="mx-tile g7" onclick="openMode('resto')"><span class="i">💶</span><span class="l">Колко е рестото?</span><span class="s">Пазаруване с изваждане</span></button>
+    <button class="mx-tile g2" onclick="openMode('stigat')"><span class="i">🤔</span><span class="l">Стигат ли парите?</span><span class="s">Сравни сумите</span></button>
+  </div>
+</section>
+
+<section id="play" class="mx-screen">
+  <div class="mx-levels" id="levels"></div>
+  <div class="mx-card" id="stage">
+    <div class="mx-prompt"><span id="prompt"></span><button class="mx-say" onclick="sayPrompt()" aria-label="Кажи пак">🔊</button></div>
+    <div id="area" style="display:flex;flex-direction:column;align-items:center;gap:1rem;width:100%;"></div>
+    <div id="answer"></div>
+    <div id="keypad"></div>
+    <div class="mx-feedback" id="fb"></div>
+    <div class="mx-row">
+      <button class="mx-btn orange" id="hintBtn" onclick="hint()" hidden>💡 Подсказка</button>
+      <button class="mx-btn green" id="nextBtn" onclick="newRound()" hidden>Следваща ▶</button>
+    </div>
+  </div>
+</section>
+
+<script>
+const M = window.Maxi;
+const store = M.createStore('maxiChislaPari_v1');
+const $ = (id) => document.getElementById(id);
+const area = $('area');
+let G;
+
+/* ================= Помощни рисунки ================= */
+function moneyRow(list, opts){
+  opts = opts || {};
+  const row = document.createElement('div');
+  row.className = 'money-row';
+  list.forEach(c => {
+    const it = document.createElement('div');
+    it.className = 'money-item';
+    it.innerHTML = M.moneySVG(c, c >= 500 ? (opts.noteScale || 0.8) : (opts.coinScale || 1)) + '<span class="lbl"></span>';
+    it.dataset.c = c;
+    row.appendChild(it);
+  });
+  return row;
+}
+/* Подсказка за сбор: показва стойността под всяка монета/банкнота и изговаря натрупаната сума. */
+function sumHint(row){
+  const items = M.$$('.money-item', row);
+  let run = 0;
+  const phrases = [];
+  items.forEach((it, i) => {
+    const c = +it.dataset.c;
+    run += c;
+    it.querySelector('.lbl').textContent = M.fmtMoney(c);
+    phrases.push(i === 0 ? M.moneyWords(c) : 'плюс ' + M.moneyWords(c) + ', прави ' + M.moneyWords(run));
+  });
+  M.speakSeq(phrases);
+}
+function clockSVG(h, m, size){
+  size = size || 220;
+  const c = size / 2, r = size / 2 - 6;
+  let marks = '';
+  for(let i = 1; i <= 12; i++){
+    const a = (i * 30 - 90) * Math.PI / 180;
+    marks += `<text x="${(c + r * 0.78 * Math.cos(a)).toFixed(1)}" y="${(c + r * 0.78 * Math.sin(a) + size * 0.045).toFixed(1)}" text-anchor="middle" font-size="${size * 0.12}" font-weight="800" fill="#2c3e50" font-family="Segoe UI, Arial">${i}</text>`;
+  }
+  for(let i = 0; i < 60; i++){
+    const a = (i * 6 - 90) * Math.PI / 180;
+    const inner = i % 5 === 0 ? r * 0.9 : r * 0.95;
+    marks += `<line x1="${(c + inner * Math.cos(a)).toFixed(1)}" y1="${(c + inner * Math.sin(a)).toFixed(1)}" x2="${(c + r * Math.cos(a)).toFixed(1)}" y2="${(c + r * Math.sin(a)).toFixed(1)}" stroke="#2c3e50" stroke-width="${i % 5 === 0 ? 2.5 : 1}"/>`;
+  }
+  const ha = ((h % 12) * 30 + m * 0.5 - 90) * Math.PI / 180;
+  const ma = (m * 6 - 90) * Math.PI / 180;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="часовник">
+    <circle cx="${c}" cy="${c}" r="${r}" fill="#fff" stroke="#2c3e50" stroke-width="5"/>
+    ${marks}
+    <line x1="${c}" y1="${c}" x2="${(c + r * 0.5 * Math.cos(ha)).toFixed(1)}" y2="${(c + r * 0.5 * Math.sin(ha)).toFixed(1)}" stroke="#c1512e" stroke-width="${size * 0.04}" stroke-linecap="round"/>
+    <line x1="${c}" y1="${c}" x2="${(c + r * 0.75 * Math.cos(ma)).toFixed(1)}" y2="${(c + r * 0.75 * Math.sin(ma)).toFixed(1)}" stroke="#2c6fb0" stroke-width="${size * 0.025}" stroke-linecap="round"/>
+    <circle cx="${c}" cy="${c}" r="${size * 0.03}" fill="#2c3e50"/>
+  </svg>`;
+}
+function timeWords(h, m){
+  if(m === 0) return M.num(h, 'm') + ' часа';
+  if(m === 30) return M.num(h, 'm') + ' и половина';
+  if(m < 30) return M.num(h, 'm') + ' и ' + M.num(m, 'f');
+  const next = h % 12 + 1;
+  return M.num(next, 'm') + ' без ' + M.num(60 - m, 'f');
+}
+function timeWordsFull(h, m){ return m === 0 ? (h === 1 ? 'Часът е един.' : 'Часът е ' + M.num(h, 'm') + '.') : timeWords(h, m); }
+const digital = (h, m) => h + ':' + String(m).padStart(2, '0');
+
+/* ================= Магазин ================= */
+const SHOP = [['🍎','ябълка'],['🍌','банан'],['🥛','мляко'],['🍞','хляб'],['🧃','сок'],['🍫','шоколад'],['🍦','сладолед'],
+  ['🧸','мече'],['⚽','топка'],['📒','тетрадка'],['✏️','молив'],['🎈','балон'],['🧀','сирене'],['🍪','бисквити'],
+  ['🚗','количка'],['📚','книжка'],['🖍️','пастели'],['🥐','кроасан'],['🍉','диня'],['🪀','йо-йо']];
+const SHOP_LEVELS = ['Цели евро до 10','Цели евро до 50','С центове до 10 €','С центове до 20 €'];
+function shopPrice(lv){
+  if(lv === 0) return M.randInt(1, 10) * 100;
+  if(lv === 1) return M.randInt(3, 50) * 100;
+  if(lv === 2){ let p; do{ p = M.randInt(1, 100) * 10; }while(p % 100 === 0); return p; }
+  let p; do{ p = M.randInt(1, 400) * 5; }while(p % 100 === 0); return p;
+}
+const WALLETS = [[100,200,500,1000],[100,200,500,1000,2000,5000],[10,20,50,100,200,500],[1,2,5,10,20,50,100,200,500,1000]];
+function segmentsFor(cents, withCents){
+  if(!withCents) return [{ target:String(cents / 100), unit:'€' }];
+  return [{ target:String(Math.floor(cents / 100)), unit:'€' }, { target:String(cents % 100), unit:'ц' }];
+}
+
+/* ================= Игри ================= */
+const MODES = {
+
+  /* ---------- Броене ---------- */
+  broene: {
+    levels: ['1 – 5', '1 – 10', '1 – 20'],
+    round(){
+      const max = [5, 10, 20][G.level];
+      const n = M.randInt(1, max);
+      const em = M.pick(['🍎','⭐','🐤','🚗','🎈','🐟','🌸','⚽','🍓','🦋','🐞','🧁']);
+      setPrompt('Колко са? Докосни ги и брой.');
+      const grid = document.createElement('div');
+      grid.className = 'obj-grid';
+      let counted = 0;
+      let group = null;
+      for(let i = 0; i < n; i++){
+        if(i % 5 === 0){ group = document.createElement('div'); group.className = 'obj-group'; grid.appendChild(group); }
+        const b = document.createElement('button');
+        b.className = 'obj'; b.textContent = em;
+        b.onclick = () => {
+          if(b.classList.contains('counted')) return;
+          counted++;
+          b.classList.add('counted');
+          b.insertAdjacentHTML('beforeend', `<span class="n">${counted}</span>`);
+          M.click();
+          M.speak(M.num(counted), { rate: 1 });
+        };
+        group.appendChild(b);
+      }
+      area.appendChild(grid);
+      const q = em + ' × ' + n;
+      if(G.level < 2){
+        optionButtons(numberOptions(n, 2, 1).map(v => ({ html: String(v), value: v, speakOk: M.num(n) })), n, q);
+      } else {
+        G.digits([{ target: String(n) }], () => { complete(q, n, M.num(n)); });
+      }
+    }
+  },
+
+  /* ---------- Сравнение на числа ---------- */
+  sravnenie: {
+    levels: ['0 – 10 с точки', '0 – 20', '0 – 100'],
+    round(){
+      const max = [10, 20, 100][G.level];
+      let a = M.randInt(0, max), b = Math.random() < 0.2 ? a : M.randInt(0, max);
+      const sign = a < b ? '<' : (a > b ? '>' : '=');
+      setPrompt('Кой знак е верен?', 'Сравни ' + M.num(a) + ' и ' + M.num(b) + '. Кой знак е верен?');
+      const dots = (n) => G.level === 0 ? `<div class="dots">${'<i></i>'.repeat(n)}</div>` : '';
+      const wrap = document.createElement('div');
+      wrap.className = 'cmp';
+      wrap.innerHTML = `<div class="cmp-box"><div class="cmp-num">${a}</div>${dots(a)}</div>
+        <div class="cmp-slot" id="slot">?</div>
+        <div class="cmp-box"><div class="cmp-num">${b}</div>${dots(b)}</div>`;
+      area.appendChild(wrap);
+      const word = { '<':'е по-малко от', '>':'е по-голямо от', '=':'е равно на' };
+      const q = a + ' ? ' + b;
+      optionButtons([
+        { html:'<span class="e">&lt;</span><span class="w">по-малко</span>', value:'<', cls:'sign-btn' },
+        { html:'<span class="e">=</span><span class="w">равно</span>', value:'=', cls:'sign-btn' },
+        { html:'<span class="e">&gt;</span><span class="w">по-голямо</span>', value:'>', cls:'sign-btn' }
+      ].map(o => Object.assign(o, { speakOk: M.num(a) + ' ' + word[sign] + ' ' + M.num(b) })), sign, q, (it) => {
+        if(it.value === sign) $('slot').textContent = sign;
+      });
+    }
+  },
+
+  /* ---------- Числова права ---------- */
+  prava: {
+    levels: ['0 – 10', '0 – 20', '0 – 100'],
+    round(){
+      const max = [10, 20, 100][G.level];
+      const W = 1000, H = 170, x0 = 40, x1 = 960, y = 80;
+      const xOf = (v) => x0 + (x1 - x0) * v / max;
+      const target = G.level === 2 ? M.randInt(1, 99) : M.randInt(0, max);
+      const findMode = G.level < 2 && Math.random() < 0.5;
+      let svg = `<svg class="numline" viewBox="0 0 ${W} ${H}" role="img" aria-label="числова права">
+        <line x1="${x0 - 20}" y1="${y}" x2="${x1 + 20}" y2="${y}" stroke="#2c3e50" stroke-width="4" stroke-linecap="round"/>`;
+      for(let v = 0; v <= max; v++){
+        const major = G.level === 2 ? v % 10 === 0 : true;
+        const labelled = findMode ? (v % 5 === 0) : (G.level === 2 ? v % 10 === 0 : v !== target);
+        const tall = G.level === 2 ? (v % 10 === 0 ? 22 : (v % 5 === 0 ? 14 : 8)) : (v % 5 === 0 ? 22 : 15);
+        svg += `<line x1="${xOf(v)}" y1="${y - tall}" x2="${xOf(v)}" y2="${y + tall}" stroke="#2c3e50" stroke-width="${major ? 3 : 1.5}"/>`;
+        if(labelled && !(v === target && !findMode)){
+          svg += `<text x="${xOf(v)}" y="${y + 58}" text-anchor="middle" font-size="${G.level === 0 ? 34 : 28}" fill="#2c3e50">${v}</text>`;
+        }
+      }
+      if(!findMode){
+        svg += `<circle cx="${xOf(target)}" cy="${y}" r="13" fill="#e8845d" stroke="#fff" stroke-width="3"/>
+          <text x="${xOf(target)}" y="${y - 30}" text-anchor="middle" font-size="40" fill="#e8845d">?</text>`;
+      }
+      svg += `<g id="pickMark"></g><rect id="hit" x="0" y="0" width="${W}" height="${H}" fill="transparent" style="cursor:pointer"/></svg>`;
+      area.insertAdjacentHTML('beforeend', svg);
+      const q = (findMode ? 'намери ' : 'скрито ') + target + ' (0–' + max + ')';
+      if(findMode){
+        setPrompt('Докосни числото ' + target, 'Докосни числото ' + M.num(target) + ' на правата.');
+        const el = M.$('.numline', area);
+        el.addEventListener('click', (e) => {
+          if($('nextBtn').hidden === false) return;
+          const pt = el.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+          const p = pt.matrixTransform(el.getScreenCTM().inverse());
+          const v = Math.max(0, Math.min(max, Math.round((p.x - x0) / (x1 - x0) * max)));
+          M.$('#pickMark', el).innerHTML = `<circle cx="${xOf(v)}" cy="${y}" r="13" fill="${v === target ? '#2e9e5b' : '#d9534f'}" stroke="#fff" stroke-width="3"/>
+            <text x="${xOf(v)}" y="${y - 32}" text-anchor="middle" font-size="34" fill="${v === target ? '#2e9e5b' : '#d9534f'}">${v}</text>`;
+          if(v === target) complete(q, v, M.num(target));
+          else miss(q, v, 'Това е ' + M.num(v) + '.');
+        });
+      } else {
+        setPrompt('Кое число е скрито?');
+        G.digits([{ target: String(target) }], () => { complete(q, target, M.num(target)); });
+        setHint(() => {
+          const before = G.level === 2 ? Math.floor(target / 10) * 10 : target - 1;
+          M.speak(G.level === 2 ? 'Започни да броиш от ' + M.num(before) + '.' : 'Какво идва след ' + M.num(Math.max(0, before)) + '?');
+        });
+      }
+    }
+  },
+
+  /* ---------- Часовник ---------- */
+  chasovnik: {
+    levels: ['Кръгли часове', 'И половина', 'И четвърт / без четвърт', 'През 5 минути'],
+    round(){
+      const minutesPool = [[0], [0, 30], [0, 15, 30, 45], [0,5,10,15,20,25,30,35,40,45,50,55]][G.level];
+      const h = M.randInt(1, 12), m = M.pick(minutesPool);
+      const opts = [[h, m]];
+      let guard = 0;
+      while(opts.length < 3 && guard++ < 100){
+        const cand = Math.random() < 0.5 ? [((h + M.randInt(1, 11) - 1) % 12) + 1, m] : [h, M.pick(minutesPool.length > 1 ? minutesPool : [0])];
+        if(G.level === 0) cand[1] = 0;
+        if(!opts.some(o => o[0] === cand[0] && o[1] === cand[1])) opts.push(cand);
+      }
+      const q = digital(h, m);
+      const analogFirst = Math.random() < 0.5;
+      if(analogFirst){
+        setPrompt('Колко е часът?');
+        area.insertAdjacentHTML('beforeend', clockSVG(h, m, 240));
+        optionButtons(M.shuffle(opts).map(o => ({
+          html: `<span class="digital">${digital(o[0], o[1])}</span>`, value: digital(o[0], o[1]),
+          speakOk: timeWordsFull(h, m), speakBad: 'Това е ' + timeWords(o[0], o[1]) + '.'
+        })), q, q);
+      } else {
+        setPrompt('Намери часовника: ' + q, 'Намери часовника, който показва ' + timeWords(h, m) + '.');
+        area.insertAdjacentHTML('beforeend', `<span class="digital">${q}</span>`);
+        optionButtons(M.shuffle(opts).map(o => ({
+          html: clockSVG(o[0], o[1], 150), value: digital(o[0], o[1]), cls: 'clock-opt',
+          speakOk: timeWordsFull(h, m), speakBad: 'Този показва ' + timeWords(o[0], o[1]) + '.'
+        })), q, q);
+      }
+    }
+  },
+
+  /* ---------- Разпознаване на евро монети и банкноти ---------- */
+  razpoznavane: {
+    levels: ['Монети', 'Банкноти', 'Всички'],
+    round(){
+      const pool = [M.COINS, M.NOTES.slice(0, 6), M.COINS.concat(M.NOTES.slice(0, 6))][G.level];
+      const target = M.pick(pool);
+      const choices = M.shuffle([target].concat(M.sample(pool.filter(c => c !== target), G.level === 2 ? 3 : 2)));
+      const q = M.moneyName(target);
+      if(Math.random() < 0.5){
+        setPrompt('Какви са тези пари?');
+        area.appendChild(moneyRow([target], { coinScale: 1.8, noteScale: 1.3 }));
+        optionButtons(choices.map(c => ({ html: M.moneyName(c), value: c, label: M.moneyName(c), speakOk: M.moneyWords(target), speakBad: 'Това не е ' + M.moneyWords(c) + '.' })), target, q);
+      } else {
+        setPrompt('Покажи ' + M.moneyName(target), 'Покажи ' + M.moneyWords(target) + '.');
+        optionButtons(choices.map(c => ({ html: M.moneySVG(c, c >= 500 ? 0.75 : 1.4), value: c, label: M.moneyName(c), speakOk: M.moneyWords(target), speakBad: 'Това е ' + M.moneyWords(c) + '.' })), target, q);
+      }
+    }
+  },
+
+  /* ---------- Колко пари има? (събиране) ---------- */
+  kolko: {
+    levels: ['Центове до 1 €', 'Евро до 50', 'Евро и центове', 'Големи суми'],
+    round(){
+      let list, withCents = false, centsOnly = false;
+      for(let guard = 0; guard < 200; guard++){
+        if(G.level === 0){
+          list = Array.from({ length: M.randInt(2, 4) }, () => M.pick([1, 2, 5, 10, 20, 50]));
+          if(list.reduce((s, c) => s + c, 0) < 100) { centsOnly = true; break; }
+        } else if(G.level === 1){
+          list = Array.from({ length: M.randInt(2, 4) }, () => M.pick([100, 200, 500, 1000, 2000]));
+          if(list.reduce((s, c) => s + c, 0) <= 5000) break;
+        } else if(G.level === 2){
+          list = Array.from({ length: M.randInt(1, 2) }, () => M.pick([100, 200, 500, 1000]))
+            .concat(Array.from({ length: M.randInt(1, 3) }, () => M.pick([5, 10, 20, 50])));
+          if(list.reduce((s, c) => s + c, 0) % 100 !== 0){ withCents = true; break; }
+        } else {
+          list = Array.from({ length: M.randInt(2, 4) }, () => M.pick([500, 1000, 2000, 5000, 10000, 20000]));
+          if(list.reduce((s, c) => s + c, 0) <= 50000) break;
+        }
+      }
+      list.sort((a, b) => b - a);
+      const sum = list.reduce((s, c) => s + c, 0);
+      setPrompt('Колко пари има тук?');
+      const row = moneyRow(list);
+      area.appendChild(row);
+      const segs = centsOnly ? [{ target: String(sum), unit: 'ц' }] : segmentsFor(sum, withCents);
+      const q = list.map(M.fmtMoney).join(' + ') + ' = ' + M.fmtMoney(sum);
+      G.digits(segs, () => { complete(q, M.fmtMoney(sum), 'Тук има ' + M.moneyWords(sum) + '.'); });
+      setHint(() => sumHint(row));
+    }
+  },
+
+  /* ---------- Плати точно ---------- */
+  plati: {
+    levels: SHOP_LEVELS,
+    round(){
+      const [em, name] = M.pick(SHOP);
+      const price = shopPrice(G.level);
+      setPrompt('Плати точно ' + M.fmtMoney(price), name.charAt(0).toUpperCase() + name.slice(1) + ' струва ' + M.moneyWords(price) + '. Плати точно.');
+      area.insertAdjacentHTML('beforeend', `<div class="shop"><span class="mx-big">${em}</span><span class="price-tag">${M.fmtMoney(price)}</span></div>`);
+      const tray = document.createElement('div'); tray.className = 'tray';
+      const sumEl = document.createElement('div'); sumEl.className = 'tray-sum';
+      const wallet = document.createElement('div'); wallet.className = 'wallet';
+      let showSum = false;
+      const paid = () => M.$$('button', tray).reduce((s, b) => s + (+b.dataset.c), 0);
+      const refresh = () => { sumEl.textContent = showSum ? 'Сложил си: ' + M.fmtMoney(paid()) : ''; };
+      WALLETS[G.level].forEach(c => {
+        const b = document.createElement('button');
+        b.innerHTML = M.moneySVG(c, c >= 500 ? 0.62 : 1);
+        b.setAttribute('aria-label', M.moneyName(c));
+        b.onclick = () => {
+          if(!$('nextBtn').hidden) return;
+          const t = document.createElement('button');
+          t.dataset.c = c;
+          t.innerHTML = M.moneySVG(c, c >= 500 ? 0.62 : 1);
+          t.onclick = () => { if($('nextBtn').hidden){ t.remove(); M.click(); refresh(); } };
+          tray.appendChild(t);
+          M.click();
+          M.speak(M.moneyName(c), { rate: 1 });
+          refresh();
+        };
+        wallet.appendChild(b);
+      });
+      area.appendChild(tray);
+      area.appendChild(sumEl);
+      area.appendChild(wallet);
+      const payBtn = document.createElement('button');
+      payBtn.className = 'mx-btn green'; payBtn.textContent = 'Плащам ✓';
+      payBtn.onclick = () => {
+        if(!$('nextBtn').hidden) return;
+        const p = paid();
+        const q = name + ' ' + M.fmtMoney(price);
+        if(p === price){ payBtn.disabled = true; complete(q, M.fmtMoney(p), 'Плати точно ' + M.moneyWords(price) + '.'); }
+        else if(p > price) miss(q, M.fmtMoney(p), 'Даде повече. Махни нещо от масата.');
+        else miss(q, M.fmtMoney(p), p === 0 ? 'Сложи пари на масата.' : 'Не стигат. Добави още.');
+      };
+      area.appendChild(payBtn);
+      setHint(() => { showSum = true; refresh(); M.speak('Сложил си ' + M.moneyWords(paid()) + '. Трябват ' + M.moneyWords(price) + '.'); });
+    }
+  },
+
+  /* ---------- Колко е рестото? (изваждане) ---------- */
+  resto: {
+    levels: SHOP_LEVELS,
+    round(){
+      const [em, name] = M.pick(SHOP);
+      let price = shopPrice(G.level);
+      const notes = [500, 1000, 2000, 5000];
+      let pay = notes.find(n => n > price);
+      if(!pay){ price = 4000 + M.randInt(1, 9) * 100; pay = 5000; }
+      const change = pay - price;
+      const withCents = change % 100 !== 0;
+      setPrompt('Колко е рестото?', name.charAt(0).toUpperCase() + name.slice(1) + ' струва ' + M.moneyWords(price) + '. Плащаш с ' + M.moneyWords(pay) + '. Колко ресто ще получиш?');
+      area.insertAdjacentHTML('beforeend', `<div class="shop"><span class="mx-big">${em}</span><span class="price-tag">${M.fmtMoney(price)}</span>
+        <span class="vs">плащаш с</span>${M.moneySVG(pay, 0.8)}</div>`);
+      const hl = document.createElement('div'); hl.className = 'hint-line'; area.appendChild(hl);
+      const q = M.fmtMoney(pay) + ' − ' + M.fmtMoney(price) + ' = ' + M.fmtMoney(change);
+      G.digits(segmentsFor(change, withCents), () => { hl.textContent = q; complete(q, M.fmtMoney(change), 'Рестото е ' + M.moneyWords(change) + '.'); });
+      setHint(() => { hl.textContent = M.fmtMoney(pay) + ' − ' + M.fmtMoney(price) + ' = ?'; M.speak(M.moneyWords(pay) + ' минус ' + M.moneyWords(price) + '.'); });
+    }
+  },
+
+  /* ---------- Стигат ли парите? ---------- */
+  stigat: {
+    levels: ['Цели евро', 'Евро и центове', 'Кое е повече?'],
+    round(){
+      const makeWallet = (lv) => {
+        const pool = lv === 0 ? [100, 200, 500, 1000] : [10, 20, 50, 100, 200, 500];
+        return Array.from({ length: M.randInt(2, 4) }, () => M.pick(pool)).sort((a, b) => b - a);
+      };
+      if(G.level < 2){
+        const w = makeWallet(G.level);
+        const have = w.reduce((s, c) => s + c, 0);
+        const step = G.level === 0 ? 100 : 10;
+        let price = Math.random() < 0.2 ? have : have + M.pick([-1, 1]) * M.randInt(1, G.level === 0 ? 3 : 8) * step;
+        if(price <= 0) price = have + step;
+        const enough = have >= price;
+        const [em, name] = M.pick(SHOP);
+        setPrompt('Стигат ли ти парите?', 'Имаш тези пари. ' + name.charAt(0).toUpperCase() + name.slice(1) + ' струва ' + M.moneyWords(price) + '. Стигат ли ти парите?');
+        area.insertAdjacentHTML('beforeend', `<div class="shop"><span class="mx-big">${em}</span><span class="price-tag">${M.fmtMoney(price)}</span></div>`);
+        const row = moneyRow(w); area.appendChild(row);
+        const q = M.fmtMoney(have) + ' за ' + M.fmtMoney(price);
+        const expl = 'Имаш ' + M.moneyWords(have) + ', а струва ' + M.moneyWords(price) + '.';
+        optionButtons([
+          { html: '<span class="e">✅</span>Да, стигат', value: true, label: 'да', speakOk: expl, speakBad: expl },
+          { html: '<span class="e">❌</span>Не стигат', value: false, label: 'не', speakOk: expl, speakBad: expl }
+        ], enough, q);
+        setHint(() => sumHint(row));
+      } else {
+        let a, b, sa, sb;
+        do{ a = makeWallet(1); b = makeWallet(1); sa = a.reduce((s, c) => s + c, 0); sb = b.reduce((s, c) => s + c, 0); }while(Math.abs(sa - sb) > 300);
+        if(Math.random() < 0.15){ b = a.slice().reverse(); sb = sa; }
+        setPrompt('Къде има повече пари?');
+        const correct = sa > sb ? 'A' : (sb > sa ? 'B' : '=');
+        const q = M.fmtMoney(sa) + ' / ' + M.fmtMoney(sb);
+        const wrap = document.createElement('div'); wrap.className = 'cmp';
+        const boxes = {};
+        [['A', a], ['B', b]].forEach(([k, list], i) => {
+          const box = document.createElement('div'); box.className = 'wallet-box';
+          box.appendChild(moneyRow(list, { noteScale: 0.6 }));
+          box.onclick = () => pickCmp(k);
+          boxes[k] = box;
+          wrap.appendChild(box);
+          if(i === 0) wrap.insertAdjacentHTML('beforeend', '<span class="vs">или</span>');
+        });
+        area.appendChild(wrap);
+        const eqBtn = document.createElement('button');
+        eqBtn.className = 'mx-btn purple'; eqBtn.textContent = '= Еднакво';
+        eqBtn.onclick = () => pickCmp('=');
+        area.appendChild(eqBtn);
+        const expl = 'Тук има ' + M.moneyWords(sa) + ', а там ' + M.moneyWords(sb) + '.';
+        function pickCmp(k){
+          if(!$('nextBtn').hidden) return;
+          if(k === correct){ if(boxes[k]) boxes[k].classList.add('ok'); complete(q, k, expl); }
+          else { if(boxes[k]){ boxes[k].classList.remove('bad'); void boxes[k].offsetWidth; boxes[k].classList.add('bad'); } miss(q, k); }
+        }
+        setHint(() => { M.$$('.money-row', wrap).forEach(r => M.$$('.money-item', r).forEach(it => it.querySelector('.lbl').textContent = M.fmtMoney(+it.dataset.c))); M.speak(expl); });
+      }
+    }
+  }
+};
+
+G = M.createGame(store, MODES);
+M.show('menu');
+</script>
+</body>
+</html>

@@ -783,6 +783,7 @@ function toggleHistory() {
 function addHistoryEntry(userAnswer, correct) {
   history.unshift({
     time: new Date().toLocaleTimeString(),
+    ts: Date.now(),
     a, b, diff, userAnswer, correct
   });
   if (history.length > 100) history.pop();

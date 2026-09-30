@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Четене</title>
+<link rel="stylesheet" href="maxi-common.css">
+<script src="maxi-common.js"></script>
+<style>
+  .word-big{ font-size:calc(clamp(2.6rem,8vw,4.6rem) * var(--ts)); font-weight:900; letter-spacing:0.03em; text-align:center; }
+  .word-opt{ font-size:calc(clamp(1.6rem,4.4vw,2.4rem) * var(--ts)); min-width:clamp(140px,22vw,220px); }
+  .letter-opt{ font-size:calc(clamp(2.6rem,7vw,4rem) * var(--ts)); min-width:clamp(90px,14vw,130px); }
+  .slots{ display:flex; gap:0.5rem; flex-wrap:wrap; justify-content:center; min-height:clamp(70px,11vw,96px); }
+  .slot{
+    min-width:clamp(80px,13vw,120px); min-height:clamp(64px,10vw,88px); border:3px dashed #b8c2cc; border-radius:16px;
+    display:flex; align-items:center; justify-content:center; font-size:calc(clamp(1.8rem,5vw,2.8rem) * var(--ts)); font-weight:900;
+  }
+  .slot.filled{ border-style:solid; border-color:var(--ok); background:var(--ok-bg); }
+  .tiles-row{ display:flex; gap:0.7rem; flex-wrap:wrap; justify-content:center; }
+  .syl{
+    min-width:clamp(80px,13vw,120px); min-height:clamp(64px,10vw,88px); border-radius:16px; border:none; cursor:pointer;
+    background:linear-gradient(160deg,#e2b26b,#c98a3f); color:#fff; font-weight:900;
+    font-size:calc(clamp(1.8rem,5vw,2.8rem) * var(--ts)); box-shadow:var(--shadow);
+  }
+  .syl:active{ transform:scale(0.94); }
+  .syl.bad{ animation:mx-shake .3s; background:linear-gradient(160deg,#e8845d,#c1512e); }
+  .syl.used{ visibility:hidden; }
+  .rhyme-target{ display:flex; flex-direction:column; align-items:center; gap:0.2rem; background:#fff8e6; border-radius:20px; padding:0.6rem 1.4rem; }
+  .rhyme-target .w{ font-size:calc(clamp(1.6rem,4.4vw,2.4rem) * var(--ts)); font-weight:900; }
+  .caps-toggle{ border:2px solid #c9a0ff; background:#f5edff; border-radius:12px; padding:0.45rem 0.9rem; font-weight:800; cursor:pointer; font-size:calc(0.95rem * var(--ts)); }
+  .caps-toggle.on{ background:#8e44ad; color:#fff; border-color:#8e44ad; }
+</style>
+</head>
+<body>
+
+<header class="mx-top">
+  <div class="mx-title">📚 Четене</div>
+  <span class="mx-badge">⭐ <span id="mx-stars">0</span></span>
+  <span class="mx-badge">🔥 <span id="mx-streak">0</span></span>
+  <button id="mx-back" class="mx-pill" hidden onclick="goMenu()">↩ Игри</button>
+</header>
+
+<section id="menu" class="mx-screen active">
+  <h1 class="mx-h1">Четене 📚</h1>
+  <p class="mx-sub">Избери игра</p>
+  <div class="mx-tiles">
+    <button class="mx-tile g1" onclick="openMode('kartinka')"><span class="i">🐱→🔤</span><span class="l">Коя е думата?</span><span class="s">Картинка → дума</span></button>
+    <button class="mx-tile g4" onclick="openMode('duma')"><span class="i">🔤→🐱</span><span class="l">Прочети и намери</span><span class="s">Дума → картинка</span></button>
+    <button class="mx-tile g2" onclick="openMode('zvuk')"><span class="i">🅰️</span><span class="l">Първият звук</span><span class="s">С какво започва?</span></button>
+    <button class="mx-tile g3" onclick="openMode('srichki')"><span class="i">🧩</span><span class="l">Сглоби думата</span><span class="s">Подреди сричките</span></button>
+    <button class="mx-tile g5" onclick="openMode('rimi')"><span class="i">🎵</span><span class="l">Рими</span><span class="s">Кое звучи еднакво?</span></button>
+  </div>
+</section>
+
+<section id="play" class="mx-screen">
+  <div class="mx-levels" id="levels"></div>
+  <div class="mx-card">
+    <div class="mx-prompt"><span id="prompt"></span><button class="mx-say" onclick="sayPrompt()" aria-label="Кажи пак">🔊</button></div>
+    <div id="area" style="display:flex;flex-direction:column;align-items:center;gap:1rem;width:100%;"></div>
+    <div id="answer"></div>
+    <div id="keypad"></div>
+    <div class="mx-feedback" id="fb"></div>
+    <div class="mx-row">
+      <button class="mx-btn orange" id="hintBtn" onclick="hint()" hidden>💡 Подсказка</button>
+      <button class="mx-btn green" id="nextBtn" onclick="newRound()" hidden>Следваща ▶</button>
+    </div>
+  </div>
+</section>
+
+<script>
+const M = window.Maxi;
+const store = M.createStore('maxiChetene_v1');
+const area = document.getElementById('area');
+let G;
+
+/* Думи с картинки — кратки, познати, с ясни емоджита. */
+const WORDS = [
+  ['котка','🐱'],['куче','🐶'],['риба','🐟'],['птица','🐦'],['кон','🐴'],['крава','🐮'],['овца','🐑'],['коза','🐐'],
+  ['мечка','🐻'],['заек','🐰'],['мишка','🐭'],['лисица','🦊'],['слон','🐘'],['жаба','🐸'],['пиле','🐤'],['патица','🦆'],
+  ['пчела','🐝'],['пеперуда','🦋'],['змия','🐍'],['костенурка','🐢'],['маймуна','🐒'],['лъв','🦁'],['тигър','🐯'],['кит','🐋'],
+  ['ябълка','🍎'],['банан','🍌'],['круша','🍐'],['грозде','🍇'],['ягода','🍓'],['портокал','🍊'],['лимон','🍋'],['диня','🍉'],
+  ['череша','🍒'],['морков','🥕'],['домат','🍅'],['краставица','🥒'],['хляб','🍞'],['мляко','🥛'],['сирене','🧀'],['яйце','🥚'],
+  ['торта','🎂'],['бонбон','🍬'],['сладолед','🍦'],['кола','🚗'],['влак','🚆'],['автобус','🚌'],['самолет','✈️'],['кораб','🚢'],
+  ['ракета','🚀'],['колело','🚲'],['топка','⚽'],['балон','🎈'],['книга','📕'],['молив','✏️'],['часовник','⏰'],['ключ','🔑'],
+  ['лампа','💡'],['къща','🏠'],['дърво','🌳'],['цвете','🌸'],['слънце','☀️'],['луна','🌙'],['звезда','⭐'],['облак','☁️'],
+  ['шапка','🧢'],['обувка','👟'],['чорап','🧦'],['рокля','👗'],['очила','👓'],['чадър','☂️'],['ръка','✋'],['око','👁️'],
+  ['ухо','👂'],['нос','👃'],['зъб','🦷'],['роза','🌹'],['гъба','🍄'],['лед','🧊'],['мед','🍯'],['стол','🪑'],['сол','🧂'],
+  ['кост','🦴'],['мост','🌉'],['лодка','🚣'],['книжка','📖'],['баба','👵'],['дядо','👴'],['монета','🪙'],['тръба','🎺'],['щит','🛡️'],['рак','🦀'],['кокос','🥥'],
+  ['телевизор','📺'],['хеликоптер','🚁'],['динозавър','🦕'],['мотоциклет','🏍️'],['крокодил','🐊'],['калинка','🐞'],['барабан','🥁'],['китара','🎸'],['кенгуру','🦘'],['телефон','📱']
+];
+const EMOJI = Object.fromEntries(WORDS);
+
+/* Двойки рими (без повторение на думи между групите). */
+const RHYMES = [['котка','лодка'],['мишка','книжка'],['слон','балон'],['кит','щит'],['роза','коза'],['ракета','монета'],
+  ['гъба','тръба'],['жаба','баба'],['мост','кост'],['стол','сол'],['лед','мед'],['рак','влак'],['нос','кокос']];
+
+/* Сричкуване — същото училищно правило като в „Пиши и говори“. */
+const VOWELS = 'аъоуеиюяАЪОУЕИЮЯ';
+function syllabifyWord(word){
+  const idx = [];
+  for(let i = 0; i < word.length; i++) if(VOWELS.includes(word[i])) idx.push(i);
+  if(idx.length < 2) return [word];
+  const syll = []; let start = 0;
+  for(let i = 0; i < idx.length - 1; i++){
+    const gap = idx[i + 1] - idx[i] - 1;
+    const split = gap <= 1 ? idx[i] + 1 : idx[i] + 2;
+    syll.push(word.slice(start, split)); start = split;
+  }
+  syll.push(word.slice(start));
+  return syll.filter(Boolean);
+}
+
+/* Как звучи буквата сама (за да не се чете името ѝ). */
+const VOWEL_SOUNDS = 'аеиоуъюя';
+const sound = (ch) => VOWEL_SOUNDS.includes(ch) ? ch : ch + 'ъ';
+const LETTERS = 'абвгдежзиклмнопрстуфхцчшщъюя'.split('');
+
+store.rec.extra.caps = !!store.rec.extra.caps;
+const txt = (s) => store.rec.extra.caps ? s.toUpperCase() : s;
+function capsButton(box){
+  const b = document.createElement('button');
+  b.className = 'caps-toggle' + (store.rec.extra.caps ? ' on' : '');
+  b.textContent = store.rec.extra.caps ? 'АБВ главни' : 'абв малки';
+  b.onclick = () => { store.rec.extra.caps = !store.rec.extra.caps; store.save(); G.renderLevels(); G.newRound(); };
+  box.appendChild(b);
+}
+const sayWord = (w) => { const s = syllabifyWord(w); return s.length > 1 ? [s.join(', '), w] : [w]; };
+let recent = [];
+function freshWord(filter){
+  const pool = WORDS.filter(([w]) => (!filter || filter(w)) && !recent.includes(w));
+  const pick = M.pick(pool.length ? pool : WORDS.filter(([w]) => !filter || filter(w)));
+  recent.push(pick[0]); if(recent.length > 12) recent.shift();
+  return pick;
+}
+
+const MODES = {
+  /* ---------- Картинка → дума ---------- */
+  kartinka: {
+    levels: ['2 думи', '3 думи', '4 думи'],
+    extraControls: capsButton,
+    round(){
+      const n = G.level + 2;
+      const [w, e] = freshWord();
+      const others = M.sample(WORDS.filter(x => x[0] !== w), n - 1);
+      G.setPrompt('Коя дума е това?');
+      area.insertAdjacentHTML('beforeend', `<div class="mx-big">${e}</div>`);
+      optionButtons(M.shuffle([[w, e]].concat(others)).map(([ow]) => ({
+        html: txt(ow), value: ow, cls: 'word-opt', speakOk: sayWord(w), speakBad: 'Тук пише ' + ow + '.'
+      })), w, e + ' ' + w);
+    }
+  },
+  /* ---------- Дума → картинка ---------- */
+  duma: {
+    levels: ['2 картинки', '3 картинки', '4 картинки'],
+    extraControls: capsButton,
+    round(){
+      const n = G.level + 2;
+      const [w, e] = freshWord();
+      const others = M.sample(WORDS.filter(x => x[0] !== w), n - 1);
+      G.setPrompt('Прочети думата и намери картинката.');
+      area.insertAdjacentHTML('beforeend', `<div class="word-big">${M.escapeHtml(txt(w))}</div>`);
+      optionButtons(M.shuffle([[w, e]].concat(others)).map(([ow, oe]) => ({
+        html: `<span class="e">${oe}</span>`, value: ow, label: ow, speakOk: sayWord(w), speakBad: 'Това е ' + ow + '.'
+      })), w, w + ' ' + e);
+      G.setHint(() => M.speakSeq([syllabifyWord(w).join(', ')]));
+    }
+  },
+  /* ---------- Първият звук ---------- */
+  zvuk: {
+    levels: ['3 букви', '4 букви'],
+    extraControls: capsButton,
+    round(){
+      const [w, e] = freshWord(x => LETTERS.includes(x[0]));
+      const first = w[0];
+      const opts = [first].concat(M.sample(LETTERS.filter(l => l !== first && l !== 'ъ'), G.level + 2));
+      G.setPrompt('С какъв звук започва?', 'С какъв звук започва думата ' + w + '?');
+      area.insertAdjacentHTML('beforeend', `<div class="mx-big">${e}</div>`);
+      optionButtons(M.shuffle(opts).map(l => ({
+        html: txt(l), value: l, cls: 'letter-opt', speakOk: [sound(first), w], speakBad: 'Това е ' + sound(l) + '.'
+      })), first, w + ' → ' + first);
+      G.setHint(() => M.speakSeq([sound(first) + '... ' + w]));
+    }
+  },
+  /* ---------- Сглоби думата от срички ---------- */
+  srichki: {
+    levels: ['2 срички', '3 срички', '4 срички'],
+    extraControls: capsButton,
+    round(){
+      const want = [2, 3, 4][G.level];
+      const [w, e] = freshWord(x => { const n = syllabifyWord(x).length; return G.level === 2 ? n >= 4 : n === want; });
+      const syl = syllabifyWord(w);
+      G.setPrompt('Подреди сричките', 'Подреди сричките на думата ' + w + '.');
+      area.insertAdjacentHTML('beforeend', `<div class="mx-big">${e}</div>`);
+      const slots = document.createElement('div'); slots.className = 'slots';
+      syl.forEach(() => { const s = document.createElement('div'); s.className = 'slot'; slots.appendChild(s); });
+      area.appendChild(slots);
+      let order = syl.map((s, i) => i);
+      for(let g = 0; g < 10 && order.every((v, i) => v === i); g++) order = M.shuffle(order);
+      const row = document.createElement('div'); row.className = 'tiles-row';
+      let next = 0;
+      order.forEach(i => {
+        const b = document.createElement('button');
+        b.className = 'syl'; b.textContent = txt(syl[i]);
+        b.onclick = () => {
+          if(G.done() || b.classList.contains('used')) return;
+          if(syl[i] === syl[next]){
+            b.classList.add('used');
+            const slot = slots.children[next];
+            slot.textContent = txt(syl[next]); slot.classList.add('filled');
+            next++;
+            if(next === syl.length) complete(w, w, sayWord(w));
+            else { M.click(); M.speak(syl[i], { rate: 0.8 }); }
+          } else {
+            b.classList.remove('bad'); void b.offsetWidth; b.classList.add('bad');
+            G.mistakes++;
+            M.bad();
+            M.speak('Не още. Търси ' + syl[next] + '.');
+          }
+        };
+        row.appendChild(b);
+      });
+      area.appendChild(row);
+      G.setHint(() => M.speakSeq(sayWord(w)));
+    }
+  },
+  /* ---------- Рими ---------- */
+  rimi: {
+    levels: ['2 думи', '3 думи'],
+    extraControls: capsButton,
+    round(){
+      const pair = M.pick(RHYMES);
+      const [a, b] = Math.random() < 0.5 ? pair : [pair[1], pair[0]];
+      const others = M.sample(RHYMES.filter(p => p !== pair).map(p => M.pick(p)), G.level + 1);
+      const opts = M.shuffle([b].concat(others));
+      G.setPrompt('Коя дума се римува с „' + txt(a) + '“?', 'Коя дума се римува с ' + a + '? ' + opts.join(', ') + '?');
+      area.insertAdjacentHTML('beforeend', `<div class="rhyme-target"><span class="mx-big">${EMOJI[a]}</span><span class="w">${M.escapeHtml(txt(a))}</span></div>`);
+      optionButtons(opts.map(o => ({
+        html: `<span class="e">${EMOJI[o]}</span>${M.escapeHtml(txt(o))}`, value: o, label: o,
+        speakOk: a + ' и ' + b + ' звучат еднакво.', speakBad: a + ' и ' + o + ' не звучат еднакво.'
+      })), b, a + ' – ' + b);
+      G.setHint(() => M.speakSeq([a, opts.join('... ')]));
+    }
+  }
+};
+
+G = M.createGame(store, MODES);
+M.show('menu');
+</script>
+</body>
+</html>

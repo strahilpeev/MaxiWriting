@@ -15,6 +15,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#5da8e8">
 <script type="module" src="firebase-shared.js"></script>
+<script src="maxi-common.js"></script>
 
 <style>
   :root{
@@ -184,9 +185,9 @@
     max-width:1100px;
   }
   .tile{
-    flex:1 1 260px;
-    max-width:320px;
-    min-height:clamp(180px, 26vw, 260px);
+    flex:1 1 230px;
+    max-width:300px;
+    min-height:clamp(150px, 20vw, 220px);
     border:none;
     border-radius:28px;
     cursor:pointer;
@@ -211,6 +212,11 @@
   .tile.matematika{ background:linear-gradient(160deg,#5da8e8,#2c6fb0); }
   .tile.izvazhdane{ background:linear-gradient(160deg,#e8845d,#c1512e); }
   .tile.pisane{ background:linear-gradient(160deg,#8fbf7a,#4f9350); }
+  .tile.chetene{ background:linear-gradient(160deg,#f08bb0,#c24f7c); }
+  .tile.pari{ background:linear-gradient(160deg,#f2c14e,#d19a14); }
+  .tile.vnimanie{ background:linear-gradient(160deg,#b28be0,#7a52b3); }
+  .tile.govorya{ background:linear-gradient(160deg,#5cc6c0,#2a8c86); }
+  .tile.dvizhenie{ background:linear-gradient(160deg,#7fb3d5,#3c6e9e); }
 
   /* ---------- PROGRESS / HISTORY CARD ---------- */
   .progress-card{
@@ -297,6 +303,7 @@
   #app-screen{
     position:fixed;
     inset:0;
+    z-index:8;
     display:none;
     background:#fff;
   }
@@ -328,6 +335,51 @@
     .tile{ max-width:none; }
   }
 
+  /* ---------- РОДИТЕЛСКИ ПАНЕЛ ---------- */
+  .top-bar{ display:flex; gap:0.5rem; }
+  .top-bar button{
+    background:#fff; color:var(--ink); border:none; border-radius:999px; padding:0.5rem 1rem;
+    font-size:0.95rem; font-weight:700; cursor:pointer; box-shadow:var(--card-shadow); -webkit-tap-highlight-color:transparent;
+  }
+  #parent-screen{ align-items:stretch; justify-content:flex-start; }
+  .pp-wrap{ width:100%; max-width:960px; margin:0 auto; display:flex; flex-direction:column; gap:1rem; }
+  .pp-head{ display:flex; justify-content:space-between; align-items:center; gap:0.6rem; flex-wrap:wrap; }
+  .pp-head h1{ margin:0; text-align:left; font-size:clamp(1.3rem,3.4vw,2rem); }
+  .pp-card{ background:#fff; border-radius:20px; padding:1rem 1.2rem; box-shadow:var(--card-shadow); }
+  .pp-card h2{ margin:0 0 0.7rem 0; font-size:1.1rem; }
+  .pp-table{ width:100%; border-collapse:collapse; font-size:0.92rem; }
+  .pp-table th{ text-align:left; font-weight:700; opacity:0.65; padding:0.35rem 0.4rem; border-bottom:1px solid #e6ebf0; }
+  .pp-table td{ padding:0.45rem 0.4rem; border-bottom:1px solid #f0f3f6; font-variant-numeric:tabular-nums; }
+  .pp-table td.num, .pp-table th.num{ text-align:right; }
+  .pp-bar{ display:inline-block; height:8px; border-radius:4px; background:#2a78c2; vertical-align:middle; }
+  .pp-chart{ width:100%; height:auto; display:block; }
+  .pp-chart .bar{ fill:#2a78c2; }
+  .pp-chart .bar:hover{ fill:#1b5a96; }
+  .pp-chart text{ font-family:'Segoe UI', Arial, sans-serif; fill:#5b6b7a; font-size:11px; }
+  .pp-chart .val{ fill:#2c3e50; font-weight:700; }
+  .pp-list{ display:flex; flex-direction:column; gap:0.3rem; max-height:220px; overflow-y:auto; }
+  .pp-list div{ display:flex; justify-content:space-between; gap:0.6rem; font-size:0.92rem; padding:0.3rem 0.5rem; background:#f8fafc; border-radius:8px; }
+  .pp-settings{ display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:0.8rem 1.4rem; }
+  .pp-settings label{ display:flex; flex-direction:column; gap:0.3rem; font-weight:700; font-size:0.95rem; }
+  .pp-settings .chk{ flex-direction:row; align-items:center; gap:0.6rem; }
+  .pp-settings input[type=checkbox]{ width:24px; height:24px; }
+  .pp-settings input[type=range]{ width:100%; }
+  .pp-seg{ display:flex; gap:0.4rem; }
+  .pp-seg button{ flex:1; border:2px solid #d7dee5; background:#fff; border-radius:10px; padding:0.4rem; font-weight:700; cursor:pointer; }
+  .pp-seg button.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  .pp-btn{ border:none; border-radius:12px; padding:0.6rem 1rem; font-weight:700; cursor:pointer; color:#fff; background:#2a78c2; font-size:0.95rem; }
+  .pp-btn.gray{ background:#8a97a3; }
+  .pp-muted{ opacity:0.65; font-size:0.9rem; }
+  .mx-modal{ position:fixed; inset:0; z-index:40; background:rgba(44,62,80,0.45); display:none; align-items:center; justify-content:center; padding:1rem; }
+  .mx-modal.open{ display:flex; }
+  .mx-modal .box{ background:#fff; border-radius:22px; padding:1.3rem; width:100%; max-width:420px; display:flex; flex-direction:column; gap:0.8rem; box-shadow:var(--card-shadow); }
+  .mx-modal h3{ margin:0; }
+  .mx-input{ font-size:1.15rem; padding:0.65rem 0.8rem; border-radius:12px; border:2px solid #d7dee5; outline:none; width:100%; font-family:inherit; }
+  .mx-row{ display:flex; gap:0.6rem; justify-content:flex-end; }
+  .mx-btn{ border:none; border-radius:14px; cursor:pointer; color:#fff; font-weight:700; padding:0.7rem 1.2rem; font-size:1rem; background:#3498db; }
+  .mx-btn.gray{ background:#8a97a3; }
+  .mx-btn.green{ background:#4f9350; }
+
   /* ---------- ADMIN ---------- */
   .admin-link{
     margin-top:0.5rem;
@@ -349,6 +401,8 @@
     opacity:0.45;
     z-index:5;
   }
+  /* менюто вече има много плочки — подравняваме отгоре, за да не се реже заглавието */
+  #menu{ justify-content:flex-start; padding-top:clamp(4rem, 8vw, 5rem); }
   #admin-screen{
     align-items:stretch;
     justify-content:flex-start;
@@ -434,6 +488,7 @@
   <!-- ЕКРАН 2: Меню с игрите -->
   <div id="menu" class="screen">
     <div class="top-bar">
+      <button onclick="openParentPanel()">👨‍👩‍👧 За родители</button>
       <button id="switch-profile-btn" onclick="showProfileScreen()">🔄 Смени профила</button>
     </div>
     <h1 id="menu-greeting">Какво искаш да поиграем днес? 🌟</h1>
@@ -461,6 +516,36 @@
         <span class="label">Пиши и говори</span>
         <span class="sub">Тренажор по писане</span>
       </button>
+
+      <button class="tile chetene" onclick="openApp('chetene.html')">
+        <span class="icon">📚</span>
+        <span class="label">Четене</span>
+        <span class="sub">Думи, звуци, срички, рими</span>
+      </button>
+
+      <button class="tile pari" onclick="openApp('chisla-i-pari.html')">
+        <span class="icon">💶</span>
+        <span class="label">Числа и пари</span>
+        <span class="sub">Броене, часовник, евро</span>
+      </button>
+
+      <button class="tile vnimanie" onclick="openApp('vnimanie.html')">
+        <span class="icon">🧠</span>
+        <span class="label">Внимание и памет</span>
+        <span class="sub">Двойки, сортиране, редици</span>
+      </button>
+
+      <button class="tile govorya" onclick="openApp('govorya.html')">
+        <span class="icon">💬</span>
+        <span class="label">Говоря и планирам</span>
+        <span class="sub">Табло, моят ден, емоции, таймер</span>
+      </button>
+
+      <button class="tile dvizhenie" onclick="openApp('dvizhenie.html')">
+        <span class="icon">✋</span>
+        <span class="label">Пръстче и спокойствие</span>
+        <span class="sub">Проследяване, дишане, балончета</span>
+      </button>
     </div>
 
     <div class="progress-card" id="progress-card">
@@ -474,6 +559,40 @@
       </div>
       <button class="progress-toggle" id="progress-toggle-btn" onclick="toggleProgressHistory()">📜 Виж историята</button>
       <div class="progress-history" id="progress-history"></div>
+    </div>
+  </div>
+
+  <!-- ЕКРАН: Родителски панел — напредък, история, експорт и общи настройки -->
+  <div id="parent-screen" class="screen">
+    <div class="pp-wrap">
+      <div class="pp-head">
+        <h1 id="pp-title">👨‍👩‍👧 За родители</h1>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <button class="pp-btn" onclick="exportCSV()">⬇️ Експорт (CSV)</button>
+          <button class="pp-btn gray" onclick="closeParentPanel()">✕ Затвори</button>
+        </div>
+      </div>
+      <div class="pp-card">
+        <h2>Активност по дни (последните 14 дни)</h2>
+        <div id="pp-chart"></div>
+        <div class="pp-muted" id="pp-chart-note"></div>
+      </div>
+      <div class="pp-card">
+        <h2>По игри</h2>
+        <div id="pp-table"></div>
+      </div>
+      <div class="pp-card">
+        <h2>💛 Как се е чувствало детето</h2>
+        <div class="pp-list" id="pp-feel"></div>
+      </div>
+      <div class="pp-card">
+        <h2>🗣️ Изречения от таблото</h2>
+        <div class="pp-list" id="pp-aac"></div>
+      </div>
+      <div class="pp-card">
+        <h2>⚙️ Общи настройки (за новите игри)</h2>
+        <div class="pp-settings" id="pp-settings"></div>
+      </div>
     </div>
   </div>
 
@@ -516,10 +635,11 @@
   }
 
   const adminScreen = document.getElementById('admin-screen');
+  const parentScreen = document.getElementById('parent-screen');
   const syncBadge = document.getElementById('sync-badge');
 
   function showScreen(el){
-    [profileScreen, newProfileScreen, menu, adminScreen].forEach(s => s.classList.remove('active'));
+    [profileScreen, newProfileScreen, menu, adminScreen, parentScreen].forEach(s => s.classList.remove('active'));
     el.classList.add('active');
   }
 
@@ -643,14 +763,42 @@
     }catch(e){ return null; }
   }
 
+  /* ---- Новите игри: общ формат { [име]: { score, total, streak, stars, history:[{mode,q,a,correct,ts}] } } ---- */
+  const NEW_APPS = [
+    { key:'chetene',   file:'chetene.html',       storage:'maxiChetene_v1',     title:'📚 Четене' },
+    { key:'pari',      file:'chisla-i-pari.html', storage:'maxiChislaPari_v1',  title:'💶 Числа и пари' },
+    { key:'vnimanie',  file:'vnimanie.html',      storage:'maxiVnimanie_v1',    title:'🧠 Внимание и памет' },
+    { key:'govorya',   file:'govorya.html',       storage:'maxiGovorya_v1',     title:'💬 Говоря и планирам' },
+    { key:'dvizhenie', file:'dvizhenie.html',     storage:'maxiDvizhenie_v1',   title:'✋ Пръстче и спокойствие' }
+  ];
+  const MODE_NAMES = {
+    broene:'Броене', sravnenie:'Сравнение', prava:'Числова права', chasovnik:'Часовник', razpoznavane:'Монети и банкноти',
+    kolko:'Колко пари', plati:'Плати точно', resto:'Ресто', stigat:'Стигат ли парите',
+    kartinka:'Картинка → дума', duma:'Дума → картинка', zvuk:'Първи звук', srichki:'Сглоби думата', rimi:'Рими',
+    memory:'Двойки', sortirane:'Сортиране', razlichno:'Различното', lipsva:'Какво липсва', poredica:'Последователност',
+    emocii:'Емоции', aac:'Табло', grafik:'Моят ден', chuvstva:'Чувства', taimer:'Таймер',
+    prosledi:'Проследяване', dishane:'Дишане', balonche:'Балончета', svetlinki:'Светлинки'
+  };
+  function readNewApp(app, name){
+    try{
+      const all = JSON.parse(localStorage.getItem(app.storage)) || {};
+      return all[name] || null;
+    }catch(e){ return null; }
+  }
+  const newEntryText = (h) => (MODE_NAMES[h.mode] || h.mode) + ': ' + (h.q || '');
+  const newEntryMark = (h) => h.correct === true ? '✅' : (h.correct === false ? '❌' : '•');
+
   function renderProgressCard(profile){
     document.getElementById('progress-avatar').textContent = profile.avatar;
     const math = readMathStats(profile.name);
     const sub = readSubtractionStats(profile.name);
     const typing = readTypingStats(profile.name);
 
-    const combinedStars = (math ? (math.stars || 0) : 0) + (sub ? (sub.stars || 0) : 0) + (typing ? (typing.stars || 0) : 0);
-    const combinedStreak = Math.max(math ? (math.streak || 0) : 0, sub ? (sub.streak || 0) : 0);
+    const newRecs = NEW_APPS.map(app => ({ app, rec: readNewApp(app, profile.name) }));
+    const combinedStars = (math ? (math.stars || 0) : 0) + (sub ? (sub.stars || 0) : 0) + (typing ? (typing.stars || 0) : 0)
+      + newRecs.reduce((t, x) => t + (x.rec ? (x.rec.stars || 0) : 0), 0);
+    const combinedStreak = Math.max(math ? (math.streak || 0) : 0, sub ? (sub.streak || 0) : 0,
+      ...newRecs.map(x => x.rec ? (x.rec.streak || 0) : 0));
     document.getElementById('stat-stars').textContent = combinedStars;
     document.getElementById('stat-streak').textContent = combinedStreak;
     document.getElementById('stat-points').textContent = typing ? (typing.points || 0) : 0;
@@ -660,7 +808,8 @@
     const subHistory = (sub && sub.history) || [];
     const typingHistory = (typing && typing.history) || [];
 
-    if(!mathHistory.length && !subHistory.length && !typingHistory.length){
+    const anyNew = newRecs.some(x => x.rec && x.rec.history && x.rec.history.length);
+    if(!mathHistory.length && !subHistory.length && !typingHistory.length && !anyNew){
       historyEl.innerHTML = '<div class="progress-empty">Тук ще се появи историята, щом поиграеш малко 🙂</div>';
       return;
     }
@@ -688,6 +837,15 @@
         return `<div class="progress-item"><span>${escapeHtml(h.text)} ${mark}</span><span class="pi-time">${escapeHtml(timeStr)}</span></div>`;
       }).join('');
     }
+    newRecs.forEach(({ app, rec }) => {
+      const hist = (rec && rec.history) || [];
+      if(!hist.length) return;
+      html += '<div class="progress-section-title">' + app.title + '</div>';
+      html += hist.slice(0, 8).map(h => {
+        const timeStr = h.ts ? new Date(h.ts).toLocaleTimeString('bg-BG', {hour:'2-digit', minute:'2-digit'}) : '';
+        return `<div class="progress-item"><span>${escapeHtml(newEntryText(h))} ${newEntryMark(h)}</span><span class="pi-time">${escapeHtml(timeStr)}</span></div>`;
+      }).join('');
+    });
     historyEl.innerHTML = html;
   }
 
@@ -705,6 +863,7 @@
     'matematika_izvazhdane_login_zaemane.html': 'izvazhdane',
     'bulgarian-typing-login.html': 'pisane'
   };
+  NEW_APPS.forEach(app => { APP_KEY_BY_SRC[app.file] = app.key; });
 
   function openApp(src){
     const active = getActiveProfile();
@@ -720,7 +879,8 @@
         mathLen: (math && math.history) ? math.history.length : 0,
         subLen: (sub && sub.history) ? sub.history.length : 0,
         typingLen: (typing && typing.history) ? typing.history.length : 0,
-        typingPoints: typing ? (typing.points || 0) : 0
+        typingPoints: typing ? (typing.points || 0) : 0,
+        openedAt: Date.now()
       };
     } else {
       sessionSnapshot = null;
@@ -750,6 +910,10 @@
       if(math) statsPatch.stats.sbor = { points: math.score || 0, total: math.total || 0, streak: math.streak || 0, stars: math.stars || 0 };
       if(sub) statsPatch.stats.izvazhdane = { points: sub.score || 0, total: sub.total || 0, streak: sub.streak || 0, stars: sub.stars || 0 };
       if(typing) statsPatch.stats.pisane = { points: typing.points || 0, stars: typing.stars || 0 };
+      NEW_APPS.forEach(app => {
+        const r = readNewApp(app, active.name);
+        if(r) statsPatch.stats[app.key] = { points: r.score || 0, total: r.total || 0, streak: r.streak || 0, stars: r.stars || 0 };
+      });
       db.upsertProfile(active.id, statsPatch).catch(()=>{});
 
       if(!sessionSnapshot || !sessionSnapshot.appKey) return;
@@ -769,6 +933,18 @@
           const correctCount = newEntries.filter(h => h.correct).length;
           const tasks = newEntries.slice(0, 10).map(h => h.a + ' − ' + h.b + ' = ' + h.diff + (h.correct ? ' ✅' : ' ❌'));
           db.pushSession(active.id, appKey, { ts: nowIso, result: correctCount + '/' + newEntries.length + ' верни', tasks }).catch(()=>{});
+        }
+      } else if(NEW_APPS.some(a => a.key === appKey)){
+        const app = NEW_APPS.find(a => a.key === appKey);
+        const r = readNewApp(app, active.name);
+        const newEntries = ((r && r.history) || []).filter(h => h.ts && h.ts >= sessionSnapshot.openedAt);
+        if(newEntries.length){
+          const scored = newEntries.filter(h => h.correct !== null && h.correct !== undefined);
+          const result = scored.length
+            ? scored.filter(h => h.correct).length + '/' + scored.length + ' верни'
+            : newEntries.length + ' записа';
+          const tasks = newEntries.slice(0, 10).map(h => newEntryText(h) + ' ' + newEntryMark(h));
+          db.pushSession(active.id, appKey, { ts: nowIso, result, tasks }).catch(()=>{});
         }
       } else if(appKey === 'pisane' && typing && typing.history){
         const newEntries = typing.history.slice(0, Math.max(0, typing.history.length - sessionSnapshot.typingLen));
@@ -838,6 +1014,7 @@
   function renderAdminList(db){
     const listEl = document.getElementById('admin-list');
     const appNames = { srichki:'📖 Срички', sbor:'➕ Сбор', izvazhdane:'➖ Изваждане', pisane:'⌨️ Пиши и говори' };
+    NEW_APPS.forEach(app => { appNames[app.key] = app.title; });
     db.listProfiles().then(profiles => {
       const visible = profiles.filter(p => !p.deleted);
       if(!visible.length){ listEl.innerHTML = '<div class="progress-empty">Все още няма профили в облака.</div>'; return; }
@@ -867,6 +1044,145 @@
         </div>`;
       }).join('');
     }).catch(() => { listEl.innerHTML = '<div class="progress-empty">Грешка при зареждане.</div>'; });
+  }
+
+  /* ---- Родителски панел ---- */
+  function openParentPanel(){
+    if(!getActiveProfile()){ showProfileScreen(); return; }
+    Maxi.parentGate(renderParentPanel, 'За родители');
+  }
+  function closeParentPanel(){
+    const active = getActiveProfile();
+    if(active){ renderProgressCard(active); showScreen(menu); } else showProfileScreen();
+  }
+  function dayKey(ts){ const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+
+  /* Всички записи на детето от всички игри в един общ вид. */
+  function collectAll(name){
+    const rows = [];
+    const math = readMathStats(name), sub = readSubtractionStats(name), typing = readTypingStats(name);
+    ((math && math.history) || []).forEach(h => rows.push({ app:'➕ Сбор', mode:'Сбор', q: h.a + ' + ' + h.b + ' = ' + h.sum, a: h.userAnswer, correct: !!h.correct, ts: h.ts || null, time: h.time || '' }));
+    ((sub && sub.history) || []).forEach(h => rows.push({ app:'➖ Изваждане', mode:'Изваждане', q: h.a + ' − ' + h.b + ' = ' + h.diff, a: h.userAnswer, correct: !!h.correct, ts: h.ts || null, time: h.time || '' }));
+    ((typing && typing.history) || []).forEach(h => rows.push({ app:'⌨️ Пиши и говори', mode: h.mode || 'дума', q: h.text, a: '', correct: !!h.perfect, ts: h.ts || null }));
+    NEW_APPS.forEach(app => {
+      const r = readNewApp(app, name);
+      ((r && r.history) || []).forEach(h => rows.push({ app: app.title, mode: MODE_NAMES[h.mode] || h.mode, rawMode: h.mode, q: h.q, a: h.a || '', correct: h.correct, ts: h.ts || null }));
+    });
+    return rows;
+  }
+
+  function renderParentPanel(){
+    const active = getActiveProfile();
+    if(!active) return;
+    document.getElementById('pp-title').textContent = '👨‍👩‍👧 ' + active.avatar + ' ' + active.name + ' — напредък';
+    const rows = collectAll(active.name);
+
+    // Стълбова диаграма: брой дейности на ден, последните 14 дни
+    const days = [];
+    for(let i = 13; i >= 0; i--){ const d = new Date(); d.setHours(12,0,0,0); d.setDate(d.getDate() - i); days.push(d); }
+    const counts = days.map(d => rows.filter(r => r.ts && dayKey(r.ts) === dayKey(d.getTime())).length);
+    const max = Math.max(1, ...counts);
+    const W = 700, H = 190, padL = 30, padB = 26, padT = 18, bw = (W - padL - 10) / 14;
+    let svg = `<svg class="pp-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Дейности на ден">`;
+    [0, 0.5, 1].forEach(f => {
+      const y = H - padB - (H - padB - padT) * f;
+      svg += `<line x1="${padL}" x2="${W - 10}" y1="${y}" y2="${y}" stroke="#e6ebf0" stroke-width="1"/>`;
+      svg += `<text x="${padL - 6}" y="${y + 4}" text-anchor="end">${Math.round(max * f)}</text>`;
+    });
+    counts.forEach((c, i) => {
+      const x = padL + i * bw + 3, h = (H - padB - padT) * c / max, y = H - padB - h;
+      const label = days[i].toLocaleDateString('bg-BG', { day:'numeric', month:'numeric' });
+      if(c > 0){
+        const r = Math.min(4, h / 2, (bw - 6) / 2);
+        svg += `<path class="bar" d="M ${x} ${H - padB} L ${x} ${y + r} Q ${x} ${y} ${x + r} ${y} L ${x + bw - 6 - r} ${y} Q ${x + bw - 6} ${y} ${x + bw - 6} ${y + r} L ${x + bw - 6} ${H - padB} Z"><title>${label}: ${c} дейности</title></path>`;
+      }
+      if(c === max && c > 0) svg += `<text class="val" x="${x + (bw - 6) / 2}" y="${y - 5}" text-anchor="middle">${c}</text>`;
+      if(i % 2 === 1 || i === 13) svg += `<text x="${x + (bw - 6) / 2}" y="${H - 8}" text-anchor="middle">${label}</text>`;
+    });
+    svg += `<line x1="${padL}" x2="${W - 10}" y1="${H - padB}" y2="${H - padB}" stroke="#b8c2cc" stroke-width="1"/></svg>`;
+    document.getElementById('pp-chart').innerHTML = svg;
+    const undated = rows.filter(r => !r.ts).length;
+    document.getElementById('pp-chart-note').textContent = undated ? ('По-старите ' + undated + ' записа от „Сбор“/„Изваждане“ нямат дата и не са в диаграмата.') : 'Задръжте върху стълб, за да видите броя.';
+
+    // Таблица по игри
+    const groups = {};
+    rows.forEach(r => { (groups[r.app] = groups[r.app] || []).push(r); });
+    const starsOf = {
+      '➕ Сбор': (readMathStats(active.name) || {}).stars || 0,
+      '➖ Изваждане': (readSubtractionStats(active.name) || {}).stars || 0,
+      '⌨️ Пиши и говори': (readTypingStats(active.name) || {}).stars || 0
+    };
+    NEW_APPS.forEach(app => { starsOf[app.title] = (readNewApp(app, active.name) || {}).stars || 0; });
+    const order = ['➕ Сбор','➖ Изваждане','⌨️ Пиши и говори'].concat(NEW_APPS.map(a => a.title));
+    let table = '<table class="pp-table"><tr><th>Игра</th><th class="num">Задачи</th><th>Верни</th><th class="num">⭐</th><th class="num">Последно</th></tr>';
+    order.forEach(k => {
+      const list = groups[k] || [];
+      const scored = list.filter(r => r.correct === true || r.correct === false);
+      const ok = scored.filter(r => r.correct).length;
+      const pct = scored.length ? Math.round(ok * 100 / scored.length) : null;
+      const lastTs = Math.max(0, ...list.map(r => r.ts || 0));
+      table += `<tr><td>${k}</td><td class="num">${scored.length || (list.length ? list.length + ' записа' : '—')}</td>
+        <td>${pct === null ? '—' : `<span class="pp-bar" style="width:${Math.max(4, pct)}px"></span> ${pct}%`}</td>
+        <td class="num">${starsOf[k] || 0}</td><td class="num">${lastTs ? new Date(lastTs).toLocaleDateString('bg-BG') : '—'}</td></tr>`;
+    });
+    document.getElementById('pp-table').innerHTML = table + '</table>';
+
+    // Чувства и изречения
+    const fmtWhen = (ts) => ts ? new Date(ts).toLocaleString('bg-BG', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '';
+    const feel = rows.filter(r => r.rawMode === 'chuvstva').slice(0, 15);
+    document.getElementById('pp-feel').innerHTML = feel.length ? feel.map(r => `<div><span>${escapeHtml(r.q)}</span><span class="pi-time">${fmtWhen(r.ts)}</span></div>`).join('') : '<div class="progress-empty">Все още няма записи от „Как се чувствам?“</div>';
+    const aac = rows.filter(r => r.rawMode === 'aac').slice(0, 15);
+    document.getElementById('pp-aac').innerHTML = aac.length ? aac.map(r => `<div><span>🗣️ ${escapeHtml(r.q)}</span><span class="pi-time">${fmtWhen(r.ts)}</span></div>`).join('') : '<div class="progress-empty">Все още няма изречения от таблото</div>';
+
+    renderSettings();
+    showScreen(parentScreen);
+  }
+
+  function exportCSV(){
+    const active = getActiveProfile();
+    if(!active) return;
+    const rows = collectAll(active.name).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    const esc = (v) => '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"';
+    const lines = [['Дата','Час','Игра','Режим','Задача','Отговор','Резултат'].map(esc).join(';')];
+    rows.forEach(r => {
+      const d = r.ts ? new Date(r.ts) : null;
+      lines.push([
+        d ? d.toLocaleDateString('bg-BG') : '', d ? d.toLocaleTimeString('bg-BG', {hour:'2-digit', minute:'2-digit'}) : (r.time || ''),
+        r.app.replace(/^[^\p{L}]+/u, ''), r.mode, r.q, r.a,
+        r.correct === true ? 'вярно' : (r.correct === false ? 'с грешка' : '')
+      ].map(esc).join(';'));
+    });
+    const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'napredak-' + active.name + '-' + dayKey(Date.now()) + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  function renderSettings(){
+    const st = Maxi.loadSettings();
+    const box = document.getElementById('pp-settings');
+    const sizes = [[1,'Нормален'],[1.15,'Голям'],[1.3,'Много голям']];
+    box.innerHTML = `
+      <label>🗣️ Скорост на говора: <span id="pp-rate-v">${st.speechRate.toFixed(1)}×</span>
+        <input type="range" min="0.6" max="1.4" step="0.1" value="${st.speechRate}" id="pp-rate"></label>
+      <label>🔠 Размер на текста
+        <div class="pp-seg">${sizes.map(([v, l]) => `<button type="button" data-v="${v}" class="${st.textSize === v ? 'on' : ''}">${l}</button>`).join('')}</div></label>
+      <label class="chk"><input type="checkbox" id="pp-speech" ${st.speech ? 'checked' : ''}> Изговаряне на глас</label>
+      <label class="chk"><input type="checkbox" id="pp-sounds" ${st.sounds ? 'checked' : ''}> Звукови сигнали</label>
+      <label class="chk"><input type="checkbox" id="pp-motion" ${st.reduceMotion ? 'checked' : ''}> Без анимации (при сензорна чувствителност)</label>
+      <label class="chk"><input type="checkbox" id="pp-contrast" ${st.highContrast ? 'checked' : ''}> Висок контраст</label>
+      <div class="pp-muted">Важат за Четене, Числа и пари, Внимание и памет, Говоря и планирам, Пръстче и спокойствие.</div>
+      <div><button class="pp-btn" type="button" id="pp-test">🔊 Пробвай гласа</button></div>`;
+    const save = (patch) => { const s = Object.assign(Maxi.loadSettings(), patch); Maxi.saveSettings(s); Maxi.settings = s; };
+    box.querySelector('#pp-rate').oninput = (e) => { const v = parseFloat(e.target.value); document.getElementById('pp-rate-v').textContent = v.toFixed(1) + '×'; save({ speechRate: v }); };
+    box.querySelectorAll('.pp-seg button').forEach(b => b.onclick = () => { save({ textSize: parseFloat(b.dataset.v) }); renderSettings(); });
+    box.querySelector('#pp-speech').onchange = (e) => save({ speech: e.target.checked });
+    box.querySelector('#pp-sounds').onchange = (e) => save({ sounds: e.target.checked });
+    box.querySelector('#pp-motion').onchange = (e) => save({ reduceMotion: e.target.checked });
+    box.querySelector('#pp-contrast').onchange = (e) => save({ highContrast: e.target.checked });
+    box.querySelector('#pp-test').onclick = () => Maxi.speak('Здравей! Така ще звучи гласът в игрите.');
   }
 
   window.addEventListener('popstate', closeApp);

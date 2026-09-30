@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Пръстче и спокойствие</title>
+<link rel="stylesheet" href="maxi-common.css">
+<script src="maxi-common.js"></script>
+<style>
+  .trace-wrap{ position:relative; width:100%; display:flex; justify-content:center; }
+  #traceCanvas{ touch-action:none; background:#fbfdff; border-radius:22px; border:3px solid var(--line); max-width:100%; }
+  /* Дишане */
+  #breath{ justify-content:center; }
+  .breath-stage{ position:relative; width:min(78vw, 60vh, 460px); aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; }
+  .breath-ring{ position:absolute; inset:0; border-radius:50%; border:4px dashed #b8d4ee; }
+  .breath-ball{
+    width:100%; height:100%; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #d9f1ff, #7cc3f0 60%, #4a9fd8);
+    box-shadow:0 10px 40px rgba(74,159,216,0.35); transform:scale(0.35); will-change:transform;
+  }
+  .breath-text{ position:absolute; font-size:calc(clamp(1.6rem,5vw,2.6rem) * var(--ts)); font-weight:900; color:#1f4e79; text-align:center; }
+  .breath-count{ font-weight:800; color:var(--ink-soft); font-size:calc(1.1rem * var(--ts)); }
+  /* Балончета и светлинки */
+  #bubbles, #lights{ padding:0; overflow:hidden; }
+  .field{ position:absolute; inset:0; overflow:hidden; touch-action:none; }
+  .bubble{
+    position:absolute; border-radius:50%; border:none; padding:0; cursor:pointer;
+    background:radial-gradient(circle at 30% 30%, rgba(255,255,255,0.95), rgba(255,255,255,0.15) 35%, var(--bc) 100%);
+    box-shadow:inset 0 0 12px rgba(255,255,255,0.6), 0 4px 14px rgba(0,0,0,0.08);
+  }
+  .burst{ position:absolute; pointer-events:none; font-size:1.6rem; animation:mx-fly .7s ease-out forwards; }
+  .field-info{
+    position:absolute; left:50%; bottom:1rem; transform:translateX(-50%); z-index:3;
+    background:rgba(255,255,255,0.85); border-radius:999px; padding:0.5rem 1.1rem; font-weight:800; font-size:calc(1rem * var(--ts));
+  }
+  #lights{ background:#101a2b; }
+  body.dark-top .mx-title{ color:#fff; }
+  #lightsCanvas{ position:absolute; inset:0; width:100%; height:100%; touch-action:none; }
+</style>
+</head>
+<body>
+
+<header class="mx-top">
+  <div class="mx-title">✋ Пръстче и спокойствие</div>
+  <span class="mx-badge">⭐ <span id="mx-stars">0</span></span>
+  <span class="mx-badge">🔥 <span id="mx-streak">0</span></span>
+  <button id="mx-back" class="mx-pill" hidden onclick="goMenu()">↩ Игри</button>
+</header>
+
+<section id="menu" class="mx-screen active">
+  <h1 class="mx-h1">Пръстче и спокойствие ✋</h1>
+  <p class="mx-sub">Избери</p>
+  <div class="mx-section-title">✍️ Писане с пръстче</div>
+  <div class="mx-tiles">
+    <button class="mx-tile g2" onclick="openMode('prosledi')"><span class="i">✍️</span><span class="l">Проследи с пръстче</span><span class="s">Цифри и букви</span></button>
+  </div>
+  <div class="mx-section-title">🌿 Спокойно кътче</div>
+  <div class="mx-tiles">
+    <button class="mx-tile g6" onclick="openBreath()"><span class="i">🌬️</span><span class="l">Дишай с мен</span><span class="s">Вдишай… издишай…</span></button>
+    <button class="mx-tile g5" onclick="openBubbles()"><span class="i">🫧</span><span class="l">Балончета</span><span class="s">Пукни ги леко</span></button>
+    <button class="mx-tile g1" onclick="openLights()"><span class="i">✨</span><span class="l">Светлинки</span><span class="s">Рисувай със светлина</span></button>
+  </div>
+</section>
+
+<section id="play" class="mx-screen">
+  <div class="mx-levels" id="levels"></div>
+  <div class="mx-card">
+    <div class="mx-prompt"><span id="prompt"></span><button class="mx-say" onclick="sayPrompt()" aria-label="Кажи пак">🔊</button></div>
+    <div id="area" style="display:flex;flex-direction:column;align-items:center;gap:1rem;width:100%;"></div>
+    <div id="answer"></div>
+    <div id="keypad"></div>
+    <div class="mx-feedback" id="fb"></div>
+    <div class="mx-row">
+      <button class="mx-btn orange" id="hintBtn" onclick="hint()" hidden>💡 Подсказка</button>
+      <button class="mx-btn green" id="nextBtn" onclick="newRound()" hidden>Следваща ▶</button>
+    </div>
+  </div>
+</section>
+
+<section id="breath" class="mx-screen">
+  <div class="breath-stage">
+    <div class="breath-ring"></div>
+    <div class="breath-ball" id="breathBall"></div>
+    <div class="breath-text" id="breathText">Готов ли си?</div>
+  </div>
+  <div class="breath-count" id="breathCount"></div>
+  <div class="mx-row">
+    <button class="mx-btn green" id="breathBtn" onclick="breathToggle()">▶ Започни</button>
+    <button class="mx-pill light" id="breathVoiceBtn" onclick="breathVoiceToggle()"></button>
+  </div>
+</section>
+
+<section id="bubbles" class="mx-screen">
+  <div class="field" id="bubbleField"></div>
+  <div class="field-info" id="bubbleInfo">🫧 0</div>
+</section>
+
+<section id="lights" class="mx-screen">
+  <canvas id="lightsCanvas"></canvas>
+  <div class="field-info">✨ Движи пръстче по екрана</div>
+</section>
+
+<script>
+const M = window.Maxi;
+const store = M.createStore('maxiDvizhenie_v1');
+const $ = (id) => document.getElementById(id);
+const ex = store.rec.extra;
+let G;
+
+/* ================= Проследи с пръстче ================= */
+const SETS = [
+  '0123456789'.split(''),
+  'АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЮЯ'.split(''),
+  'абвгдежзийклмнопрстуфхцчшщъюя'.split('')
+];
+const VOW = 'аеиоуъюя';
+const letterSound = (ch) => { const l = ch.toLowerCase(); return VOW.includes(l) ? l : l + 'ъ'; };
+const glyphName = (ch) => /[0-9]/.test(ch) ? 'цифрата ' + M.num(+ch) : 'буквата ' + letterSound(ch);
+
+const MODES = {
+  prosledi: {
+    levels: ['Цифри', 'Главни букви', 'Малки букви'],
+    round(){
+      const ch = M.pick(SETS[G.level]);
+      G.setPrompt('Проследи с пръстче: ' + ch, 'Проследи с пръстче ' + glyphName(ch) + '.');
+      const area = $('area');
+      const wrap = document.createElement('div'); wrap.className = 'trace-wrap';
+      const cv = document.createElement('canvas'); cv.id = 'traceCanvas';
+      wrap.appendChild(cv); area.appendChild(wrap);
+      const cssW = Math.min(area.clientWidth || 600, 640), cssH = Math.round(Math.min(cssW * 0.85, window.innerHeight * 0.5));
+      const dpr = window.devicePixelRatio || 1;
+      cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
+      cv.style.width = cssW + 'px'; cv.style.height = cssH + 'px';
+      const ctx = cv.getContext('2d');
+      ctx.scale(dpr, dpr);
+      const fontPx = Math.round(cssH * 0.82);
+      const font = `800 ${fontPx}px "Segoe UI", Arial, sans-serif`;
+      const brush = Math.max(18, fontPx * 0.11);
+      // Маска на буквата (с малко толеранс) и слой с рисунката на детето
+      const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+      const mask = mk(cssW, cssH), mctx = mask.getContext('2d');
+      const tol = mk(cssW, cssH), tctx = tol.getContext('2d');
+      const user = mk(cssW, cssH), uctx = user.getContext('2d');
+      [mctx, tctx, ctx].forEach(c => { c.font = font; c.textAlign = 'center'; c.textBaseline = 'middle'; });
+      const gx = cssW / 2, gy = cssH / 2 + fontPx * 0.04;
+      mctx.fillStyle = '#000'; mctx.fillText(ch, gx, gy);
+      tctx.fillStyle = '#000'; tctx.strokeStyle = '#000'; tctx.lineWidth = brush * 1.6; tctx.lineJoin = 'round';
+      tctx.fillText(ch, gx, gy); tctx.strokeText(ch, gx, gy);
+      const drawGuide = () => {
+        ctx.clearRect(0, 0, cssW, cssH);
+        ctx.fillStyle = '#e3ecf5'; ctx.fillText(ch, gx, gy);
+        ctx.setLineDash([10, 8]); ctx.strokeStyle = '#9bb3cc'; ctx.lineWidth = 3; ctx.strokeText(ch, gx, gy); ctx.setLineDash([]);
+        ctx.drawImage(user, 0, 0, cssW, cssH);
+      };
+      const step = 4;
+      const md = mctx.getImageData(0, 0, cssW, cssH).data, td = tctx.getImageData(0, 0, cssW, cssH).data;
+      let glyphCells = 0;
+      for(let y = 0; y < cssH; y += step) for(let x = 0; x < cssW; x += step) if(md[(y * cssW + x) * 4 + 3] > 128) glyphCells++;
+      const evaluate = () => {
+        const ud = uctx.getImageData(0, 0, cssW, cssH).data;
+        let covered = 0, userCells = 0, inside = 0;
+        for(let y = 0; y < cssH; y += step) for(let x = 0; x < cssW; x += step){
+          const i = (y * cssW + x) * 4 + 3;
+          const u = ud[i] > 60;
+          if(md[i] > 128 && u) covered++;
+          if(u){ userCells++; if(td[i] > 60) inside++; }
+        }
+        return { cover: glyphCells ? covered / glyphCells : 0, acc: userCells ? inside / userCells : 0, drawn: userCells };
+      };
+      drawGuide();
+      let drawing = false, last = null;
+      const pos = (e) => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * cssW / r.width, y: (e.clientY - r.top) * cssH / r.height }; };
+      const line = (a, b) => {
+        uctx.strokeStyle = '#3498db'; uctx.lineWidth = brush; uctx.lineCap = 'round'; uctx.lineJoin = 'round';
+        uctx.beginPath(); uctx.moveTo(a.x, a.y); uctx.lineTo(b.x, b.y); uctx.stroke();
+      };
+      cv.addEventListener('pointerdown', (e) => { if(G.done()) return; cv.setPointerCapture(e.pointerId); drawing = true; last = pos(e); line(last, last); drawGuide(); });
+      cv.addEventListener('pointermove', (e) => { if(!drawing) return; const p = pos(e); line(last, p); last = p; drawGuide(); });
+      const end = () => {
+        if(!drawing) return;
+        drawing = false;
+        const r = evaluate();
+        if(r.cover >= 0.62 && r.acc >= 0.7){ uctx.globalCompositeOperation = 'source-in'; uctx.fillStyle = '#2e9e5b'; uctx.fillRect(0, 0, cssW, cssH); uctx.globalCompositeOperation = 'source-over'; drawGuide(); complete(ch, Math.round(r.cover * 100) + '%', glyphName(ch)); }
+        else if(r.acc < 0.5 && r.drawn > 60){ G.mistakes++; M.bad(); M.feedback($('fb'), 'Опитай по-близо до ' + (/[0-9]/.test(ch) ? 'цифрата' : 'буквата') + ' 🙂', 'bad'); M.speak('Опитай по-близо до линиите.'); }
+      };
+      cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end); cv.addEventListener('pointerleave', end);
+      const tools = document.createElement('div'); tools.className = 'mx-row';
+      const clear = document.createElement('button'); clear.className = 'mx-btn gray'; clear.textContent = '🧽 Изчисти';
+      clear.onclick = () => { if(G.done()) return; uctx.clearRect(0, 0, cssW, cssH); drawGuide(); M.feedback($('fb'), ''); };
+      const check = document.createElement('button'); check.className = 'mx-btn green'; check.textContent = 'Готово ✓';
+      check.onclick = () => {
+        if(G.done()) return;
+        const r = evaluate();
+        if(r.cover >= 0.5 && r.acc >= 0.6) complete(ch, Math.round(r.cover * 100) + '%', glyphName(ch));
+        else { M.feedback($('fb'), 'Още малко — мини по цялата ' + (/[0-9]/.test(ch) ? 'цифра' : 'буква'), 'bad'); M.speak('Още малко. Мини по цялата линия.'); }
+      };
+      tools.appendChild(clear); tools.appendChild(check);
+      area.appendChild(tools);
+    }
+  }
+};
+
+/* ================= Дишай с мен ================= */
+const PHASES = [['Вдишай…', 4000, 0.35, 1], ['Задръж', 1500, 1, 1], ['Издишай…', 5000, 1, 0.35]];
+let bRun = false, bCycles = 0, bRaf = null;
+ex.breathVoice = ex.breathVoice !== false;
+function openBreath(){ M.show('breath'); bCycles = 0; renderBreathInfo(); $('breathText').textContent = 'Готов ли си?'; $('breathBall').style.transform = 'scale(0.35)'; }
+function renderBreathInfo(){
+  $('breathCount').textContent = bCycles ? 'Дишания: ' + bCycles + ' от 5' : '5 бавни дишания';
+  $('breathBtn').textContent = bRun ? '⏸ Спри' : '▶ Започни';
+  $('breathVoiceBtn').textContent = ex.breathVoice ? '🔈 С глас' : '🔇 Без глас';
+}
+function breathVoiceToggle(){ ex.breathVoice = !ex.breathVoice; store.save(); renderBreathInfo(); }
+function breathToggle(){
+  if(bRun){ stopBreath(); return; }
+  bRun = true; bCycles = 0; renderBreathInfo();
+  let phase = 0, t0 = performance.now();
+  const say = (i) => { if(ex.breathVoice) M.speak(PHASES[i][0].replace('…', ''), { rate: 0.7 }); };
+  $('breathText').textContent = PHASES[0][0]; say(0);
+  const tick = (now) => {
+    if(!bRun || !$('breath').classList.contains('active')){ stopBreath(); return; }
+    const [label, dur, from, to] = PHASES[phase];
+    const k = Math.min(1, (now - t0) / dur);
+    const e = 0.5 - Math.cos(Math.PI * k) / 2;
+    $('breathBall').style.transform = 'scale(' + (from + (to - from) * e).toFixed(3) + ')';
+    if(k >= 1){
+      phase = (phase + 1) % PHASES.length;
+      t0 = now;
+      if(phase === 0){
+        bCycles++; renderBreathInfo();
+        if(bCycles >= 5){
+          stopBreath();
+          $('breathText').textContent = 'Браво 💙';
+          store.log('dishane', '5 спокойни дишания');
+          M.chime();
+          M.speak('Браво. Справи се чудесно.', { rate: 0.8 });
+          return;
+        }
+      }
+      $('breathText').textContent = PHASES[phase][0]; say(phase);
+    }
+    bRaf = requestAnimationFrame(tick);
+  };
+  bRaf = requestAnimationFrame(tick);
+}
+function stopBreath(){ bRun = false; if(bRaf) cancelAnimationFrame(bRaf); bRaf = null; renderBreathInfo(); }
+
+/* ================= Балончета ================= */
+const PENTA = [523, 587, 659, 784, 880, 1047];
+const BCOLS = ['#4fa3e0', '#9575cd', '#26c6da', '#f06292', '#9ccc65', '#ffca28'];
+let bubbles = [], bubRaf = null, popped = 0, lastSpawn = 0;
+function openBubbles(){
+  M.show('bubbles');
+  popped = 0; $('bubbleInfo').textContent = '🫧 Пукни балончетата';
+  $('bubbleField').innerHTML = ''; bubbles = [];
+  let prev = performance.now();
+  const loop = (now) => {
+    if(!$('bubbles').classList.contains('active')){ bubRaf = null; return; }
+    const dt = Math.min(50, now - prev) / 1000; prev = now;
+    const field = $('bubbleField'), H = field.clientHeight, W = field.clientWidth;
+    if(now - lastSpawn > (M.settings.reduceMotion ? 1600 : 900) && bubbles.length < 14){ lastSpawn = now; spawnBubble(W, H); }
+    const speedK = M.settings.reduceMotion ? 0.5 : 1;
+    bubbles = bubbles.filter(b => {
+      b.y -= b.v * speedK * dt;
+      b.t += dt;
+      const x = b.x + Math.sin(b.t * b.w) * 18;
+      b.el.style.transform = `translate(${x}px, ${b.y}px)`;
+      if(b.y < -b.s - 10){ b.el.remove(); return false; }
+      return true;
+    });
+    bubRaf = requestAnimationFrame(loop);
+  };
+  bubRaf = requestAnimationFrame(loop);
+}
+function spawnBubble(W, H){
+  const s = M.randInt(70, 130);
+  const el = document.createElement('button');
+  el.className = 'bubble';
+  el.style.width = el.style.height = s + 'px';
+  el.style.setProperty('--bc', M.pick(BCOLS));
+  el.setAttribute('aria-label', 'балонче');
+  const b = { el, s, x: M.randInt(10, Math.max(20, W - s - 10)), y: H + 10, v: M.randInt(40, 80), t: Math.random() * 6, w: 0.8 + Math.random() };
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    popped++;
+    $('bubbleInfo').textContent = '🫧 ' + popped;
+    M.tone(M.pick(PENTA), 0.35, 'sine');
+    const r = el.getBoundingClientRect(), fr = $('bubbleField').getBoundingClientRect();
+    for(let i = 0; i < 5; i++){
+      const p = document.createElement('span'); p.className = 'burst'; p.textContent = '✨';
+      p.style.left = (r.left - fr.left + s / 2) + 'px'; p.style.top = (r.top - fr.top + s / 2) + 'px';
+      p.style.setProperty('--dx', (Math.random() * 120 - 60) + 'px'); p.style.setProperty('--rot', (Math.random() * 180) + 'deg');
+      $('bubbleField').appendChild(p); setTimeout(() => p.remove(), 700);
+    }
+    el.remove();
+    bubbles = bubbles.filter(x => x !== b);
+  });
+  $('bubbleField').appendChild(el);
+  bubbles.push(b);
+}
+
+/* ================= Светлинки ================= */
+let lctx = null, parts = [], lRaf = null, lStart = 0, lTouches = 0;
+function openLights(){
+  M.show('lights');
+  document.body.classList.add('dark-top');
+  const cv = $('lightsCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr;
+  lctx = cv.getContext('2d'); lctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  parts = []; lStart = Date.now(); lTouches = 0;
+  const loop = () => {
+    if(!$('lights').classList.contains('active')){ lRaf = null; return; }
+    lctx.fillStyle = 'rgba(16,26,43,0.18)';
+    lctx.fillRect(0, 0, cv.clientWidth, cv.clientHeight);
+    lctx.globalCompositeOperation = 'lighter';
+    parts = parts.filter(p => {
+      p.x += p.vx; p.y += p.vy; p.vy += 0.02; p.life -= 0.015;
+      if(p.life <= 0) return false;
+      const g = lctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+      g.addColorStop(0, `hsla(${p.h},100%,75%,${p.life})`); g.addColorStop(1, `hsla(${p.h},100%,60%,0)`);
+      lctx.fillStyle = g; lctx.beginPath(); lctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); lctx.fill();
+      return true;
+    });
+    lctx.globalCompositeOperation = 'source-over';
+    lRaf = requestAnimationFrame(loop);
+  };
+  lRaf = requestAnimationFrame(loop);
+}
+(function(){
+  const cv = $('lightsCanvas');
+  let hue = 180;
+  const add = (e) => {
+    const r = cv.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    hue = (hue + 3) % 360;
+    for(let i = 0; i < 3; i++) parts.push({ x, y, vx: (Math.random() - 0.5) * 1.6, vy: (Math.random() - 0.5) * 1.6, r: 14 + Math.random() * 22, h: hue, life: 1 });
+  };
+  cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); lTouches++; M.tone(M.pick(PENTA) / 2, 0.5, 'sine'); add(e); });
+  cv.addEventListener('pointermove', (e) => { if(e.buttons || e.pointerType === 'touch') add(e); });
+})();
+
+/* ================= Изход към менюто: спираме всичко и записваме ================= */
+G = M.createGame(store, MODES);
+const baseGoMenu = G.goMenu;
+window.goMenu = function(){
+  if($('bubbles').classList.contains('active') && popped) store.log('balonche', popped === 1 ? '1 пукнато балонче' : popped + ' пукнати балончета');
+  if($('lights').classList.contains('active') && lTouches) store.log('svetlinki', Math.max(1, Math.round((Date.now() - lStart) / 60000)) + ' мин рисуване със светлина');
+  stopBreath();
+  document.body.classList.remove('dark-top');
+  baseGoMenu();
+};
+if(location.hash === '#dishane') openBreath();
+else M.show('menu');
+</script>
+</body>
+</html>

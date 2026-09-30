@@ -1,0 +1,247 @@
+/* Общи стилове за новите учебни игри (Четене, Числа и пари, Внимание,
+   Говоря и планирам, Пръстче и спокойствие). Цветовете и формите следват
+   хъба: мек градиентен фон, бели карти, големи цветни плочки. */
+:root{
+  --bg1:#fdf6ec;
+  --bg2:#e8f4ff;
+  --ink:#2c3e50;
+  --ink-soft:#5b6b7a;
+  --card:#ffffff;
+  --line:#d7dee5;
+  --ok:#2e9e5b;
+  --ok-bg:#e6f7ec;
+  --bad:#d9534f;
+  --bad-bg:#fdecea;
+  --accent:#5da8e8;
+  --shadow:0 6px 14px rgba(44,62,80,0.15);
+  --ts:1;              /* размер на текста — от общите настройки */
+  --tap:clamp(64px, 11vw, 96px);
+}
+*{ box-sizing:border-box; }
+html,body{
+  margin:0; padding:0; height:100%;
+  font-family:'Segoe UI', Arial, sans-serif;
+  color:var(--ink);
+  background:linear-gradient(135deg,var(--bg1),var(--bg2));
+  -webkit-tap-highlight-color:transparent;
+  overflow:hidden;
+}
+body{ font-size:calc(18px * var(--ts)); }
+button{ font-family:inherit; color:inherit; }
+
+/* ---------- Горна лента ---------- */
+.mx-top{
+  position:fixed; top:0; left:0; right:0; z-index:4;
+  display:flex; align-items:center; justify-content:flex-end; gap:0.6rem;
+  /* отляво оставяме място за плаващия бутон „🏠 Начало“ на хъба */
+  padding:clamp(0.6rem,2vw,1.2rem) clamp(0.6rem,2vw,1.2rem) 0.4rem clamp(9rem,20vw,11rem);
+  pointer-events:none;
+}
+.mx-top > *{ pointer-events:auto; }
+.mx-title{
+  margin-right:auto;
+  font-weight:800;
+  font-size:calc(clamp(1.05rem,2.6vw,1.5rem) * var(--ts));
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.mx-badge{
+  background:#fff; border-radius:999px; padding:0.45rem 0.9rem;
+  font-weight:800; box-shadow:var(--shadow); white-space:nowrap;
+  font-size:calc(1rem * var(--ts));
+}
+.mx-pill{
+  background:var(--ink); color:#fff; border:none; border-radius:999px;
+  padding:0.55rem 1.1rem; font-weight:800; cursor:pointer; box-shadow:var(--shadow);
+  font-size:calc(1rem * var(--ts));
+}
+.mx-pill.light{ background:#fff; color:var(--ink); }
+.mx-pill:active{ transform:scale(0.95); }
+.mx-pill[hidden]{ display:none; }
+
+/* ---------- Екрани ---------- */
+.mx-screen{
+  position:absolute; inset:0;
+  display:none; flex-direction:column; align-items:center;
+  gap:clamp(0.8rem,2.4vw,1.6rem);
+  padding:calc(clamp(3.6rem,8vw,5rem)) clamp(0.8rem,3vw,2.5rem) clamp(1rem,3vw,2rem);
+  overflow-y:auto;
+}
+.mx-screen.active{ display:flex; }
+.mx-h1{ margin:0.2rem 0 0; text-align:center; font-size:calc(clamp(1.4rem,3.8vw,2.4rem) * var(--ts)); }
+.mx-sub{ margin:0; text-align:center; color:var(--ink-soft); font-size:calc(1rem * var(--ts)); }
+
+/* ---------- Плочки с игри ---------- */
+.mx-tiles{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(clamp(150px,24vw,230px), 1fr));
+  gap:clamp(0.8rem,2.2vw,1.6rem);
+  width:100%; max-width:1100px;
+}
+.mx-tile{
+  border:none; border-radius:26px; cursor:pointer; color:#fff;
+  min-height:clamp(130px,20vw,190px);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.4rem;
+  padding:1rem; box-shadow:var(--shadow);
+  transition:transform .15s ease;
+}
+.mx-tile:active{ transform:scale(0.96); }
+.mx-tile .i{ font-size:clamp(2.4rem,6vw,3.6rem); line-height:1; }
+.mx-tile .l{ font-weight:800; font-size:calc(clamp(1rem,2.2vw,1.35rem) * var(--ts)); text-align:center; }
+.mx-tile .s{ font-size:calc(0.85rem * var(--ts)); opacity:0.92; text-align:center; }
+.mx-section-title{
+  width:100%; max-width:1100px; margin:0.6rem 0 -0.4rem;
+  font-weight:800; color:var(--ink-soft); font-size:calc(1rem * var(--ts));
+}
+.g1{ background:linear-gradient(160deg,#e2b26b,#c98a3f); }
+.g2{ background:linear-gradient(160deg,#5da8e8,#2c6fb0); }
+.g3{ background:linear-gradient(160deg,#e8845d,#c1512e); }
+.g4{ background:linear-gradient(160deg,#8fbf7a,#4f9350); }
+.g5{ background:linear-gradient(160deg,#b28be0,#7a52b3); }
+.g6{ background:linear-gradient(160deg,#5cc6c0,#2a8c86); }
+.g7{ background:linear-gradient(160deg,#f08bb0,#c24f7c); }
+.g8{ background:linear-gradient(160deg,#f2c14e,#d19a14); }
+
+/* ---------- Карта за игра ---------- */
+.mx-card{
+  background:var(--card); border-radius:24px; box-shadow:var(--shadow);
+  padding:clamp(1rem,2.6vw,1.8rem);
+  width:100%; max-width:980px;
+  display:flex; flex-direction:column; align-items:center; gap:clamp(0.7rem,2vw,1.2rem);
+}
+.mx-prompt{
+  display:flex; align-items:center; justify-content:center; gap:0.6rem; flex-wrap:wrap;
+  font-size:calc(clamp(1.2rem,3vw,1.8rem) * var(--ts)); font-weight:800; text-align:center;
+}
+.mx-say{
+  border:none; background:#fff3e0; border-radius:999px; cursor:pointer;
+  width:clamp(48px,8vw,60px); height:clamp(48px,8vw,60px); font-size:1.5rem; flex-shrink:0;
+}
+.mx-say:active{ transform:scale(0.92); }
+.mx-big{ font-size:clamp(4rem,12vw,7rem); line-height:1.1; text-align:center; }
+
+/* ---------- Нива ---------- */
+.mx-levels{ display:flex; gap:0.5rem; flex-wrap:wrap; justify-content:center; }
+.mx-level{
+  border:2px solid #a0c4ff; background:#eef6ff; border-radius:12px; cursor:pointer;
+  padding:0.45rem 0.9rem; font-weight:700; font-size:calc(0.95rem * var(--ts));
+}
+.mx-level.active{ background:#3498db; border-color:#3498db; color:#fff; }
+
+/* ---------- Отговори (големи бутони) ---------- */
+.mx-options{
+  display:flex; flex-wrap:wrap; justify-content:center; gap:clamp(0.6rem,2vw,1.2rem); width:100%;
+}
+.mx-opt{
+  min-width:var(--tap); min-height:var(--tap);
+  padding:0.6rem 1.1rem; border-radius:20px; cursor:pointer;
+  border:3px solid var(--line); background:#fff;
+  font-size:calc(clamp(1.2rem,3vw,1.8rem) * var(--ts)); font-weight:800;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.2rem;
+  box-shadow:0 3px 8px rgba(44,62,80,0.08);
+  transition:transform .12s ease, background .15s ease, border-color .15s ease;
+}
+.mx-opt:active{ transform:scale(0.95); }
+.mx-opt .e{ font-size:clamp(2.6rem,7vw,4rem); line-height:1.1; }
+.mx-opt.ok{ background:var(--ok-bg); border-color:var(--ok); }
+.mx-opt.bad{ background:var(--bad-bg); border-color:var(--bad); animation:mx-shake .3s; }
+.mx-opt.dim{ opacity:0.35; }
+.mx-opt:disabled{ cursor:default; }
+
+.mx-feedback{
+  min-height:1.6em; text-align:center; font-weight:800;
+  font-size:calc(clamp(1.1rem,2.6vw,1.5rem) * var(--ts));
+}
+.mx-feedback.ok{ color:var(--ok); }
+.mx-feedback.bad{ color:var(--bad); }
+
+.mx-row{ display:flex; gap:0.7rem; flex-wrap:wrap; justify-content:center; align-items:center; }
+.mx-btn{
+  border:none; border-radius:16px; cursor:pointer; color:#fff; font-weight:800;
+  padding:0.8rem 1.4rem; font-size:calc(1.15rem * var(--ts)); box-shadow:var(--shadow);
+  background:#3498db;
+}
+.mx-btn:active{ transform:scale(0.96); }
+.mx-btn.green{ background:#4f9350; }
+.mx-btn.orange{ background:#f39c12; }
+.mx-btn.red{ background:#c0392b; }
+.mx-btn.gray{ background:#8a97a3; }
+.mx-btn.purple{ background:#8e44ad; }
+.mx-btn:disabled{ opacity:0.4; cursor:default; }
+
+/* ---------- Отговор цифра по цифра + клавиатура ---------- */
+.mx-answer{ display:flex; align-items:center; justify-content:center; gap:0.5rem; flex-wrap:wrap; }
+.mx-seg{
+  min-width:clamp(90px,16vw,140px); min-height:clamp(64px,11vw,88px);
+  border:3px solid #a0c4ff; border-radius:16px; background:#fff;
+  display:flex; align-items:center; justify-content:center;
+  font-size:calc(clamp(2.2rem,6vw,3.4rem) * var(--ts)); font-weight:800; letter-spacing:0.05em;
+  padding:0 0.6rem;
+}
+.mx-seg.current{ border-color:#3498db; box-shadow:0 0 0 4px rgba(52,152,219,0.18); }
+.mx-seg.done{ border-color:var(--ok); background:var(--ok-bg); }
+.mx-seg.wrong{ border-color:var(--bad); background:var(--bad-bg); animation:mx-shake .3s; }
+.mx-seg .ph{ color:#b8c2cc; }
+.mx-unit{ font-size:calc(clamp(1.4rem,3.6vw,2.2rem) * var(--ts)); font-weight:800; }
+.mx-keypad{
+  display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:clamp(0.4rem,1.2vw,0.7rem);
+  width:100%; max-width:560px;
+}
+.mx-key{
+  border:none; border-radius:16px; background:#eef6ff; cursor:pointer;
+  min-height:clamp(54px,9vw,72px); font-size:calc(clamp(1.5rem,3.6vw,2.1rem) * var(--ts)); font-weight:800;
+  box-shadow:0 3px 0 #c9dcf2;
+}
+.mx-key:active{ transform:translateY(2px); box-shadow:0 1px 0 #c9dcf2; }
+.mx-key.back{ background:#fdecea; box-shadow:0 3px 0 #f2c6c2; }
+
+@keyframes mx-shake{ 0%,100%{transform:translateX(0);} 25%{transform:translateX(-7px);} 75%{transform:translateX(7px);} }
+@keyframes mx-pop{ 0%{transform:scale(0);opacity:0;} 60%{transform:scale(1.35);opacity:1;} 100%{transform:scale(1);} }
+.mx-pop{ display:inline-block; animation:mx-pop .5s ease; }
+
+/* ---------- Конфети ---------- */
+.mx-confetti{ position:fixed; inset:0; pointer-events:none; z-index:50; overflow:hidden; }
+.mx-confetti span{
+  position:absolute; top:45%; font-size:2rem;
+  animation:mx-fly .95s ease-out forwards;
+}
+@keyframes mx-fly{
+  0%{ transform:translate(0,0) rotate(0); opacity:1; }
+  100%{ transform:translate(var(--dx), -220px) rotate(var(--rot)); opacity:0; }
+}
+
+/* ---------- Прозорци (диалози) ---------- */
+.mx-modal{
+  position:fixed; inset:0; z-index:40; background:rgba(44,62,80,0.45);
+  display:none; align-items:center; justify-content:center; padding:1rem;
+}
+.mx-modal.open{ display:flex; }
+.mx-modal .box{
+  background:#fff; border-radius:22px; padding:1.3rem; width:100%; max-width:460px;
+  display:flex; flex-direction:column; gap:0.8rem; box-shadow:var(--shadow);
+  max-height:90vh; overflow-y:auto;
+}
+.mx-modal h3{ margin:0; }
+.mx-input{
+  font-size:calc(1.15rem * var(--ts)); padding:0.65rem 0.8rem; border-radius:12px;
+  border:2px solid var(--line); outline:none; width:100%; font-family:inherit;
+}
+.mx-input:focus{ border-color:var(--accent); }
+
+/* ---------- Общи настройки за достъпност ---------- */
+html.mx-reduce-motion *, html.mx-reduce-motion *::before, html.mx-reduce-motion *::after{
+  animation-duration:0.001ms !important; animation-iteration-count:1 !important;
+  transition-duration:0.001ms !important;
+}
+html.mx-contrast{
+  --bg1:#ffffff; --bg2:#ffffff; --ink:#000000; --ink-soft:#1d1d1d; --line:#000000;
+  --shadow:none;
+}
+html.mx-contrast .mx-card, html.mx-contrast .mx-opt, html.mx-contrast .mx-badge,
+html.mx-contrast .mx-seg{ border:3px solid #000 !important; }
+html.mx-contrast .mx-tile{ outline:3px solid #000; }
+
+@media (max-width:560px){
+  .mx-top{ padding-left:0.6rem; padding-top:4rem; }
+  .mx-screen{ padding-top:7.2rem; }
+  .mx-title{ display:none; }
+}
