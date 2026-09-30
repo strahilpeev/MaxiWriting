@@ -208,6 +208,7 @@
 
   .tile.srichki{ background:linear-gradient(160deg,#e2b26b,#c98a3f); }
   .tile.matematika{ background:linear-gradient(160deg,#5da8e8,#2c6fb0); }
+  .tile.izvazhdane{ background:linear-gradient(160deg,#e8845d,#c1512e); }
   .tile.pisane{ background:linear-gradient(160deg,#8fbf7a,#4f9350); }
 
   /* ---------- PROGRESS / HISTORY CARD ---------- */
@@ -367,6 +368,12 @@
         <span class="sub">Игра с математика</span>
       </button>
 
+      <button class="tile izvazhdane" onclick="openApp('matematika_izvazhdane_login_zaemane.html')">
+        <span class="icon">➖</span>
+        <span class="label">Изваждане на числа</span>
+        <span class="sub">Игра с математика</span>
+      </button>
+
       <button class="tile pisane" onclick="openApp('bulgarian-typing-login.html')">
         <span class="icon">⌨️</span>
         <span class="label">Пиши и говори</span>
@@ -516,13 +523,20 @@
     showScreen(menu);
   }
 
-  /* ---- Обща история / напредък от двете игри с профили ---- */
+  /* ---- Обща история / напредък от игрите с профили ---- */
   const MATH_USERS_KEY = 'mathAppUsers_v1';
+  const SUBTRACTION_USERS_KEY = 'mathSubtractionUsers_v1';
   const TYPING_PROFILES_KEY = 'bgTrainerProfiles_v1';
 
   function readMathStats(name){
     try{
       const users = JSON.parse(localStorage.getItem(MATH_USERS_KEY)) || {};
+      return users[name] || null;
+    }catch(e){ return null; }
+  }
+  function readSubtractionStats(name){
+    try{
+      const users = JSON.parse(localStorage.getItem(SUBTRACTION_USERS_KEY)) || {};
       return users[name] || null;
     }catch(e){ return null; }
   }
@@ -536,27 +550,38 @@
   function renderProgressCard(profile){
     document.getElementById('progress-avatar').textContent = profile.avatar;
     const math = readMathStats(profile.name);
+    const sub = readSubtractionStats(profile.name);
     const typing = readTypingStats(profile.name);
 
-    document.getElementById('stat-stars').textContent = math ? (math.stars || 0) : 0;
-    document.getElementById('stat-streak').textContent = math ? (math.streak || 0) : 0;
+    const combinedStars = (math ? (math.stars || 0) : 0) + (sub ? (sub.stars || 0) : 0);
+    const combinedStreak = Math.max(math ? (math.streak || 0) : 0, sub ? (sub.streak || 0) : 0);
+    document.getElementById('stat-stars').textContent = combinedStars;
+    document.getElementById('stat-streak').textContent = combinedStreak;
     document.getElementById('stat-points').textContent = typing ? (typing.points || 0) : 0;
 
     const historyEl = document.getElementById('progress-history');
     const mathHistory = (math && math.history) || [];
+    const subHistory = (sub && sub.history) || [];
     const typingHistory = (typing && typing.history) || [];
 
-    if(!mathHistory.length && !typingHistory.length){
+    if(!mathHistory.length && !subHistory.length && !typingHistory.length){
       historyEl.innerHTML = '<div class="progress-empty">Тук ще се появи историята, щом поиграеш малко 🙂</div>';
       return;
     }
 
     let html = '';
     if(mathHistory.length){
-      html += '<div class="progress-section-title">➕ Математика</div>';
+      html += '<div class="progress-section-title">➕ Сбор</div>';
       html += mathHistory.slice(0, 8).map(h => {
         const mark = h.correct ? '✅' : '❌';
         return `<div class="progress-item"><span>${h.a} + ${h.b} = ${h.sum} ${mark}</span><span class="pi-time">${escapeHtml(h.time || '')}</span></div>`;
+      }).join('');
+    }
+    if(subHistory.length){
+      html += '<div class="progress-section-title">➖ Изваждане</div>';
+      html += subHistory.slice(0, 8).map(h => {
+        const mark = h.correct ? '✅' : '❌';
+        return `<div class="progress-item"><span>${h.a} − ${h.b} = ${h.diff} ${mark}</span><span class="pi-time">${escapeHtml(h.time || '')}</span></div>`;
       }).join('');
     }
     if(typingHistory.length){
