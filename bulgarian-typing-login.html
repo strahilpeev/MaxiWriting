@@ -180,6 +180,23 @@
     font-size:11.5px;
   }
 
+  .stars-row{
+    text-align:center;
+    font-size:22px;
+    min-height:26px;
+    letter-spacing:3px;
+    margin-bottom:4px;
+  }
+  .star-pop{
+    display:inline-block;
+    animation: starPop 0.5s ease;
+  }
+  @keyframes starPop{
+    0%{ transform:scale(0); opacity:0; }
+    60%{ transform:scale(1.4); opacity:1; }
+    100%{ transform:scale(1); }
+  }
+
   .encourage-banner{
     position:absolute;
     top:14px;
@@ -670,6 +687,7 @@
     .success-flash.show{ animation:none; }
     .encourage-banner.show{ animation:none; opacity:1; transform:translate(-50%,-16px); }
     .confetti-piece{ animation:none; display:none; }
+    .star-pop{ animation:none; }
   }
 </style>
 </head>
@@ -782,6 +800,7 @@
       <div class="points">⭐ <b id="pointsCount">0</b> <span id="levelTitle">Начинаещ пътник 🌱</span></div>
       <div class="streak">✓ Написани правилно: <b id="streakCount">0</b></div>
     </div>
+    <div class="stars-row" id="starsRow"></div>
 
     <div class="encourage-banner" id="encourageBanner"></div>
     <div class="confetti-layer" id="confettiLayer"></div>
@@ -1106,14 +1125,16 @@ let showImages = false;
 let imgRequestId = 0;
 let syllableBoundaries = [];
 let points = 0;
+let stars = 0;
 let mistakesThisWord = 0;
 let mistakeMsgTimer = null;
 let autoAdvance = false;
 let autoAdvanceTimer = null;
+let audioCtx = null;
 
 /* ---- profile / history state ---- */
 let currentUser = null; // null = guest (no persistence)
-let currentProfile = { points: 0, history: [] };
+let currentProfile = { points: 0, stars: 0, history: [] };
 
 const targetTextEl = document.getElementById("targetText");
 const syllablesTextEl = document.getElementById("syllablesText");
@@ -1125,6 +1146,7 @@ const idxNowEl = document.getElementById("idxNow");
 const idxTotalEl = document.getElementById("idxTotal");
 const streakCountEl = document.getElementById("streakCount");
 const pointsCountEl = document.getElementById("pointsCount");
+const starsRowEl = document.getElementById("starsRow");
 const levelTitleEl = document.getElementById("levelTitle");
 const encourageBannerEl = document.getElementById("encourageBanner");
 const confettiLayerEl = document.getElementById("confettiLayer");
@@ -1259,6 +1281,8 @@ function handleChar(ch){
       recordHistory(perfect);
       showEncourageBanner(perfect);
       fireConfetti();
+      playTone(880, 0.15);
+      maybeAwardStar();
       speakLastSyllableThenWhole();
       scheduleAutoAdvance();
     } else {
@@ -1328,6 +1352,45 @@ function addPoints(n){
   levelTitleEl.textContent = levelForPoints(points);
   currentProfile.points = points;
   saveCurrentProfile();
+}
+
+/* Натрупващи се звезди при поредни верни отговори — като поощрението
+   в математическите приложения (звезда на всеки 5-ти пореден успех). */
+function renderStarsRow(animateLast){
+  starsRowEl.innerHTML = "";
+  for(let i=0;i<stars;i++){
+    const span = document.createElement("span");
+    span.textContent = "⭐";
+    if(animateLast && i === stars-1) span.className = "star-pop";
+    starsRowEl.appendChild(span);
+  }
+}
+
+function maybeAwardStar(){
+  if(correctStreak > 0 && correctStreak % 5 === 0){
+    stars++;
+    currentProfile.stars = stars;
+    renderStarsRow(true);
+    saveCurrentProfile();
+  }
+}
+
+/* Кратък приятен звуков сигнал при верен отговор — както в
+   математическите приложения. */
+function playTone(freq, duration){
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  }catch(e){ /* тихо игнориране, ако Web Audio не е налично */ }
 }
 
 function recordHistory(perfect){
@@ -1673,16 +1736,19 @@ function saveCurrentProfile(){
   const all = loadAllProfiles();
   if(!all[currentUser]) return;
   all[currentUser].points = currentProfile.points;
+  all[currentUser].stars = currentProfile.stars;
   all[currentUser].history = currentProfile.history;
   saveAllProfiles(all);
 }
 
 function applyLoadedProfile(){
   points = currentProfile.points || 0;
+  stars = currentProfile.stars || 0;
   pointsCountEl.textContent = points;
   levelTitleEl.textContent = levelForPoints(points);
   correctStreak = 0;
   streakCountEl.textContent = 0;
+  renderStarsRow(false);
 }
 
 /* ---- Автоматичен вход от общия хъб (ако страницата е отворена през него) ---- */
@@ -1702,7 +1768,7 @@ function tryHubAutoLogin(){
   const all = loadAllProfiles();
   const wantedHash = simpleHash(hub.pass);
   if(!all[hub.name]){
-    all[hub.name] = { passHash: wantedHash, points: 0, history: [] };
+    all[hub.name] = { passHash: wantedHash, points: 0, stars: 0, history: [] };
     saveAllProfiles(all);
   } else if(all[hub.name].passHash !== wantedHash){
     all[hub.name].passHash = wantedHash; // синхронизираме с хъб паролата
@@ -1710,7 +1776,7 @@ function tryHubAutoLogin(){
   }
   const prof = all[hub.name];
   currentUser = hub.name;
-  currentProfile = { points: prof.points || 0, history: prof.history || [] };
+  currentProfile = { points: prof.points || 0, stars: prof.stars || 0, history: prof.history || [] };
   currentUserLabelEl.textContent = hub.name;
   applyLoadedProfile();
   closeAuthOverlay();
@@ -1771,7 +1837,7 @@ authLoginBtn.addEventListener("click", ()=>{
   if(!prof){ authErrorExisting.textContent = "Профилът не съществува."; return; }
   if(prof.passHash !== simpleHash(pass)){ authErrorExisting.textContent = "Грешна парола."; return; }
   currentUser = uname;
-  currentProfile = { points: prof.points || 0, history: prof.history || [] };
+  currentProfile = { points: prof.points || 0, stars: prof.stars || 0, history: prof.history || [] };
   currentUserLabelEl.textContent = uname;
   applyLoadedProfile();
   closeAuthOverlay();
@@ -1779,7 +1845,7 @@ authLoginBtn.addEventListener("click", ()=>{
 
 authGuestBtn.addEventListener("click", ()=>{
   currentUser = null;
-  currentProfile = { points: 0, history: [] };
+  currentProfile = { points: 0, stars: 0, history: [] };
   currentUserLabelEl.textContent = "Гост";
   applyLoadedProfile();
   closeAuthOverlay();
@@ -1793,10 +1859,10 @@ authCreateBtn.addEventListener("click", ()=>{
   if(!pass || pass.length < 3){ authErrorNew.textContent = "Паролата трябва да е поне 3 символа."; return; }
   const all = loadAllProfiles();
   if(all[uname]){ authErrorNew.textContent = "Вече има профил с това име."; return; }
-  all[uname] = { passHash: simpleHash(pass), points: 0, history: [] };
+  all[uname] = { passHash: simpleHash(pass), points: 0, stars: 0, history: [] };
   saveAllProfiles(all);
   currentUser = uname;
-  currentProfile = { points: 0, history: [] };
+  currentProfile = { points: 0, stars: 0, history: [] };
   currentUserLabelEl.textContent = uname;
   applyLoadedProfile();
   closeAuthOverlay();

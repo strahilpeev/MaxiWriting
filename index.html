@@ -553,7 +553,7 @@
     const sub = readSubtractionStats(profile.name);
     const typing = readTypingStats(profile.name);
 
-    const combinedStars = (math ? (math.stars || 0) : 0) + (sub ? (sub.stars || 0) : 0);
+    const combinedStars = (math ? (math.stars || 0) : 0) + (sub ? (sub.stars || 0) : 0) + (typing ? (typing.stars || 0) : 0);
     const combinedStreak = Math.max(math ? (math.streak || 0) : 0, sub ? (sub.streak || 0) : 0);
     document.getElementById('stat-stars').textContent = combinedStars;
     document.getElementById('stat-streak').textContent = combinedStreak;
