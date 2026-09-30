@@ -1695,7 +1695,14 @@ function speakLastSyllableThenWhole(){
 }
 
 /* Изговаря поощрителната фраза (винаги на български, както е написана),
-   а след нея — последната сричка и цялата дума, както преди. */
+   а след нея — последната сричка и цялата дума, както преди.
+
+   Забележка: Chrome/Android имат познат бъг, при който speak(), извикан
+   веднага след cancel(), може тихо да не проработи (изречението просто
+   не се чува). Затова изчакваме един кратък момент след cancel(), преди
+   да пуснем новото изречение — стандартната обходна поправка. Пазим и
+   watchdog таймер: ако браузърът не извика onend/onerror (silent drop),
+   продължаваме към сричка+дума сами, за да не увисне цялата верига. */
 function speakPraiseThenWord(praiseMsg){
   if(!window.speechSynthesis){ return; }
   speechSynthesis.cancel();
@@ -1704,13 +1711,22 @@ function speakPraiseThenWord(praiseMsg){
     speakLastSyllableThenWhole();
     return;
   }
-  const u = new SpeechSynthesisUtterance(cleanPraise);
-  u.lang = "bg-BG";
-  if(bgVoice) u.voice = bgVoice;
-  u.rate = 0.98;
-  u.onend = () => speakLastSyllableThenWhole();
-  u.onerror = () => speakLastSyllableThenWhole();
-  speechSynthesis.speak(u);
+  setTimeout(() => {
+    let advanced = false;
+    const advance = () => {
+      if(advanced) return;
+      advanced = true;
+      speakLastSyllableThenWhole();
+    };
+    const u = new SpeechSynthesisUtterance(cleanPraise);
+    u.lang = "bg-BG";
+    if(bgVoice) u.voice = bgVoice;
+    u.rate = 0.98;
+    u.onend = advance;
+    u.onerror = advance;
+    speechSynthesis.speak(u);
+    setTimeout(advance, 2500); // watchdog, ако onend никога не дойде
+  }, 60);
 }
 
 document.getElementById("speakBtn").addEventListener("click", speak);
