@@ -1279,11 +1279,12 @@ function handleChar(ch){
       const perfect = mistakesThisWord === 0;
       addPoints(perfect ? 15 : 10);
       recordHistory(perfect);
-      showEncourageBanner(perfect);
+      const praiseMsg = pickPraiseMessage(perfect);
+      showEncourageBanner(praiseMsg);
       fireConfetti();
       playTone(880, 0.15);
       maybeAwardStar();
-      speakLastSyllableThenWhole();
+      speakPraiseThenWord(praiseMsg);
       scheduleAutoAdvance();
     } else {
       speakCompletedSyllable();
@@ -1408,9 +1409,12 @@ function recordHistory(perfect){
   saveCurrentProfile();
 }
 
-function showEncourageBanner(perfect){
+function pickPraiseMessage(perfect){
   const pool = perfect ? PERFECT_MESSAGES : SUCCESS_MESSAGES;
-  const msg = pool[Math.floor(Math.random()*pool.length)];
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+function showEncourageBanner(msg){
   encourageBannerEl.textContent = msg;
   encourageBannerEl.classList.remove("show");
   void encourageBannerEl.offsetWidth;
@@ -1687,6 +1691,25 @@ function speakLastSyllableThenWhole(){
   u.rate = 0.8;
   u.onend = () => speak();
   u.onerror = () => speak();
+  speechSynthesis.speak(u);
+}
+
+/* Изговаря поощрителната фраза (винаги на български, както е написана),
+   а след нея — последната сричка и цялата дума, както преди. */
+function speakPraiseThenWord(praiseMsg){
+  if(!window.speechSynthesis){ return; }
+  speechSynthesis.cancel();
+  const cleanPraise = praiseMsg.replace(/[^\p{L}\p{N}\s.,!?'-]/gu, "").trim();
+  if(!cleanPraise){
+    speakLastSyllableThenWhole();
+    return;
+  }
+  const u = new SpeechSynthesisUtterance(cleanPraise);
+  u.lang = "bg-BG";
+  if(bgVoice) u.voice = bgVoice;
+  u.rate = 0.98;
+  u.onend = () => speakLastSyllableThenWhole();
+  u.onerror = () => speakLastSyllableThenWhole();
   speechSynthesis.speak(u);
 }
 
