@@ -1,4 +1,4 @@
-const CACHE_NAME = 'uchebni-igri-v4';
+const CACHE_NAME = 'uchebni-igri-v5';
 const APP_SHELL = [
   './',
   './index.html',
@@ -7,6 +7,7 @@ const APP_SHELL = [
   './matematika_sbor_login_preminavane.html',
   './matematika_izvazhdane_login_zaemane.html',
   './bulgarian-typing-login.html',
+  './firebase-shared.js',
   './icons/icon-96.png',
   './icons/icon-192.png',
   './icons/icon-512.png',

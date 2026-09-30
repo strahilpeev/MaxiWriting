@@ -14,6 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="Учебни игри">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#5da8e8">
+<script type="module" src="firebase-shared.js"></script>
 
 <style>
   :root{
@@ -326,6 +327,77 @@
     .tiles{ flex-direction:column; align-items:stretch; }
     .tile{ max-width:none; }
   }
+
+  /* ---------- ADMIN ---------- */
+  .admin-link{
+    margin-top:0.5rem;
+    background:none;
+    border:none;
+    color:var(--ink);
+    opacity:0.35;
+    font-size:0.75rem;
+    cursor:pointer;
+    text-decoration:underline;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .admin-link:hover{ opacity:0.7; }
+  .sync-badge{
+    position:fixed;
+    bottom:0.6rem;
+    left:0.6rem;
+    font-size:0.7rem;
+    opacity:0.45;
+    z-index:5;
+  }
+  #admin-screen{
+    align-items:stretch;
+    justify-content:flex-start;
+    padding-top:clamp(1rem,3vw,2rem);
+  }
+  #admin-screen h1{ text-align:left; width:100%; max-width:900px; margin:0 auto 0.5rem auto; }
+  .admin-top{
+    width:100%;
+    max-width:900px;
+    margin:0 auto 1rem auto;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .admin-close{
+    background:#f2f5f8;
+    border:none;
+    border-radius:999px;
+    padding:0.5rem 1rem;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .admin-list{
+    width:100%;
+    max-width:900px;
+    margin:0 auto;
+    display:flex;
+    flex-direction:column;
+    gap:1rem;
+  }
+  .admin-profile-card{
+    background:#fff;
+    border-radius:20px;
+    padding:1rem 1.2rem;
+    box-shadow:var(--card-shadow);
+  }
+  .admin-profile-card h3{ margin:0 0 0.5rem 0; }
+  .admin-app-block{ margin:0.5rem 0; }
+  .admin-app-block .title{ font-weight:700; font-size:0.9rem; opacity:0.75; margin-bottom:0.3rem; }
+  .admin-session-row{
+    font-size:0.85rem;
+    display:flex;
+    justify-content:space-between;
+    gap:0.6rem;
+    padding:0.25rem 0.5rem;
+    border-radius:8px;
+    background:#f8fafc;
+    margin-bottom:0.2rem;
+  }
 </style>
 </head>
 <body>
@@ -334,6 +406,16 @@
   <div id="profile-screen" class="screen">
     <h1>Кой играе днес? 😊</h1>
     <div class="profile-grid" id="profile-grid"></div>
+    <button class="admin-link" onclick="openAdmin()">Администратор</button>
+  </div>
+
+  <!-- ЕКРАН: Администраторски изглед (вижда всички потребители) -->
+  <div id="admin-screen" class="screen">
+    <div class="admin-top">
+      <h1 style="margin:0;">📊 Всички потребители</h1>
+      <button class="admin-close" onclick="showProfileScreen()">✕ Затвори</button>
+    </div>
+    <div class="admin-list" id="admin-list"></div>
   </div>
 
   <!-- ЕКРАН 1б: Нов профил -->
@@ -395,6 +477,8 @@
     </div>
   </div>
 
+  <div class="sync-badge" id="sync-badge"></div>
+
   <!-- ЕКРАН 3: Самото приложение (iframe) -->
   <div id="app-screen">
     <button id="home-btn" onclick="closeApp()">🏠 Начало</button>
@@ -431,10 +515,20 @@
     try{ localStorage.setItem(ACTIVE_KEY, JSON.stringify(profile)); }catch(e){}
   }
 
+  const adminScreen = document.getElementById('admin-screen');
+  const syncBadge = document.getElementById('sync-badge');
+
   function showScreen(el){
-    [profileScreen, newProfileScreen, menu].forEach(s => s.classList.remove('active'));
+    [profileScreen, newProfileScreen, menu, adminScreen].forEach(s => s.classList.remove('active'));
     el.classList.add('active');
   }
+
+  /* ---- Firebase / облачна база ---- */
+  function whenDB(cb){
+    if(window.MaxiDB){ cb(window.MaxiDB); }
+    else{ window.addEventListener('maxidb-ready', () => cb(window.MaxiDB), { once:true }); }
+  }
+  function setSyncBadge(text){ if(syncBadge) syncBadge.textContent = text; }
 
   function showProfileScreen(){
     renderProfileGrid();
@@ -482,6 +576,7 @@
     saveProfiles(profiles);
     const active = getActiveProfile();
     if(active && active.id === p.id) localStorage.removeItem(ACTIVE_KEY);
+    whenDB(db => db.deleteProfileRemote(p.id).catch(()=>{}));
     renderProfileGrid();
   }
 
@@ -513,6 +608,7 @@
     const newProfile = { id: 'p' + Date.now(), name, avatar: selectedAvatar };
     profiles.push(newProfile);
     saveProfiles(profiles);
+    whenDB(db => db.upsertProfile(newProfile.id, { name: newProfile.name, avatar: newProfile.avatar, createdAt: new Date().toISOString() }).catch(()=>{}));
     chooseProfile(newProfile);
   }
 
@@ -602,11 +698,33 @@
     btn.textContent = open ? '🔼 Скрий историята' : '📜 Виж историята';
   }
 
+  let sessionSnapshot = null;
+  const APP_KEY_BY_SRC = {
+    'srichki-razmer.html': 'srichki',
+    'matematika_sbor_login_preminavane.html': 'sbor',
+    'matematika_izvazhdane_login_zaemane.html': 'izvazhdane',
+    'bulgarian-typing-login.html': 'pisane'
+  };
+
   function openApp(src){
     const active = getActiveProfile();
     const url = active ? (src + '?hubUser=' + encodeURIComponent(active.name)) : src;
     frame.src = url;
     appScreen.classList.add('active');
+    if(active){
+      const math = readMathStats(active.name);
+      const sub = readSubtractionStats(active.name);
+      const typing = readTypingStats(active.name);
+      sessionSnapshot = {
+        appKey: APP_KEY_BY_SRC[src] || null,
+        mathLen: (math && math.history) ? math.history.length : 0,
+        subLen: (sub && sub.history) ? sub.history.length : 0,
+        typingLen: (typing && typing.history) ? typing.history.length : 0,
+        typingPoints: typing ? (typing.points || 0) : 0
+      };
+    } else {
+      sessionSnapshot = null;
+    }
   }
 
   function closeApp(){
@@ -614,7 +732,141 @@
     // изчистваме src след малко, за да спрем звук/таймери във вложеното приложение
     setTimeout(()=>{ frame.src = ''; }, 50);
     const active = getActiveProfile();
-    if(active) renderProgressCard(active);
+    if(active){
+      renderProgressCard(active);
+      syncProfileToCloud(active);
+    }
+    sessionSnapshot = null;
+  }
+
+  /* ---- Изпращане на статистика + "последни 5 използвания" към Firestore ---- */
+  function syncProfileToCloud(active){
+    whenDB(db => {
+      const math = readMathStats(active.name);
+      const sub = readSubtractionStats(active.name);
+      const typing = readTypingStats(active.name);
+
+      const statsPatch = { stats: {} };
+      if(math) statsPatch.stats.sbor = { points: math.score || 0, total: math.total || 0, streak: math.streak || 0, stars: math.stars || 0 };
+      if(sub) statsPatch.stats.izvazhdane = { points: sub.score || 0, total: sub.total || 0, streak: sub.streak || 0, stars: sub.stars || 0 };
+      if(typing) statsPatch.stats.pisane = { points: typing.points || 0, stars: typing.stars || 0 };
+      db.upsertProfile(active.id, statsPatch).catch(()=>{});
+
+      if(!sessionSnapshot || !sessionSnapshot.appKey) return;
+      const appKey = sessionSnapshot.appKey;
+      const nowIso = new Date().toISOString();
+
+      if(appKey === 'sbor' && math && math.history){
+        const newEntries = math.history.slice(0, Math.max(0, math.history.length - sessionSnapshot.mathLen));
+        if(newEntries.length){
+          const correctCount = newEntries.filter(h => h.correct).length;
+          const tasks = newEntries.slice(0, 10).map(h => h.a + ' + ' + h.b + ' = ' + h.sum + (h.correct ? ' ✅' : ' ❌'));
+          db.pushSession(active.id, appKey, { ts: nowIso, result: correctCount + '/' + newEntries.length + ' верни', tasks }).catch(()=>{});
+        }
+      } else if(appKey === 'izvazhdane' && sub && sub.history){
+        const newEntries = sub.history.slice(0, Math.max(0, sub.history.length - sessionSnapshot.subLen));
+        if(newEntries.length){
+          const correctCount = newEntries.filter(h => h.correct).length;
+          const tasks = newEntries.slice(0, 10).map(h => h.a + ' − ' + h.b + ' = ' + h.diff + (h.correct ? ' ✅' : ' ❌'));
+          db.pushSession(active.id, appKey, { ts: nowIso, result: correctCount + '/' + newEntries.length + ' верни', tasks }).catch(()=>{});
+        }
+      } else if(appKey === 'pisane' && typing && typing.history){
+        const newEntries = typing.history.slice(0, Math.max(0, typing.history.length - sessionSnapshot.typingLen));
+        if(newEntries.length){
+          const pointsGained = Math.max(0, (typing.points || 0) - sessionSnapshot.typingPoints);
+          const tasks = newEntries.slice(0, 10).map(h => h.text + (h.perfect ? ' ✨' : ''));
+          db.pushSession(active.id, appKey, { ts: nowIso, result: newEntries.length + ' думи, +' + pointsGained + ' точки', tasks }).catch(()=>{});
+        }
+      }
+    });
+  }
+
+  /* ---- Синхронизиране на списъка с профили с Firestore ---- */
+  function cloudSyncProfiles(){
+    whenDB(db => {
+      setSyncBadge('🔄 синхронизиране…');
+      db.listProfiles().then(remoteList => {
+        const remote = remoteList.filter(p => !p.deleted);
+        const local = loadProfiles();
+        let changed = false;
+        remote.forEach(rp => {
+          if(!local.find(lp => lp.id === rp.id)){
+            local.push({ id: rp.id, name: rp.name, avatar: rp.avatar || '🦊' });
+            changed = true;
+          }
+        });
+        local.forEach(lp => {
+          if(!remote.find(rp => rp.id === lp.id)){
+            db.upsertProfile(lp.id, { name: lp.name, avatar: lp.avatar, createdAt: new Date().toISOString() }).catch(()=>{});
+          }
+        });
+        if(changed){
+          saveProfiles(local);
+          if(profileScreen.classList.contains('active')) renderProfileGrid();
+        }
+        setSyncBadge('☁️ синхронизирано');
+        setTimeout(()=>setSyncBadge(''), 2500);
+      }).catch(() => setSyncBadge('⚠️ офлайн режим'));
+    });
+  }
+
+  /* ---- Администраторски изглед (вижда всички потребители) ---- */
+  function openAdmin(){
+    showScreen(adminScreen);
+    const listEl = document.getElementById('admin-list');
+    listEl.innerHTML = '<div class="progress-empty">Зареждане…</div>';
+    whenDB(db => {
+      db.getAdminSettings().then(settings => {
+        if(!settings){
+          const pw = prompt('Няма зададена администраторска парола. Въведете нова парола:');
+          if(!pw){ showProfileScreen(); return; }
+          const confirmPw = prompt('Повторете паролата:');
+          if(pw !== confirmPw){ alert('Паролите не съвпадат. Опитайте пак.'); showProfileScreen(); return; }
+          db.setAdminPassword(pw).then(() => renderAdminList(db));
+        } else {
+          const pw = prompt('Администраторска парола:');
+          if(pw === null){ showProfileScreen(); return; }
+          db.checkAdminPassword(pw).then(ok => {
+            if(ok) renderAdminList(db);
+            else { alert('Грешна парола.'); showProfileScreen(); }
+          });
+        }
+      }).catch(() => { alert('Няма връзка с облака в момента.'); showProfileScreen(); });
+    });
+  }
+
+  function renderAdminList(db){
+    const listEl = document.getElementById('admin-list');
+    const appNames = { srichki:'📖 Срички', sbor:'➕ Сбор', izvazhdane:'➖ Изваждане', pisane:'⌨️ Пиши и говори' };
+    db.listProfiles().then(profiles => {
+      const visible = profiles.filter(p => !p.deleted);
+      if(!visible.length){ listEl.innerHTML = '<div class="progress-empty">Все още няма профили в облака.</div>'; return; }
+      listEl.innerHTML = visible.map(p => {
+        const stats = p.stats || {};
+        const sessions = p.sessions || {};
+        const statsLine = Object.keys(stats).map(k => {
+          const s = stats[k] || {};
+          const parts = [];
+          if(s.points !== undefined) parts.push('точки: ' + s.points);
+          if(s.stars !== undefined) parts.push('⭐' + s.stars);
+          if(s.streak !== undefined) parts.push('🔥' + s.streak);
+          return (appNames[k] || k) + ' — ' + parts.join(', ');
+        }).join(' · ');
+        const sessionsHtml = Object.keys(sessions).filter(k => sessions[k] && sessions[k].length).map(k => {
+          const rows = sessions[k].map(s => {
+            const d = s.ts ? new Date(s.ts).toLocaleString('bg-BG', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'}) : '';
+            const taskStr = (s.tasks || []).join(', ');
+            return `<div class="admin-session-row"><span>${escapeHtml(s.result || '')} — ${escapeHtml(taskStr)}</span><span class="pi-time">${escapeHtml(d)}</span></div>`;
+          }).join('');
+          return `<div class="admin-app-block"><div class="title">${appNames[k] || k}</div>${rows}</div>`;
+        }).join('');
+        return `<div class="admin-profile-card">
+          <h3>${p.avatar || '🦊'} ${escapeHtml(p.name || p.id)}</h3>
+          <div style="font-size:0.85rem; opacity:0.75; margin-bottom:0.5rem;">${statsLine || 'Все още няма статистика'}</div>
+          ${sessionsHtml || '<div class="progress-empty">Все още няма използвания</div>'}
+        </div>`;
+      }).join('');
+    }).catch(() => { listEl.innerHTML = '<div class="progress-empty">Грешка при зареждане.</div>'; });
   }
 
   window.addEventListener('popstate', closeApp);
@@ -635,6 +887,7 @@
   } else {
     showProfileScreen();
   }
+  cloudSyncProfiles();
 </script>
 
 </body>
