@@ -1,4 +1,4 @@
-const CACHE_NAME = 'uchebni-igri-v9';
+const CACHE_NAME = 'uchebni-igri-v10';
 const APP_SHELL = [
   './',
   './index.html',
@@ -23,11 +23,12 @@ const APP_SHELL = [
   './icons/icon-maskable-512.png'
 ];
 
-// При инсталация кешираме цялото приложение, за да работи и офлайн
+// При инсталация кешираме цялото приложение, за да работи и офлайн.
+// cache: reload/no-cache = винаги взимаме най-новия файл от сървъра, не стар от кеша на браузъра.
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(APP_SHELL))
+      .then((cache) => cache.addAll(APP_SHELL.map((u) => new Request(u, { cache: 'reload' }))))
       .then(() => self.skipWaiting())
   );
 });
@@ -49,7 +50,14 @@ self.addEventListener('fetch', (event) => {
 
   event.respondWith(
     caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
+      // навигациите не позволяват промяна на заявката, затова ги правим наново по URL
+      let fresh = event.request;
+      try {
+        fresh = event.request.mode === 'navigate'
+          ? new Request(event.request.url, { cache: 'no-cache' })
+          : new Request(event.request, { cache: 'no-cache' });
+      } catch (e) { /* оставяме оригиналната заявка */ }
+      const fetchPromise = fetch(fresh).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
