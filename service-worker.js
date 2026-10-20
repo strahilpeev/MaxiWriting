@@ -1,7 +1,8 @@
-const CACHE_NAME = 'uchebni-igri-v7';
+const CACHE_NAME = 'uchebni-igri-v8';
 const APP_SHELL = [
   './',
   './index.html',
+  './app.html',
   './manifest.json',
   './srichki-razmer.html',
   './matematika_sbor_login_preminavane.html',

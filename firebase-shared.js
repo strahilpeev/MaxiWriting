@@ -1,5 +1,5 @@
 // Споделен модул за връзка с Firebase (Firestore + анонимно вписване).
-// Зарежда се само в index.html (хъба) и излага window.MaxiDB,
+// Зарежда се само в app.html (хъба) и излага window.MaxiDB,
 // за да може класическият (non-module) скрипт на хъба да го ползва.
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
