@@ -69,6 +69,31 @@
   .seq-card.bad{ animation:mx-shake .3s; border-color:var(--bad); }
   .seq-e{ font-size:clamp(2.4rem,6vw,3.6rem); line-height:1.1; }
   .seq-t{ font-weight:800; font-size:calc(clamp(0.85rem,1.9vw,1.05rem) * var(--ts)); text-align:center; }
+  /* Повтори реда */
+  .simon{ display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:clamp(0.6rem,2vw,1rem); width:min(84vw, 52vh, 440px); }
+  .pad{
+    aspect-ratio:1/1; border:none; border-radius:28px; cursor:pointer; opacity:0.55;
+    font-size:clamp(2rem,6vw,3.4rem); color:rgba(255,255,255,0.9); box-shadow:var(--shadow);
+    transition:opacity .08s ease, transform .08s ease;
+  }
+  .pad.lit{ opacity:1; transform:scale(1.05); box-shadow:0 0 0 6px rgba(255,255,255,0.9), 0 0 30px 6px rgba(255,220,120,0.8); }
+  .simon.watch .pad{ cursor:default; }
+  /* Ляво и дясно */
+  .lr-row{ display:flex; align-items:center; justify-content:center; gap:clamp(0.6rem,3vw,2rem); }
+  .lr-cell{ width:clamp(90px,16vw,140px); height:clamp(90px,16vw,140px); display:flex; align-items:center; justify-content:center; font-size:clamp(3rem,9vw,5rem); }
+  .lr-row.opts .mx-options{ flex-wrap:nowrap; }
+  .mx-opt.ref{ border-color:#8e44ad; border-style:dashed; background:#f5edff; }
+  .mx-opt.pulse{ animation:lr-pulse 0.8s ease 3; }
+  @keyframes lr-pulse{ 50%{ transform:scale(1.12); border-color:#f39c12; } }
+  /* Лабиринт */
+  .maze{
+    display:grid; width:min(90vw, 56vh, 540px); aspect-ratio:1/1; touch-action:none; user-select:none;
+    background:#fff; border-radius:12px; box-shadow:var(--shadow);
+  }
+  .mz{ box-sizing:border-box; display:flex; align-items:center; justify-content:center; font-size:var(--mzf); line-height:1; }
+  .mz.trail{ background:#e6f2ff; }
+  .mz.hintp{ background:#fff3c4; }
+  .mz.goal{ background:#e6f7ec; }
 </style>
 </head>
 <body>
@@ -89,6 +114,9 @@
     <button class="mx-tile g2" onclick="openMode('razlichno')"><span class="i">🔍</span><span class="l">Кое е различното?</span><span class="s">Гледай внимателно</span></button>
     <button class="mx-tile g3" onclick="openMode('lipsva')"><span class="i">❓</span><span class="l">Какво липсва?</span><span class="s">Запомни и намери</span></button>
     <button class="mx-tile g6" onclick="openMode('poredica')"><span class="i">1️⃣2️⃣3️⃣</span><span class="l">Какво става после?</span><span class="s">Подреди картинките</span></button>
+    <button class="mx-tile g7" onclick="openMode('simon')"><span class="i">🔴🔵🟢</span><span class="l">Повтори реда</span><span class="s">Гледай и запомни</span></button>
+    <button class="mx-tile g8" onclick="openMode('lyavo')"><span class="i">⬅️➡️</span><span class="l">Ляво и дясно</span><span class="s">Къде е?</span></button>
+    <button class="mx-tile g1" onclick="openMode('labirint')"><span class="i">🐭🧀</span><span class="l">Лабиринт</span><span class="s">Намери пътя</span></button>
   </div>
 </section>
 
@@ -147,6 +175,47 @@ const SEQ4 = [
   [['🍞','вземам хляб'],['🧈','мажа масло'],['🍯','слагам мед'],['😋','ям']],
   [['🐛','гъсеница'],['🍃','яде листа'],['😴','спи в пашкул'],['🦋','пеперуда']]
 ];
+
+/* Повтори реда: цвят, име, тон, знак (знакът помага и при слабо цветово зрение). */
+const PADS = [['#e74c3c','червено',330,'●'],['#3498db','синьо',392,'■'],['#27ae60','зелено',494,'▲'],['#f1c40f','жълто',587,'★']];
+/* Ляво и дясно — имена с член, за да звучи естествено („вляво от котката“). */
+const NAMED = [['🐶','кучето'],['🐱','котката'],['🐰','зайчето'],['🐻','мечката'],['🦊','лисицата'],['🐸','жабата'],['🐤','пиленцето'],
+  ['🐟','рибката'],['🍎','ябълката'],['🍌','банана'],['🚗','колата'],['🚀','ракетата'],['⚽','топката'],['🎈','балона'],
+  ['⭐','звездата'],['🌸','цветето'],['🏠','къщата'],['🧸','мечето'],['🎁','подаръка']];
+/* Лабиринт: генериране с обхождане в дълбочина (винаги има точно един път). */
+function makeMaze(N){
+  const cells = Array.from({ length: N * N }, () => ({ n:1, s:1, e:1, w:1, v:false }));
+  const at = (r, c) => cells[r * N + c];
+  const stack = [[0, 0]];
+  at(0, 0).v = true;
+  while(stack.length){
+    const [r, c] = stack[stack.length - 1];
+    const nb = [[r - 1, c, 'n', 's'], [r + 1, c, 's', 'n'], [r, c + 1, 'e', 'w'], [r, c - 1, 'w', 'e']]
+      .filter(([rr, cc]) => rr >= 0 && cc >= 0 && rr < N && cc < N && !at(rr, cc).v);
+    if(!nb.length){ stack.pop(); continue; }
+    const [rr, cc, d, o] = M.pick(nb);
+    at(r, c)[d] = 0; at(rr, cc)[o] = 0; at(rr, cc).v = true;
+    stack.push([rr, cc]);
+  }
+  return { N, at };
+}
+function mazePath(mz, from, to){
+  const N = mz.N, prev = new Map(), key = (p) => p.r * N + p.c;
+  const q = [from]; prev.set(key(from), null);
+  while(q.length){
+    const p = q.shift();
+    if(p.r === to.r && p.c === to.c) break;
+    const cell = mz.at(p.r, p.c);
+    [[!cell.n, -1, 0], [!cell.s, 1, 0], [!cell.e, 0, 1], [!cell.w, 0, -1]].forEach(([open, dr, dc]) => {
+      const np = { r: p.r + dr, c: p.c + dc };
+      if(open && !prev.has(key(np))){ prev.set(key(np), p); q.push(np); }
+    });
+  }
+  const path = [];
+  for(let p = to; p; p = prev.get(key(p))) path.unshift(p);
+  return path;
+}
+const MAZE_HEROES = [['🐭','🧀','мишлето','сиренето'],['🐰','🥕','зайчето','морковчето'],['🐶','🦴','кученцето','кокалчето'],['🐝','🌸','пчеличката','цветето'],['🚗','🏠','колата','къщата']];
 
 const MODES = {
   /* ---------- Memory ---------- */
@@ -367,6 +436,200 @@ const MODES = {
       });
       area.appendChild(slots);
       area.appendChild(cards);
+    }
+  },
+
+  /* ---------- Повтори реда (Саймън) ---------- */
+  simon: {
+    levels: ['От 2 до 5', 'От 3 до 6', 'Бързо до 7'],
+    round(){
+      const [startLen, goal, speed] = [[2, 5, 800], [3, 6, 680], [3, 7, 480]][G.level];
+      const seq = [];
+      while(seq.length < goal){
+        const p = M.randInt(0, 3);
+        if(seq.length >= 2 && seq[seq.length - 1] === p && seq[seq.length - 2] === p) continue; // без 3 еднакви поред
+        seq.push(p);
+      }
+      const fb = document.getElementById('fb');
+      const my = G.roundId;
+      let len = startLen, pos = 0, busy = true;
+      G.setPrompt('Гледай и повтори', 'Гледай светлините. После ги повтори.');
+      const info = document.createElement('div'); info.className = 'moves';
+      const grid = document.createElement('div'); grid.className = 'simon watch';
+      const pads = PADS.map(([col, name, , sym], i) => {
+        const b = document.createElement('button');
+        b.className = 'pad'; b.style.background = col; b.textContent = sym; b.setAttribute('aria-label', name);
+        b.onclick = () => press(i);
+        grid.appendChild(b);
+        return b;
+      });
+      const flash = (i, dur) => {
+        pads[i].classList.add('lit');
+        M.tone(PADS[i][2], Math.max(0.12, dur / 1000 * 0.85));
+        setTimeout(() => pads[i].classList.remove('lit'), dur);
+      };
+      const play = (delay) => {
+        busy = true; pos = 0;
+        grid.classList.add('watch');
+        info.textContent = 'Светлини: ' + len + ' от ' + goal;
+        M.feedback(fb, '👀 Гледай…');
+        seq.slice(0, len).forEach((p, k) => setTimeout(() => { if(my === G.roundId) flash(p, speed * 0.75); }, delay + k * speed));
+        setTimeout(() => {
+          if(my !== G.roundId) return;
+          busy = false; grid.classList.remove('watch');
+          M.feedback(fb, '👆 Твой ред!');
+        }, delay + len * speed);
+      };
+      function press(i){
+        if(busy || G.done()) return;
+        flash(i, 260);
+        if(i === seq[pos]){
+          pos++;
+          if(pos < len) return;
+          busy = true;
+          if(len === goal){ setTimeout(() => complete('Повтори ' + goal, goal, 'Запомни ' + M.num(goal, 'f') + ' светлини!'), 400); return; }
+          len++;
+          M.feedback(fb, '✅ Браво! Още една.', 'ok');
+          setTimeout(() => { if(my === G.roundId) play(0); }, 1000);
+        } else {
+          busy = true;
+          G.mistakes++;
+          setTimeout(M.bad, 200);
+          M.feedback(fb, 'Опа! Гледай пак.', 'bad');
+          M.speak('Гледай пак.');
+          setTimeout(() => { if(my === G.roundId) play(0); }, 1400);
+        }
+      }
+      area.appendChild(info);
+      area.appendChild(grid);
+      play(2200);
+      G.setHint(() => { if(!busy){ M.speak('Ето пак.'); play(600); } });
+    }
+  },
+
+  /* ---------- Ляво и дясно ---------- */
+  lyavo: {
+    levels: ['Вляво или вдясно?', 'До кого е?', 'Ред от 5'],
+    round(){
+      if(G.level === 0){
+        const [e, n] = M.pick(NAMED);
+        const left = Math.random() < 0.5;
+        G.setPrompt('Къде е ' + e + ' — вляво или вдясно от детето?', 'Къде е ' + n + '? Вляво или вдясно от детето?');
+        area.insertAdjacentHTML('beforeend', `<div class="lr-row"><div class="lr-cell">${left ? e : ''}</div><div class="lr-cell">🧒</div><div class="lr-cell">${left ? '' : e}</div></div>`);
+        const why = n.charAt(0).toUpperCase() + n.slice(1) + ' е ' + (left ? 'вляво' : 'вдясно') + '.';
+        const box = optionButtons([
+          { html: '<span class="e">⬅️</span>Вляво', value: 'L', label: 'вляво', speakOk: why },
+          { html: '<span class="e">➡️</span>Вдясно', value: 'R', label: 'вдясно', speakOk: why }
+        ], left ? 'L' : 'R', n + (left ? ' вляво' : ' вдясно'));
+        G.setHint(() => {
+          const b = box.children[0];
+          b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse');
+          M.speak('Това е лявата страна.');
+        });
+        return;
+      }
+      const n = G.level === 1 ? 3 : 5;
+      const items = M.sample(NAMED, n);
+      let ref, dir, ti;
+      if(G.level === 1){ ref = 1; dir = M.pick([-1, 1]); }
+      else { ref = M.randInt(0, 4); dir = ref === 0 ? 1 : (ref === 4 ? -1 : M.pick([-1, 1])); }
+      ti = ref + dir;
+      const side = dir < 0 ? 'вляво' : 'вдясно';
+      const [re, rn] = items[ref], [te, tn] = items[ti];
+      G.setPrompt('Какво има точно ' + side + ' от ' + re + '?', 'Какво има точно ' + side + ' от ' + rn + '?');
+      const wrap = document.createElement('div'); wrap.className = 'lr-row opts';
+      area.appendChild(wrap);
+      const why = (side === 'вляво' ? 'Вляво' : 'Вдясно') + ' от ' + rn + ' е ' + tn + '.';
+      const box = optionButtons(items.map(([e, nm], i) => ({
+        html: `<span class="e">${e}</span>`, value: i, label: nm, cls: i === ref ? 'ref' : '',
+        speakOk: why, speakBad: i === ref ? 'Това е ' + nm + '. Търсим до него.' : 'Това е ' + nm + '.'
+      })), ti, re + ' ' + side + ' → ' + te, null, wrap);
+      G.setHint(() => {
+        const b = box.children[ref];
+        b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse');
+        M.speak('Намери ' + rn + ' и погледни ' + (dir < 0 ? 'наляво' : 'надясно') + '.');
+      });
+    }
+  },
+
+  /* ---------- Лабиринт ---------- */
+  labirint: {
+    levels: ['4 × 4', '6 × 6', '8 × 8'],
+    round(){
+      const N = [4, 6, 8][G.level];
+      const mz = makeMaze(N);
+      const [hero, prize, heroN, prizeN] = M.pick(MAZE_HEROES);
+      const goal = { r: N - 1, c: N - 1 };
+      let pos = { r: 0, c: 0 }, steps = 0, dragging = false, lastBump = 0;
+      G.setPrompt('Заведи ' + hero + ' до ' + prize, 'Плъзни пръстче и заведи ' + heroN + ' до ' + prizeN + '.');
+      const box = document.createElement('div'); box.className = 'maze';
+      box.style.gridTemplateColumns = `repeat(${N}, 1fr)`;
+      box.style.setProperty('--mzf', 'clamp(1.2rem,' + (40 / N).toFixed(1) + 'vw,' + (3.4 * 4 / N + 0.6).toFixed(2) + 'rem)');
+      const W = '3px solid #2c3e50';
+      const els = [];
+      for(let r = 0; r < N; r++) for(let c = 0; c < N; c++){
+        const cell = mz.at(r, c);
+        const d = document.createElement('div'); d.className = 'mz';
+        if(cell.n) d.style.borderTop = W;
+        if(cell.w) d.style.borderLeft = W;
+        if(c === N - 1 && cell.e) d.style.borderRight = W;
+        if(r === N - 1 && cell.s) d.style.borderBottom = W;
+        box.appendChild(d); els.push(d);
+      }
+      const el = (p) => els[p.r * N + p.c];
+      el(goal).classList.add('goal'); el(goal).textContent = prize;
+      el(pos).textContent = hero;
+      const clearHint = () => els.forEach(x => x.classList.remove('hintp'));
+      const move = (np) => {
+        el(pos).classList.add('trail');
+        if(!(pos.r === goal.r && pos.c === goal.c)) el(pos).textContent = '';
+        pos = np; steps++;
+        el(pos).textContent = hero;
+        M.tone(520 + (steps % 6) * 40, 0.04, 'triangle');
+        if(pos.r === goal.r && pos.c === goal.c){
+          dragging = false; clearHint();
+          complete('Лабиринт ' + N + '×' + N, steps + ' стъпки', heroN.charAt(0).toUpperCase() + heroN.slice(1) + ' стигна до ' + prizeN + '!');
+        }
+      };
+      const handle = (e) => {
+        if(G.done()) return;
+        const r = box.getBoundingClientRect();
+        const c = Math.floor((e.clientX - r.left) / r.width * N), rr = Math.floor((e.clientY - r.top) / r.height * N);
+        if(c < 0 || rr < 0 || c >= N || rr >= N) return;
+        // Пръстчето може да прескочи клетки при бързо движение — вървим стъпка по стъпка натам, докъдето пътят е отворен.
+        for(let guard = 0; guard < N * 2 && !G.done(); guard++){
+          const dr = rr - pos.r, dc = c - pos.c;
+          if(!dr && !dc) return;
+          const cell = mz.at(pos.r, pos.c);
+          const tryStep = (sr, sc) => {
+            if(!sr && !sc) return false;
+            const open = sr === -1 ? !cell.n : sr === 1 ? !cell.s : sc === 1 ? !cell.e : !cell.w;
+            if(open) move({ r: pos.r + sr, c: pos.c + sc });
+            return open;
+          };
+          const vFirst = Math.abs(dr) >= Math.abs(dc);
+          const a = vFirst ? [Math.sign(dr), 0] : [0, Math.sign(dc)];
+          const b = vFirst ? [0, Math.sign(dc)] : [Math.sign(dr), 0];
+          if(tryStep(a[0], a[1]) || tryStep(b[0], b[1])) continue;
+          if(Date.now() - lastBump > 500){ lastBump = Date.now(); M.tone(180, 0.08); }
+          return;
+        }
+      };
+      box.addEventListener('pointerdown', (e) => {
+        // Започваме само от героя или до него — иначе едно докосване в далечината би изминало пътя вместо детето.
+        const r = box.getBoundingClientRect();
+        const c = Math.floor((e.clientX - r.left) / r.width * N), rr = Math.floor((e.clientY - r.top) / r.height * N);
+        if(Math.abs(rr - pos.r) + Math.abs(c - pos.c) > 1){ M.speak('Започни от ' + heroN + '.'); return; }
+        dragging = true; try{ box.setPointerCapture(e.pointerId); }catch(x){} handle(e);
+      });
+      box.addEventListener('pointermove', (e) => { if(dragging) handle(e); });
+      ['pointerup', 'pointercancel'].forEach(t => box.addEventListener(t, () => { dragging = false; }));
+      area.appendChild(box);
+      G.setHint(() => {
+        clearHint();
+        mazePath(mz, pos, goal).slice(1, 1 + Math.max(3, Math.floor(N * 0.75))).forEach(p => el(p).classList.add('hintp'));
+        M.speak('Следвай жълтите квадратчета.');
+      });
     }
   }
 };

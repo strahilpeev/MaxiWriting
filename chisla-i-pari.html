@@ -64,6 +64,28 @@
   .wallet-box.ok{ border-color:var(--ok); background:var(--ok-bg); }
   .wallet-box.bad{ border-color:var(--bad); background:var(--bad-bg); animation:mx-shake .3s; }
   .hint-line{ font-weight:800; font-size:calc(1.3rem * var(--ts)); color:#8e44ad; min-height:1.4em; text-align:center; }
+  /* Шаблони */
+  .pat-row{ display:flex; flex-wrap:wrap; justify-content:center; gap:clamp(0.3rem,1.2vw,0.7rem); }
+  .pat-cell{
+    width:clamp(58px,10vw,96px); height:clamp(58px,10vw,96px); border-radius:18px; background:#fff; border:3px solid var(--line);
+    display:flex; align-items:center; justify-content:center; font-size:clamp(2rem,5.6vw,3.4rem); font-weight:900;
+  }
+  .pat-cell.q{ border-style:dashed; border-color:#e8845d; color:#e8845d; }
+  .pat-cell.num{ font-size:calc(clamp(1.6rem,4.4vw,2.6rem) * var(--ts)); }
+  .pat-cell.filled{ border-color:var(--ok); background:var(--ok-bg); }
+  /* Фигури */
+  .shape-opt{ padding:0.5rem; }
+  .shape-opt svg{ display:block; }
+  /* Календар */
+  .cal-strip{ display:flex; flex-wrap:wrap; justify-content:center; gap:0.4rem; max-width:900px; }
+  .cal-chip{ background:#eef6ff; border-radius:12px; padding:0.35rem 0.7rem; font-weight:800; font-size:calc(1rem * var(--ts)); }
+  .cal-chip.here{ background:#3498db; color:#fff; }
+  .cal-chip.q{ background:#fff8e6; border:2px dashed #e8845d; color:#e8845d; }
+  .cal-word{ font-size:calc(clamp(1.8rem,5vw,2.8rem) * var(--ts)); font-weight:900; background:#fff8e6; border-radius:18px; padding:0.3rem 1.2rem; }
+  /* Умножение */
+  .eq{ font-size:calc(clamp(2.6rem,8vw,4.4rem) * var(--ts)); font-weight:900; letter-spacing:0.04em; }
+  .mul-groups{ display:flex; flex-wrap:wrap; justify-content:center; gap:0.6rem; max-width:900px; }
+  .mul-groups .dots{ background:#f6f9fc; border-radius:12px; padding:0.4rem; max-width:110px; }
 </style>
 </head>
 <body>
@@ -84,6 +106,13 @@
     <button class="mx-tile g3" onclick="openMode('sravnenie')"><span class="i">⚖️</span><span class="l">По-малко или повече</span><span class="s">&lt;  =  &gt;</span></button>
     <button class="mx-tile g6" onclick="openMode('prava')"><span class="i">📏</span><span class="l">Числова права</span><span class="s">Намери числото</span></button>
     <button class="mx-tile g5" onclick="openMode('chasovnik')"><span class="i">🕒</span><span class="l">Часовник</span><span class="s">Колко е часът?</span></button>
+    <button class="mx-tile g7" onclick="openMode('umnozhenie')"><span class="i">✖️</span><span class="l">Умножение</span><span class="s">И деление</span></button>
+  </div>
+  <div class="mx-section-title">🧩 Логика и календар</div>
+  <div class="mx-tiles">
+    <button class="mx-tile g1" onclick="openMode('shabloni')"><span class="i">🔴🔵❓</span><span class="l">Какво следва?</span><span class="s">Шаблони</span></button>
+    <button class="mx-tile g4" onclick="openMode('figuri')"><span class="i">🔺🟦</span><span class="l">Фигури и цветове</span><span class="s">Докосни правилната</span></button>
+    <button class="mx-tile g8" onclick="openMode('kalendar')"><span class="i">📅</span><span class="l">Дни, месеци, сезони</span><span class="s">Календар</span></button>
   </div>
   <div class="mx-section-title">💶 Евро</div>
   <div class="mx-tiles">
@@ -192,6 +221,55 @@ const WALLETS = [[100,200,500,1000],[100,200,500,1000,2000,5000],[10,20,50,100,2
 function segmentsFor(cents, withCents){
   if(!withCents) return [{ target:String(cents / 100), unit:'€' }];
   return [{ target:String(Math.floor(cents / 100)), unit:'€' }, { target:String(cents % 100), unit:'ц' }];
+}
+
+/* ================= Шаблони ================= */
+const PAT_ITEMS = [['🔴','червено'],['🔵','синьо'],['🟢','зелено'],['🟡','жълто'],['⭐','звезда'],['🌙','луна'],['🍎','ябълка'],
+  ['🍌','банан'],['🐶','куче'],['🐱','котка'],['🔺','триъгълник'],['🟦','квадрат'],['❤️','сърце'],['🚗','кола']];
+
+/* ================= Фигури и цветове ================= */
+const SHAPES = [
+  { k:'krag', n:'кръг', d:'кръга', g:'m' }, { k:'kvadrat', n:'квадрат', d:'квадрата', g:'m' },
+  { k:'triagalnik', n:'триъгълник', d:'триъгълника', g:'m' }, { k:'pravoagalnik', n:'правоъгълник', d:'правоъгълника', g:'m' },
+  { k:'zvezda', n:'звезда', d:'звездата', g:'f' }, { k:'romb', n:'ромб', d:'ромба', g:'m' }, { k:'oval', n:'овал', d:'овала', g:'m' }
+];
+const COLORS = [
+  { c:'#e74c3c', m:'червен', md:'червения', f:'червена', fd:'червената' },
+  { c:'#3498db', m:'син', md:'синия', f:'синя', fd:'синята' },
+  { c:'#27ae60', m:'зелен', md:'зеления', f:'зелена', fd:'зелената' },
+  { c:'#f1c40f', m:'жълт', md:'жълтия', f:'жълта', fd:'жълтата' },
+  { c:'#e67e22', m:'оранжев', md:'оранжевия', f:'оранжева', fd:'оранжевата' },
+  { c:'#8e44ad', m:'лилав', md:'лилавия', f:'лилава', fd:'лилавата' }
+];
+const shapeName = (s, c, def) => (def ? (s.g === 'f' ? c.fd : c.md) : (s.g === 'f' ? c.f : c.m)) + ' ' + (def ? s.d : s.n);
+function shapeSVG(k, col, size){
+  size = size || 110;
+  const st = `fill="${col}" stroke="#2c3e50" stroke-width="3" stroke-linejoin="round"`;
+  let body = '';
+  if(k === 'krag') body = `<circle cx="50" cy="50" r="40" ${st}/>`;
+  else if(k === 'kvadrat') body = `<rect x="14" y="14" width="72" height="72" rx="3" ${st}/>`;
+  else if(k === 'triagalnik') body = `<polygon points="50,10 92,86 8,86" ${st}/>`;
+  else if(k === 'pravoagalnik') body = `<rect x="4" y="26" width="92" height="48" rx="3" ${st}/>`;
+  else if(k === 'romb') body = `<polygon points="50,6 92,50 50,94 8,50" ${st}/>`;
+  else if(k === 'oval') body = `<ellipse cx="50" cy="50" rx="46" ry="28" ${st}/>`;
+  else if(k === 'zvezda'){
+    const pts = [];
+    for(let i = 0; i < 10; i++){
+      const r = i % 2 ? 19 : 46, a = (i * 36 - 90) * Math.PI / 180;
+      pts.push((50 + r * Math.cos(a)).toFixed(1) + ',' + (54 + r * Math.sin(a)).toFixed(1));
+    }
+    body = `<polygon points="${pts.join(' ')}" ${st}/>`;
+  }
+  return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" role="img">${body}</svg>`;
+}
+
+/* ================= Календар ================= */
+const DAYS = ['понеделник','вторник','сряда','четвъртък','петък','събота','неделя'];
+const MONTHS = ['януари','февруари','март','април','май','юни','юли','август','септември','октомври','ноември','декември'];
+const SEASONS = [['зима','❄️','зимата'],['пролет','🌸','пролетта'],['лято','☀️','лятото'],['есен','🍂','есента']];
+const seasonOf = (m) => (m === 11 || m <= 1) ? 0 : (m <= 4 ? 1 : (m <= 7 ? 2 : 3));
+function calStrip(list, here, q){
+  return `<div class="cal-strip">${list.map((x, i) => `<span class="cal-chip${i === here ? ' here' : ''}${i === q ? ' q' : ''}">${i === q ? '?' : x}</span>`).join('')}</div>`;
 }
 
 /* ================= Игри ================= */
@@ -521,6 +599,152 @@ const MODES = {
           else { if(boxes[k]){ boxes[k].classList.remove('bad'); void boxes[k].offsetWidth; boxes[k].classList.add('bad'); } miss(q, k); }
         }
         setHint(() => { M.$$('.money-row', wrap).forEach(r => M.$$('.money-item', r).forEach(it => it.querySelector('.lbl').textContent = M.fmtMoney(+it.dataset.c))); M.speak(expl); });
+      }
+    }
+  },
+
+  /* ---------- Умножение и деление ---------- */
+  umnozhenie: {
+    levels: ['× 2, 5, 10', '× 2 – 5', 'Цялата таблица', 'Деление'],
+    round(){
+      let a, b;
+      if(G.level === 0){ a = M.pick([2, 5, 10]); b = M.randInt(1, 10); }
+      else if(G.level === 1){ a = M.randInt(2, 5); b = M.randInt(1, 10); }
+      else { a = M.randInt(2, 10); b = M.randInt(2, 10); }
+      const div = G.level === 3;
+      const c = a * b;
+      let q, res, ask, say;
+      if(div){
+        q = c + ' ÷ ' + a; res = b;
+        ask = 'Колко е ' + M.num(c) + ' делено на ' + M.num(a) + '?';
+        say = M.num(c) + ' делено на ' + M.num(a) + ' е ' + M.num(b) + '.';
+      } else {
+        if(G.level < 2 && Math.random() < 0.5) [a, b] = [b, a];
+        q = a + ' × ' + b; res = c;
+        ask = 'Колко е ' + M.num(a) + ' по ' + M.num(b) + '?';
+        say = M.num(a) + ' по ' + M.num(b) + ' е ' + M.num(c) + '.';
+      }
+      setPrompt('Колко е?', ask);
+      const eq = document.createElement('div'); eq.className = 'eq'; eq.textContent = q + ' = ?';
+      area.appendChild(eq);
+      const groups = document.createElement('div'); groups.className = 'mul-groups';
+      area.appendChild(groups);
+      G.digits([{ target: String(res) }], () => { eq.textContent = q + ' = ' + res; complete(q + ' = ' + res, res, say); });
+      setHint(() => {
+        // a групи по b точки (при деление: c точки в a равни групи)
+        groups.innerHTML = Array.from({ length: a }, () => `<div class="dots">${'<i></i>'.repeat(b)}</div>`).join('');
+        if(div) M.speak('Раздели ' + M.num(c) + ' на ' + M.num(a) + ' равни групи. Колко има във всяка група?');
+        else M.speakSeq([Array.from({ length: Math.min(a, 10) }, (x, i) => M.num((i + 1) * b)).join(', ')], null, 0.8);
+      });
+    }
+  },
+
+  /* ---------- Шаблони: какво следва? ---------- */
+  shabloni: {
+    levels: ['АБ АБ', 'ААБ / АББ', 'АБВ', 'Числа'],
+    round(){
+      const row = document.createElement('div'); row.className = 'pat-row';
+      if(G.level === 3){
+        const step = M.pick([1, 2, 5, 10]);
+        const start = step === 1 ? M.randInt(0, 15) : (step === 2 ? M.randInt(0, 10) : step * M.randInt(0, 5));
+        const seq = [0, 1, 2, 3].map(i => start + i * step);
+        const ans = start + 4 * step;
+        setPrompt('Кое число следва?', 'Кое число следва? ' + seq.map(n => M.num(n)).join(', ') + '...');
+        row.innerHTML = seq.map(n => `<div class="pat-cell num">${n}</div>`).join('') + '<div class="pat-cell num q" id="patQ">?</div>';
+        area.appendChild(row);
+        const why = step === 1 ? 'Всяко следващо е с едно повече.' : 'Броим през ' + M.num(step) + '.';
+        optionButtons(numberOptions(ans, step, 0).map(v => ({ html: String(v), value: v, speakOk: [M.num(ans), why] })), ans,
+          seq.join(', ') + ', ?', (it) => { if(it.value === ans){ const qc = $('patQ'); qc.textContent = ans; qc.classList.add('filled'); } });
+        setHint(() => M.speak(why));
+        return;
+      }
+      const unit = G.level === 0 ? [0, 1] : (G.level === 1 ? M.pick([[0, 0, 1], [0, 1, 1]]) : [0, 1, 2]);
+      const kinds = M.sample(PAT_ITEMS, Math.max.apply(null, unit) + 1);
+      const partial = M.randInt(0, unit.length - 1);
+      const shown = [];
+      for(let i = 0; i < unit.length * 2 + partial; i++) shown.push(unit[i % unit.length]);
+      const ans = unit[partial];
+      setPrompt('Какво следва?', 'Гледай редицата. Какво следва?');
+      row.innerHTML = shown.map(k => `<div class="pat-cell">${kinds[k][0]}</div>`).join('') + '<div class="pat-cell q" id="patQ">?</div>';
+      area.appendChild(row);
+      const extra = M.pick(PAT_ITEMS.filter(p => !kinds.includes(p)));
+      const opts = M.shuffle(kinds.concat([extra]));
+      optionButtons(opts.map(([e, w]) => ({ html: `<span class="e">${e}</span>`, value: e, label: w, speakOk: kinds[ans][1], speakBad: w + ' не пасва тук.' })),
+        kinds[ans][0], shown.map(k => kinds[k][0]).join('') + '?',
+        (it) => { if(it.value === kinds[ans][0]){ const qc = $('patQ'); qc.textContent = it.value; qc.classList.add('filled'); } });
+      setHint(() => M.speakSeq([shown.map(k => kinds[k][1]).join(', ') + '... и после?'], null, 0.8));
+    }
+  },
+
+  /* ---------- Фигури и цветове ---------- */
+  figuri: {
+    levels: ['Фигури', 'Цветове', 'Цвят и фигура'],
+    round(){
+      let items = [];
+      const key = (s, c) => s.k + '-' + c.c;
+      const s = M.pick(G.level === 0 ? SHAPES : SHAPES.slice(0, 5));
+      const c = M.pick(COLORS);
+      if(G.level === 0){
+        items = [[s, c]].concat(M.sample(SHAPES.filter(x => x !== s), 2).map(x => [x, M.pick(COLORS)]));
+        setPrompt('Докосни ' + s.d, 'Докосни ' + s.d + '.');
+      } else if(G.level === 1){
+        items = [[s, c]].concat(M.sample(COLORS.filter(x => x !== c), 2).map(x => [s, x]));
+        setPrompt('Докосни ' + shapeName(s, c, true), 'Докосни ' + shapeName(s, c, true) + '.');
+      } else {
+        const s2 = M.pick(SHAPES.slice(0, 5).filter(x => x !== s));
+        const c2 = M.pick(COLORS.filter(x => x !== c));
+        const s3 = M.pick(SHAPES.slice(0, 5).filter(x => x !== s && x !== s2));
+        const c3 = M.pick(COLORS.filter(x => x !== c && x !== c2));
+        items = [[s, c], [s, c2], [s2, c], [s3, c3]];
+        setPrompt('Докосни ' + shapeName(s, c, true), 'Докосни ' + shapeName(s, c, true) + '.');
+      }
+      optionButtons(M.shuffle(items).map(([sh, co]) => ({
+        html: shapeSVG(sh.k, co.c, 110), value: key(sh, co), label: shapeName(sh, co), cls: 'shape-opt',
+        speakOk: 'Това е ' + shapeName(s, c) + '.', speakBad: 'Това е ' + (G.level === 0 ? sh.n : shapeName(sh, co)) + '.'
+      })), key(s, c), shapeName(s, c));
+    }
+  },
+
+  /* ---------- Дни, месеци, сезони ---------- */
+  kalendar: {
+    levels: ['Дни', 'Месеци', 'Сезони'],
+    round(){
+      if(G.level < 2){
+        const list = G.level === 0 ? DAYS : MONTHS;
+        const what = G.level === 0 ? 'ден' : 'месец';
+        const L = list.length;
+        if(G.level === 0 && Math.random() < 0.2){
+          const t = (new Date().getDay() + 6) % 7;
+          setPrompt('Кой ден е днес?');
+          optionButtons(M.shuffle([t].concat(M.sample([0,1,2,3,4,5,6].filter(i => i !== t), 2))).map(i => ({ html: list[i], value: i, label: list[i], speakOk: 'Днес е ' + list[t] + '.' })), t, 'днес');
+          setHint(() => { area.insertAdjacentHTML('beforeend', calStrip(list, -1, -1)); M.speak('Вчера беше ' + list[(t + 6) % 7] + '.'); });
+          return;
+        }
+        const i = M.randInt(0, L - 1);
+        const after = Math.random() < 0.6;
+        const ai = (i + (after ? 1 : -1) + L) % L;
+        const other = (i + (after ? -1 : 1) + L) % L;
+        const rnd = M.pick(list.map((x, k) => k).filter(k => k !== i && k !== ai && k !== other));
+        setPrompt('Кой ' + what + ' е ' + (after ? 'след' : 'преди') + ' ' + list[i] + '?');
+        area.insertAdjacentHTML('beforeend', `<div class="cal-word">${list[i]}</div>`);
+        const why = after ? 'След ' + list[i] + ' идва ' + list[ai] + '.' : 'Преди ' + list[i] + ' е ' + list[ai] + '.';
+        optionButtons(M.shuffle([ai, other, rnd]).map(k => ({ html: list[k], value: k, label: list[k], speakOk: why })), ai, (after ? 'след ' : 'преди ') + list[i]);
+        setHint(() => { if(!M.$('.cal-strip', area)) area.insertAdjacentHTML('beforeend', calStrip(list, i, ai)); M.speakSeq([list.join(', ')], null, 0.9); });
+        return;
+      }
+      if(Math.random() < 0.6){
+        const m = M.randInt(0, 11);
+        const si = seasonOf(m);
+        setPrompt('През кой сезон е ' + MONTHS[m] + '?');
+        area.insertAdjacentHTML('beforeend', `<div class="cal-word">${MONTHS[m]}</div>`);
+        optionButtons(SEASONS.map(([n, e], k) => ({ html: `<span class="e">${e}</span>${n}`, value: k, label: n, speakOk: MONTHS[m].charAt(0).toUpperCase() + MONTHS[m].slice(1) + ' е през ' + SEASONS[si][2] + '.' })), si, MONTHS[m] + ' → ' + SEASONS[si][0]);
+        setHint(() => M.speak(SEASONS[si][0] === 'зима' ? 'Тогава вали сняг.' : (si === 1 ? 'Тогава цъфтят цветята.' : (si === 2 ? 'Тогава ходим на море.' : 'Тогава падат листата.'))));
+      } else {
+        const si = M.randInt(0, 3), ni = (si + 1) % 4;
+        setPrompt('Кой сезон идва след ' + SEASONS[si][2] + '?');
+        area.insertAdjacentHTML('beforeend', `<div class="mx-big">${SEASONS[si][1]}</div>`);
+        optionButtons(M.shuffle(SEASONS.map((x, k) => k).filter(k => k !== si)).map(k => ({ html: `<span class="e">${SEASONS[k][1]}</span>${SEASONS[k][0]}`, value: k, label: SEASONS[k][0], speakOk: 'След ' + SEASONS[si][2] + ' идва ' + SEASONS[ni][0] + '.' })), ni, 'след ' + SEASONS[si][0]);
+        setHint(() => M.speak('Зима, пролет, лято, есен.', { rate: 0.8 }));
       }
     }
   }

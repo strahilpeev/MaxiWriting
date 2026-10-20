@@ -87,6 +87,12 @@
   .chips{ display:flex; gap:0.5rem; flex-wrap:wrap; justify-content:center; }
   .chip{ border:2px solid var(--line); background:#fff; border-radius:999px; padding:0.5rem 1rem; font-weight:800; cursor:pointer; font-size:calc(1rem * var(--ts)); }
   .chip.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  /* Безопасност и време */
+  .scene{ display:flex; flex-direction:column; align-items:center; gap:0.3rem; }
+  .scene-text{ font-size:calc(clamp(1.2rem,3.2vw,1.8rem) * var(--ts)); font-weight:800; text-align:center; background:#fff8e6; border-radius:16px; padding:0.4rem 1rem; }
+  .wide-opt{ min-width:min(100%, 280px); font-size:calc(clamp(1rem,2.6vw,1.4rem) * var(--ts)); }
+  .mx-opt.sel{ border-color:#3498db; background:#eef6ff; box-shadow:0 0 0 4px rgba(52,152,219,0.25); }
+  .cloth .w{ font-size:calc(0.95rem * var(--ts)); }
 </style>
 </head>
 <body>
@@ -107,6 +113,8 @@
     <button class="mx-tile g8" onclick="openFeel()"><span class="i">💛</span><span class="l">Как се чувствам?</span><span class="s">Кажи ми</span></button>
     <button class="mx-tile g7" onclick="openMode('emocii')"><span class="i">😀😢</span><span class="l">Познай емоцията</span><span class="s">Кое лице е…?</span></button>
     <button class="mx-tile g3" onclick="openTimer()"><span class="i">⏳</span><span class="l">Таймер</span><span class="s">Колко време остава?</span></button>
+    <button class="mx-tile g6" onclick="openMode('bezopasnost')"><span class="i">🚦</span><span class="l">Светофар и безопасност</span><span class="s">Как да се пазя?</span></button>
+    <button class="mx-tile g1" onclick="openMode('vreme')"><span class="i">☂️🧤</span><span class="l">Облечи се за времето</span><span class="s">Какво ще облечеш?</span></button>
   </div>
 </section>
 
@@ -464,6 +472,72 @@ function releaseWake(){ if(wakeLock){ wakeLock.release().catch(() => {}); wakeLo
 /* ================= Игра „Познай емоцията“ ================= */
 const FACES = [['😀','весело','радост'],['😢','тъжно','тъга'],['😠','ядосано','гняв'],['😨','уплашено','страх'],
   ['😲','изненадано','изненада'],['😴','сънливо','умора'],['😌','спокойно','спокойствие'],['🥰','влюбено','обич']];
+/* ================= Светофар и безопасност ================= */
+function pedLight(red){
+  return `<svg width="130" height="230" viewBox="0 0 130 230" role="img" aria-label="светофар за пешеходци">
+    <rect x="10" y="5" width="110" height="220" rx="22" fill="#2c3e50"/>
+    <circle cx="65" cy="62" r="44" fill="${red ? '#e74c3c' : '#5a2a26'}"/>
+    <circle cx="65" cy="168" r="44" fill="${red ? '#1f4a2c' : '#2ecc71'}"/>
+    <text x="65" y="80" text-anchor="middle" font-size="50" opacity="${red ? 1 : 0.25}">🧍</text>
+    <text x="65" y="186" text-anchor="middle" font-size="50" opacity="${red ? 0.25 : 1}">🚶</text>
+  </svg>`;
+}
+function carLight(lit){
+  const on = ['#e74c3c', '#f1c40f', '#2ecc71'], off = ['#5a2a26', '#5a4e1a', '#1f4a2c'];
+  return `<svg width="110" height="270" viewBox="0 0 110 270" role="img" aria-label="светофар">
+    <rect x="8" y="5" width="94" height="260" rx="20" fill="#2c3e50"/>
+    ${[0, 1, 2].map(i => `<circle cx="55" cy="${50 + i * 85}" r="34" fill="${i === lit ? on[i] : off[i]}"/>`).join('')}
+  </svg>`;
+}
+/* [картинка, ситуация, безопасно ли е, обяснение] */
+const SAFETY = [
+  ['🚸🧑‍🤝‍🧑', 'Пресичам на пешеходната пътека с възрастен', true, 'Да, така е безопасно.'],
+  ['⚽🚗', 'Тичам след топката на улицата', false, 'Опасно е. Колите може да не ме видят. Казвам на възрастен.'],
+  ['🔥🍳', 'Пипам горещия котлон', false, 'Опасно е. Котлонът изгаря.'],
+  ['🔌☝️', 'Пъхам пръстче в контакта', false, 'Опасно е. Токът е много опасен.'],
+  ['💊🍬', 'Ям хапчета, които приличат на бонбони', false, 'Опасно е. Лекарства се пият само от възрастен.'],
+  ['🪥😁', 'Мия си зъбите', true, 'Да, това е полезно.'],
+  ['🧼🙌', 'Мия си ръцете преди ядене', true, 'Да, така махам микробите.'],
+  ['🚲⛑️', 'Карам колело с каска', true, 'Да, каската пази главата.'],
+  ['🚗🧒', 'В колата съм със закопчан колан', true, 'Да, коланът ме пази.'],
+  ['🍬🙋', 'Взимам бонбон от непознат', false, 'Опасно е. Не взимам нищо от непознати.'],
+  ['🚪🔔', 'Отварям вратата на непознат', false, 'Опасно е. Викам възрастен.'],
+  ['🪟🧗', 'Катеря се на прозореца', false, 'Опасно е. Мога да падна.'],
+  ['🔪🧸', 'Играя с нож', false, 'Опасно е. Ножът реже.'],
+  ['🏊👀', 'Плувам, когато възрастен ме гледа', true, 'Да, така е безопасно.'],
+  ['☀️🧢', 'Нося шапка на силно слънце', true, 'Да, шапката ме пази от слънцето.'],
+  ['🐕✋', 'Галя непознато куче, без да питам', false, 'Опасно е. Първо питам стопанина.']
+];
+let recentSafe = [];
+/* [въпрос, отговори (първият е верният), обяснение] */
+const HELP = [
+  ['На кой номер звъним, когато има опасност?', ['📞 112', '📞 123', '📞 555'], 'При опасност звъним на едно, едно, две.'],
+  ['Изгубих се в магазина. Какво правя?', ['🧑‍💼 Питам продавач или охранител', '🚶 Тръгвам сам навън', '🙈 Скривам се'], 'Оставам вътре и питам продавач или охранител.'],
+  ['Непознат ми предлага бонбон. Какво правя?', ['🙅 Казвам „Не, благодаря“ и отивам при мама или татко', '🍬 Взимам бонбона', '🚗 Тръгвам с него'], 'Не взимам нищо и отивам при моите хора.'],
+  ['Нещо ме боли. На кого казвам?', ['👩 На мама, татко или учителката', '🤐 На никого', '🧸 На мечето'], 'Казвам на възрастен, на когото вярвам.'],
+  ['Видях огън. Какво правя?', ['📢 Казвам веднага на възрастен', '💧 Гася го сам', '🙈 Не казвам на никого'], 'Казвам веднага на възрастен и стоя далеч.'],
+  ['Котлонът е горещ. Какво правя?', ['✋ Не го пипам', '☝️ Пипам да проверя', '🍳 Готвя сам'], 'Не пипам горещите неща.'],
+  ['Ще пресичам улицата. Какво правя?', ['👀 Спирам и се оглеждам наляво и надясно', '🏃 Тичам бързо', '📱 Гледам телефона'], 'Спирам, оглеждам се и пресичам с възрастен.']
+];
+let lastHelp = null;
+
+/* ================= Облечи се за времето ================= */
+const WEATHER = [
+  { e:'❄️⛄', name:'Вали сняг', say:'Навън вали сняг и е много студено.',
+    good:[['🧤','ръкавици'],['🧣','шал'],['🧥','дебело палто'],['🥾','ботуши']],
+    bad:[['🩳','къси панталонки'],['🩴','джапанки'],['🕶️','слънчеви очила'],['🎽','потник']] },
+  { e:'🌧️☔', name:'Вали дъжд', say:'Навън вали дъжд.',
+    good:[['☂️','чадър'],['🥾','ботуши'],['🧥','яке']],
+    bad:[['🩴','джапанки'],['🩳','къси панталонки'],['🕶️','слънчеви очила']] },
+  { e:'☀️🌡️', name:'Горещо е', say:'Навън грее силно слънце и е горещо.',
+    good:[['🩳','къси панталонки'],['👕','тениска'],['🧢','шапка с козирка'],['🕶️','слънчеви очила'],['🩴','сандали']],
+    bad:[['🧤','ръкавици'],['🧣','шал'],['🧥','дебело палто'],['🥾','ботуши']] },
+  { e:'🍂🌬️', name:'Хладно е и духа вятър', say:'Навън е хладно и духа вятър.',
+    good:[['🧥','яке'],['👖','дълъг панталон'],['👟','маратонки']],
+    bad:[['🩳','къси панталонки'],['🩴','джапанки'],['🎽','потник']] }
+];
+let lastWeather = null;
+
 const MODES = {
   emocii: {
     levels: ['3 лица', '4 лица'],
@@ -479,6 +553,107 @@ const MODES = {
         document.getElementById('area').insertAdjacentHTML('beforeend', `<div class="mx-big">${target[0]}</div>`);
         optionButtons(M.shuffle(set).map(f => ({ html: f[1], value: f[1], speakOk: 'Лицето е ' + target[1] + '.' })), target[1], target[0] + ' → ' + target[1]);
       }
+    }
+  },
+
+  /* ---------- Светофар и безопасност ---------- */
+  bezopasnost: {
+    levels: ['Светофар', 'Безопасно ли е?', 'Кой ще помогне?'],
+    round(){
+      const area = $('area');
+      if(G.level === 0){
+        if(Math.random() < 0.5){
+          const red = Math.random() < 0.5;
+          G.setPrompt('Какво правиш, когато свети ' + (red ? 'червеното' : 'зеленото') + ' човече?');
+          area.insertAdjacentHTML('beforeend', pedLight(red));
+          const why = red ? 'На червено стоим и чакаме.' : 'На зелено пресичаме, като се оглеждаме наляво и надясно.';
+          optionButtons([
+            { html: '<span class="e">🧍</span>Стоя и чакам', value: 'stop', label: 'стоя', cls: 'wide-opt', speakOk: why, speakBad: why },
+            { html: '<span class="e">🚶</span>Пресичам внимателно', value: 'go', label: 'пресичам', cls: 'wide-opt', speakOk: why, speakBad: why }
+          ], red ? 'stop' : 'go', 'човече ' + (red ? 'червено' : 'зелено'));
+        } else {
+          const lit = M.randInt(0, 2);
+          const names = ['червено', 'жълто', 'зелено'];
+          const acts = [['🛑', 'Спират'], ['⚠️', 'Внимават и се приготвят'], ['🚗', 'Тръгват']];
+          const why = ['На червено колите спират.', 'На жълто колите внимават.', 'На зелено колите тръгват.'][lit];
+          G.setPrompt('Какво правят колите на ' + names[lit] + '?');
+          area.insertAdjacentHTML('beforeend', carLight(lit));
+          optionButtons(acts.map(([e, t], i) => ({ html: `<span class="e">${e}</span>${t}`, value: i, label: t, cls: 'wide-opt', speakOk: why, speakBad: why })),
+            lit, 'светофар ' + names[lit]);
+        }
+        return;
+      }
+      if(G.level === 1){
+        const pool = SAFETY.filter(s => !recentSafe.includes(s[1]));
+        const [e, text, safe, why] = M.pick(pool.length ? pool : SAFETY);
+        recentSafe.push(text); if(recentSafe.length > 6) recentSafe.shift();
+        G.setPrompt('Безопасно ли е?', text + '. Безопасно ли е?');
+        area.insertAdjacentHTML('beforeend', `<div class="scene"><div class="mx-big">${e}</div><div class="scene-text">${M.escapeHtml(text)}</div></div>`);
+        optionButtons([
+          { html: '<span class="e">👍</span>Безопасно', value: true, label: 'безопасно', speakOk: why, speakBad: why },
+          { html: '<span class="e">⛔</span>Опасно', value: false, label: 'опасно', speakOk: why, speakBad: why }
+        ], safe, text);
+        return;
+      }
+      const [q, opts, why] = M.pick(HELP.filter(h => h[0] !== lastHelp));
+      lastHelp = q;
+      G.setPrompt(q);
+      optionButtons(M.shuffle(opts.map((o, i) => ({ html: o, value: i, label: o.replace(/^\S+\s/, ''), cls: 'wide-opt', speakOk: why }))), 0, q);
+    }
+  },
+
+  /* ---------- Облечи се за времето ---------- */
+  vreme: {
+    levels: ['Едно нещо', 'Облечи се цял'],
+    round(){
+      const area = $('area');
+      const w = M.pick(WEATHER.filter(x => x !== lastWeather));
+      lastWeather = w;
+      area.insertAdjacentHTML('beforeend', `<div class="scene"><div class="mx-big">${w.e}</div><div class="scene-text">${w.name}</div></div>`);
+      const item = ([e, n]) => `<span class="e">${e}</span><span class="w">${n}</span>`;
+      if(G.level === 0){
+        const good = M.pick(w.good);
+        G.setPrompt('Какво ще облечеш?', w.say + ' Какво ще облечеш?');
+        optionButtons(M.shuffle([good].concat(M.sample(w.bad, 2))).map(it => ({
+          html: item(it), value: it[1], cls: 'cloth', speakOk: 'Да! ' + it[1].charAt(0).toUpperCase() + it[1].slice(1) + '.', speakBad: 'С ' + it[1] + ' няма да ти е удобно в това време.'
+        })), good[1], w.name + ' → ' + good[1]);
+        return;
+      }
+      const good = M.sample(w.good, Math.min(3, w.good.length));
+      const items = M.shuffle(good.concat(M.sample(w.bad, 3)));
+      G.setPrompt('Избери всичко, което ти трябва', w.say + ' Избери всичко, което ти трябва, и натисни Готово.');
+      const box = document.createElement('div'); box.className = 'mx-options';
+      const btns = items.map(it => {
+        const b = document.createElement('button');
+        b.className = 'mx-opt cloth'; b.innerHTML = item(it);
+        b.onclick = () => { if(G.done()) return; b.classList.toggle('sel'); M.click(); if(b.classList.contains('sel')) M.speak(it[1], { rate: 1 }); };
+        box.appendChild(b);
+        return [b, it];
+      });
+      area.appendChild(box);
+      const done = document.createElement('button'); done.className = 'mx-btn green'; done.textContent = 'Готово ✓';
+      done.onclick = () => {
+        if(G.done()) return;
+        const wrong = btns.filter(([b, it]) => b.classList.contains('sel') && !good.includes(it));
+        const missing = btns.filter(([b, it]) => !b.classList.contains('sel') && good.includes(it));
+        if(!wrong.length && !missing.length){
+          btns.forEach(([b, it]) => { if(good.includes(it)) b.classList.add('ok'); });
+          done.disabled = true;
+          complete(w.name, good.map(g => g[1]).join(', '), 'Облечен си точно за времето: ' + good.map(g => g[1]).join(', ') + '.');
+          return;
+        }
+        if(wrong.length){
+          wrong.forEach(([b]) => { b.classList.remove('sel', 'bad'); void b.offsetWidth; b.classList.add('bad'); setTimeout(() => b.classList.remove('bad'), 600); });
+          miss(w.name, wrong.map(x => x[1][1]).join(', '), 'Не за това време: ' + wrong.map(x => x[1][1]).join(' и ') + '.');
+        } else {
+          miss(w.name, 'липсват ' + missing.length, missing.length === 1 ? 'Трябва ти още едно нещо.' : 'Трябват ти още ' + M.num(missing.length, 'n') + ' неща.');
+        }
+      };
+      area.appendChild(done);
+      G.setHint(() => {
+        const m = btns.find(([b, it]) => !b.classList.contains('sel') && good.includes(it));
+        if(m){ m[0].classList.add('sel'); M.speak('Вземи и ' + m[1][1] + '.'); }
+      });
     }
   }
 };

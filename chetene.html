@@ -29,6 +29,12 @@
   .rhyme-target .w{ font-size:calc(clamp(1.6rem,4.4vw,2.4rem) * var(--ts)); font-weight:900; }
   .caps-toggle{ border:2px solid #c9a0ff; background:#f5edff; border-radius:12px; padding:0.45rem 0.9rem; font-weight:800; cursor:pointer; font-size:calc(0.95rem * var(--ts)); }
   .caps-toggle.on{ background:#8e44ad; color:#fff; border-color:#8e44ad; }
+  .mx-opt.dim{ opacity:0.25; }
+  .claps{ font-size:calc(1.1rem * var(--ts)); letter-spacing:-0.1em; }
+  .clap-row{ display:flex; gap:0.3rem; flex-wrap:wrap; justify-content:center; min-height:clamp(54px,8vw,70px); font-size:clamp(2.4rem,6vw,3.4rem); }
+  .clap-btn{ font-size:calc(clamp(1.6rem,4vw,2.2rem) * var(--ts)); padding:1rem 2.2rem; border-radius:24px; }
+  .wslot{ min-width:clamp(90px,15vw,150px); padding:0 0.6rem; font-size:calc(clamp(1.2rem,3.4vw,1.9rem) * var(--ts)); }
+  .wtile{ min-width:clamp(90px,15vw,150px); padding:0 0.9rem; font-size:calc(clamp(1.2rem,3.4vw,1.9rem) * var(--ts)); background:linear-gradient(160deg,#5da8e8,#2c6fb0); }
 </style>
 </head>
 <body>
@@ -49,6 +55,11 @@
     <button class="mx-tile g2" onclick="openMode('zvuk')"><span class="i">🅰️</span><span class="l">Първият звук</span><span class="s">С какво започва?</span></button>
     <button class="mx-tile g3" onclick="openMode('srichki')"><span class="i">🧩</span><span class="l">Сглоби думата</span><span class="s">Подреди сричките</span></button>
     <button class="mx-tile g5" onclick="openMode('rimi')"><span class="i">🎵</span><span class="l">Рими</span><span class="s">Кое звучи еднакво?</span></button>
+    <button class="mx-tile g6" onclick="openMode('chuy')"><span class="i">👂</span><span class="l">Чуй сричката</span><span class="s">Намери каквото чуваш</span></button>
+    <button class="mx-tile g7" onclick="openMode('broisrichki')"><span class="i">👏</span><span class="l">Колко срички?</span><span class="s">Пляскай и брой</span></button>
+    <button class="mx-tile g8" onclick="openMode('posleden')"><span class="i">🔚</span><span class="l">Последният звук</span><span class="s">С какво завършва?</span></button>
+    <button class="mx-tile g2" onclick="openMode('glavni')"><span class="i">Аа</span><span class="l">Голяма и малка</span><span class="s">Намери двойката</span></button>
+    <button class="mx-tile g3" onclick="openMode('izrechenie')"><span class="i">📝</span><span class="l">Подреди изречението</span><span class="s">Думи в ред</span></button>
   </div>
 </section>
 
@@ -131,6 +142,80 @@ function freshWord(filter){
   const pick = M.pick(pool.length ? pool : WORDS.filter(([w]) => !filter || filter(w)));
   recent.push(pick[0]); if(recent.length > 12) recent.shift();
   return pick;
+}
+
+/* Отворени срички (съгласна + гласна) за „Чуй сричката“.
+   При „приличащи“ се смесват звучни/беззвучни двойки (б–п, д–т…). */
+const S_CONS = 'бвгдзклмнпрстчш'.split('');
+const S_VOW = 'аоуеи'.split('');
+const S_PAIR = { б:'п', п:'б', д:'т', т:'д', г:'к', к:'г', з:'с', с:'з', в:'ф', ш:'ж', м:'н', н:'м' };
+function sylOptions(n, hard){
+  const target = M.pick(S_CONS) + M.pick(S_VOW);
+  const set = new Set([target]);
+  if(hard && S_PAIR[target[0]]) set.add(S_PAIR[target[0]] + target[1]);
+  let guard = 0;
+  while(set.size < n && guard++ < 300){
+    const s = hard
+      ? (Math.random() < 0.5 ? target[0] + M.pick(S_VOW) : M.pick(S_CONS) + target[1])
+      : M.pick(S_CONS.filter(c => c !== target[0])) + M.pick(S_VOW);
+    set.add(s);
+  }
+  return { target, opts: M.shuffle(Array.from(set)) };
+}
+/* Букви, които децата често бъркат — за трудното ниво на „Голяма и малка“. */
+const CONFUSE = ['бвдг', 'пнил', 'шщцч', 'тгпр', 'жхкз', 'млн', 'юяъ', 'еоса'];
+/* Без звучни съгласни накрая — в говора те се чуват като беззвучни (хляб → хляп). */
+const VOICED_END = 'бвгджз';
+/* Изречения за подреждане: [картинка, изречение] по брой думи. */
+const SENT = [
+  [['🐱🥛','Котката пие мляко.'],['🐶⚽','Кучето гони топка.'],['👩🎂','Мама пече торта.'],['🐦🎵','Птицата пее песен.'],
+   ['🧒🍎','Детето яде ябълка.'],['☀️','Слънцето грее силно.'],['🐟','Рибката плува бързо.'],['👨🚗','Татко кара кола.'],
+   ['👶😴','Бебето спи сладко.'],['🐰🥕','Зайчето яде морков.'],['📖','Аз чета книжка.'],['🌧️','Вали силен дъжд.']],
+  [['🐱🛋️','Котката спи на дивана.'],['🥛','Аз пия топло мляко.'],['🐻🍯','Мечето обича сладък мед.'],['✈️☁️','Самолетът лети в небето.'],
+   ['🧒🌳','Децата играят в парка.'],['👵🧣','Баба плете топъл шал.'],['🚆🌊','Влакът пътува към морето.'],['🧼🙌','Аз мия ръцете си.'],
+   ['🐸💧','Жабата скача в езерото.'],['🐶🦴','Кучето гризе голяма кост.']],
+  [['🐱🥛','Малкото коте пие бяло мляко.'],['🎒🏫','Аз ходя на училище сутрин.'],['👨🚲','Татко и аз караме колело.'],
+   ['🐝🌸','Пчелата събира мед от цветята.'],['📖🌙','Вечер четем приказка с мама.'],['⛄🥕','Снежният човек има морков нос.'],
+   ['🦁🦒','Днес отиваме на зоопарка заедно.'],['🎂🎈','Утре е моят рожден ден.']]
+];
+let recentSent = [];
+
+/* Подреждане на плочки по ред (срички или думи) — общо за две игри. */
+function orderTiles(parts, opts){
+  const slots = document.createElement('div'); slots.className = 'slots';
+  parts.forEach(() => { const s = document.createElement('div'); s.className = 'slot' + (opts.slotCls ? ' ' + opts.slotCls : ''); slots.appendChild(s); });
+  area.appendChild(slots);
+  let order = parts.map((s, i) => i);
+  for(let g = 0; g < 10 && order.every((v, i) => v === i); g++) order = M.shuffle(order);
+  const row = document.createElement('div'); row.className = 'tiles-row';
+  let next = 0;
+  order.forEach(i => {
+    const b = document.createElement('button');
+    b.className = 'syl' + (opts.tileCls ? ' ' + opts.tileCls : ''); b.textContent = txt(parts[i]);
+    b.onclick = () => {
+      if(G.done() || b.classList.contains('used')) return;
+      if(parts[i] === parts[next]){
+        b.classList.add('used');
+        const slot = slots.children[next];
+        slot.textContent = txt(parts[next]); slot.classList.add('filled');
+        next++;
+        if(next === parts.length) opts.onDone(slots);
+        else { M.click(); M.speak(parts[i], { rate: 0.85 }); }
+      } else {
+        b.classList.remove('bad'); void b.offsetWidth; b.classList.add('bad');
+        G.mistakes++;
+        M.bad();
+        M.speak(opts.wrongSpeech(next));
+      }
+    };
+    row.appendChild(b);
+  });
+  area.appendChild(row);
+}
+/* Подсказка за избор: изговаря и скрива един грешен отговор. */
+function dimOneWrong(correctText){
+  const wrong = M.$$('.mx-opt', area).filter(b => !b.disabled && b.textContent.trim() !== correctText);
+  if(wrong.length > 1){ const b = M.pick(wrong); b.classList.add('dim'); b.disabled = true; }
 }
 
 const MODES = {
@@ -239,6 +324,139 @@ const MODES = {
         speakOk: a + ' и ' + b + ' звучат еднакво.', speakBad: a + ' и ' + o + ' не звучат еднакво.'
       })), b, a + ' – ' + b);
       G.setHint(() => M.speakSeq([a, opts.join('... ')]));
+    }
+  },
+  /* ---------- Чуй сричката ---------- */
+  chuy: {
+    levels: ['3 срички', '4 срички', 'Приличащи'],
+    extraControls: capsButton,
+    round(){
+      const { target, opts } = sylOptions(G.level === 0 ? 3 : 4, G.level === 2);
+      G.setPrompt('Чуй и намери сричката', 'Намери сричката... ' + target + '.');
+      area.insertAdjacentHTML('beforeend', '<div class="mx-big">👂</div>');
+      optionButtons(opts.map(s => ({
+        html: txt(s), value: s, cls: 'letter-opt', speakOk: target, speakBad: 'Това е ' + s + '. Търсим ' + target + '.'
+      })), target, '👂 ' + target);
+      G.setHint(() => { dimOneWrong(txt(target)); M.speakSeq([target, target], null, 0.6); });
+    }
+  },
+  /* ---------- Колко срички? ---------- */
+  broisrichki: {
+    levels: ['Избери числото', 'Пляскай'],
+    extraControls: capsButton,
+    round(){
+      const [w, e] = freshWord(x => syllabifyWord(x).length <= 4);
+      const syl = syllabifyWord(w);
+      const n = syl.length;
+      G.setPrompt('Колко срички има думата?', 'Колко срички има думата ' + w + '?');
+      area.insertAdjacentHTML('beforeend', `<div class="mx-big">${e}</div><div class="word-big" id="bsWord">${M.escapeHtml(txt(w))}</div>`);
+      const explain = [syl.join(', '), w + ' има ' + M.num(n, 'f') + (n === 1 ? ' сричка.' : ' срички.')];
+      G.setHint(() => {
+        document.getElementById('bsWord').textContent = syl.map(txt).join(' – ');
+        syl.forEach((s, i) => M.tone(520 + i * 90, 0.15, 'triangle', i * 0.55));
+        M.speakSeq([syl.join(', ')], null, 0.6);
+      });
+      if(G.level === 0){
+        optionButtons([1, 2, 3, 4].map(k => ({
+          html: `${k}<span class="claps">${'👏'.repeat(k)}</span>`, value: k, speakOk: explain
+        })), n, w + ' → ' + n);
+        return;
+      }
+      const claps = document.createElement('div'); claps.className = 'clap-row';
+      const clap = document.createElement('button'); clap.className = 'mx-btn purple clap-btn'; clap.textContent = '👏 Пляскай';
+      let c = 0;
+      const reset = () => { c = 0; claps.innerHTML = ''; };
+      clap.onclick = () => {
+        if(G.done() || c >= 6) return;
+        c++;
+        claps.insertAdjacentHTML('beforeend', '<span class="mx-pop">👏</span>');
+        M.tone(440 + c * 80, 0.12, 'triangle');
+      };
+      const tools = document.createElement('div'); tools.className = 'mx-row';
+      const again = document.createElement('button'); again.className = 'mx-btn gray'; again.textContent = '↺ Отначало';
+      again.onclick = () => { if(!G.done()) reset(); };
+      const ok = document.createElement('button'); ok.className = 'mx-btn green'; ok.textContent = 'Готово ✓';
+      ok.onclick = () => {
+        if(G.done() || !c) return;
+        if(c === n) complete(w + ' → ' + n, c, explain);
+        else {
+          const times = c === 1 ? 'един път' : M.num(c, 'm') + ' пъти';
+          miss(w + ' → ' + n, c, 'Ти пляска ' + times + '. Кажи думата бавно и пак опитай.');
+          reset();
+        }
+      };
+      tools.appendChild(again); tools.appendChild(ok);
+      area.appendChild(claps); area.appendChild(clap); area.appendChild(tools);
+    }
+  },
+  /* ---------- Последният звук ---------- */
+  posleden: {
+    levels: ['3 букви', '4 букви'],
+    extraControls: capsButton,
+    round(){
+      const wantCons = Math.random() < 0.65;
+      const [w, e] = freshWord(x => {
+        const l = x[x.length - 1];
+        return LETTERS.includes(l) && l !== 'ъ' && !VOICED_END.includes(l) && (!wantCons || !VOWEL_SOUNDS.includes(l));
+      });
+      const last = w[w.length - 1];
+      const opts = [last].concat(M.sample(LETTERS.filter(l => l !== last && l !== 'ъ'), G.level + 2));
+      G.setPrompt('С какъв звук завършва?', 'С какъв звук завършва думата ' + w + '?');
+      area.insertAdjacentHTML('beforeend', `<div class="mx-big">${e}</div>`);
+      optionButtons(M.shuffle(opts).map(l => ({
+        html: txt(l), value: l, cls: 'letter-opt', speakOk: [w, sound(last)], speakBad: 'Това е ' + sound(l) + '.'
+      })), last, w + ' → …' + last);
+      G.setHint(() => M.speakSeq([w + '... ' + sound(last)], null, 0.7));
+    }
+  },
+  /* ---------- Голяма и малка буква ---------- */
+  glavni: {
+    levels: ['3 букви', '4 букви', 'Приличащи'],
+    round(){
+      let target, others;
+      if(G.level === 2){
+        const grp = M.pick(CONFUSE).split('');
+        target = M.pick(grp);
+        others = M.sample(grp.filter(l => l !== target), 3);
+      } else {
+        target = M.pick(LETTERS);
+        others = M.sample(LETTERS.filter(l => l !== target), G.level + 2);
+      }
+      const upFirst = Math.random() < 0.5;
+      const show = upFirst ? target.toUpperCase() : target;
+      const form = (l) => upFirst ? l : l.toUpperCase();
+      G.setPrompt(upFirst ? 'Намери малката буква' : 'Намери голямата буква',
+        upFirst ? 'Коя е малката буква за тази голяма буква?' : 'Коя е голямата буква за тази малка буква?');
+      area.insertAdjacentHTML('beforeend', `<div class="word-big">${show}</div>`);
+      optionButtons(M.shuffle([target].concat(others)).map(l => ({
+        html: form(l), value: l, cls: 'letter-opt', speakOk: 'Буквата ' + sound(target) + '.', speakBad: 'Това е буквата ' + sound(l) + '.'
+      })), target, show + ' → ' + form(target));
+      G.setHint(() => { dimOneWrong(form(target)); M.speak('Това е буквата ' + sound(target) + '.'); });
+    }
+  },
+  /* ---------- Подреди изречението ---------- */
+  izrechenie: {
+    levels: ['3 думи', '4 думи', '5 думи'],
+    extraControls: capsButton,
+    round(){
+      const pool = SENT[G.level].filter(s => !recentSent.includes(s[1]));
+      const [pic, sentence] = M.pick(pool.length ? pool : SENT[G.level]);
+      recentSent.push(sentence); if(recentSent.length > 5) recentSent.shift();
+      const words = sentence.replace(/[.!?]$/, '').split(' ');
+      G.setPrompt('Подреди думите в изречение', 'Подреди думите в изречение. Коя дума е първа?');
+      area.insertAdjacentHTML('beforeend', `<div class="mx-big">${pic}</div>`);
+      orderTiles(words, {
+        slotCls: 'wslot', tileCls: 'wtile',
+        wrongSpeech: (next) => next === 0
+          ? (store.rec.extra.caps ? 'Не още. Коя дума е първа?' : 'Не още. Изречението започва с голяма буква.')
+          : 'Не още. Коя дума идва после?',
+        onDone(slots){
+          const last = slots.children[slots.children.length - 1];
+          last.textContent += sentence.slice(-1);
+          complete(sentence, sentence, sentence);
+        }
+      });
+      G.setHint(() => M.speak(sentence, { rate: 0.75 }));
     }
   }
 };
