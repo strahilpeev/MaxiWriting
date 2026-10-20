@@ -1,28 +1,57 @@
 rules_version = '2';
-// Правила за сигурност на базата (Firebase Console → Firestore → Rules).
-// Пазят данните от достъп отвън и от подмяна на администраторската парола,
-// без да променят поведението на приложението.
+// Правила за сигурност на базата (Firebase Console → Firestore → Rules → Publish).
+//
+// Всеки акаунт (родител / специалист) вижда и променя САМО своите данни:
+//   accounts/{uid}                     — самият акаунт
+//   accounts/{uid}/profiles/{id}       — децата в акаунта
+// Полетата за абонамент (plan, subscription, …) не могат да се пишат от
+// приложението — по-късно ще ги попълва системата за плащания.
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() { return request.auth != null; }
-
-    // Профили на децата: само от приложението (анонимно вписан потребител).
-    match /profiles/{profileId} {
-      allow read: if signedIn();
-      allow create, update: if signedIn()
-        && profileId.size() < 100
-        && request.resource.data.keys().size() < 40;
-      allow delete: if false; // приложението само маркира deleted:true
+    // Собственикът на приложението — само той може да пренесе старите
+    // профили от общата база. Имейлът трябва да е потвърден (или вход с Google).
+    function isOwnerOfApp() {
+      return request.auth != null
+        && request.auth.token.email == 'ВАШИЯТ-ИМЕЙЛ@gmail.com' // ← сменете с вашия имейл преди Publish
+        && request.auth.token.email_verified == true;
     }
 
-    // Администраторска парола: може да се зададе само веднъж (първия път).
-    // Промяна става само от Firebase Console.
-    match /settings/admin {
-      allow read: if signedIn();
-      allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['passwordHash']);
-      allow update, delete: if false;
+    function isMe(uid) {
+      return request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    match /accounts/{uid} {
+      allow read: if isMe(uid);
+      // Приложението пише само тези полета; всичко останало (план, абонамент)
+      // се управлява от сървъра.
+      allow create: if isMe(uid)
+        && request.resource.data.keys().hasOnly(['email', 'createdAt']);
+      allow update: if isMe(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email']);
+      allow delete: if false;
+
+      match /profiles/{profileId} {
+        allow read: if isMe(uid);
+        allow create, update: if isMe(uid)
+          && profileId.size() < 100
+          && request.resource.data.keys().size() < 40
+          && (!('name' in request.resource.data) || request.resource.data.name is string)
+          && (!('name' in request.resource.data) || request.resource.data.name.size() <= 40);
+        allow delete: if false; // приложението само маркира deleted:true
+      }
+    }
+
+    // Старата обща база отпреди акаунтите — само за четене от собственика,
+    // за да може да пренесе децата си в своя акаунт. Никой не може да пише там.
+    match /profiles/{profileId} {
+      allow read: if isOwnerOfApp();
+      allow write: if false;
+    }
+    match /settings/{doc} {
+      allow read, write: if false;
     }
 
     // Всичко останало е забранено.

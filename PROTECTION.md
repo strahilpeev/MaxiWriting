@@ -44,9 +44,7 @@ npm test             # сравнява dist/ с оригинала в брау�
 Конфигурацията на Firebase винаги се вижда в браузъра. Това е нормално;
 защитата идва от тези настройки:
 
-1. **Правила на базата.** Firebase Console → Firestore Database → Rules → поставете
-   съдържанието на `firestore.rules` → Publish. Само приложението има достъп до данните,
-   а администраторската парола не може да бъде подменена отвън.
+1. **Правила на базата и вход.** Виж стъпките в `ACCOUNTS.md`.
 2. **Ограничение на API ключа по домейн.** Google Cloud Console → APIs & Services →
    Credentials → ключа „Browser key“ → Application restrictions → **Websites** и добавете:
    - `https://tapnime.eu/*`

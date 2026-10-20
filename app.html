@@ -452,23 +452,87 @@
     background:#f8fafc;
     margin-bottom:0.2rem;
   }
+
+  /* ---------- ВХОД ЗА ВЪЗРАСТНИ ---------- */
+  .login-box{
+    background:#fff;
+    border-radius:24px;
+    padding:clamp(1.2rem, 3vw, 2rem);
+    box-shadow:var(--card-shadow);
+    display:flex;
+    flex-direction:column;
+    gap:0.8rem;
+    width:100%;
+    max-width:440px;
+  }
+  .login-box h2{ margin:0; text-align:center; font-size:clamp(1.15rem, 2.6vw, 1.45rem); }
+  .login-sub{ margin:0; text-align:center; opacity:0.75; font-size:0.95rem; line-height:1.4; }
+  .login-box input{
+    font-size:clamp(1rem, 2.4vw, 1.2rem);
+    min-height:52px;
+    padding:0.7rem 0.9rem;
+    border-radius:14px;
+    border:2px solid #d7dee5;
+    outline:none;
+    font-family:inherit;
+  }
+  .login-box input:focus{ border-color:#5da8e8; }
+  .login-msg{ min-height:1.3em; text-align:center; font-weight:600; font-size:0.95rem; }
+  .login-msg.err{ color:#b33; }
+  .login-msg.ok{ color:#2e7d32; }
+  .btn{ min-height:52px; }
+  .btn.primary{ background:#2a78c2; }
+  .btn.google{ background:#fff; color:var(--ink); border:2px solid #d7dee5; }
+  .btn[disabled]{ opacity:0.6; cursor:default; }
+  .login-or{ text-align:center; opacity:0.55; font-size:0.9rem; }
+  .login-links{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:0.4rem; }
+  .link-btn{
+    background:none; border:none; color:#2a78c2; font-weight:600;
+    font-size:0.95rem; cursor:pointer; padding:0.5rem 0.2rem; font-family:inherit;
+  }
+  .account-h2{ width:100%; max-width:900px; margin:1.2rem auto 0.5rem auto; font-size:1.2rem; }
+  .account-row{ display:flex; flex-wrap:wrap; gap:0.6rem; align-items:center; justify-content:space-between; }
+  .account-note{ font-size:0.9rem; opacity:0.75; margin-top:0.4rem; }
 </style>
 </head>
 <body>
+
+  <!-- ЕКРАН 0: Вход за възрастни — показва се само докато устройството
+       още не е вписано в акаунт. След това детето не го вижда. -->
+  <div id="login-screen" class="screen">
+    <h1>🎓 Моите учебни игри</h1>
+    <div class="login-box">
+      <h2 id="login-title">Вход за родители и специалисти</h2>
+      <p class="login-sub">Влезте веднъж на това устройство — после детето играе направо, без вход.</p>
+      <input type="email" id="login-email" placeholder="Имейл" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false">
+      <input type="password" id="login-pass" placeholder="Парола" autocomplete="current-password">
+      <input type="password" id="login-pass2" placeholder="Повторете паролата" autocomplete="new-password" hidden>
+      <div class="login-msg" id="login-msg" role="status" aria-live="polite"></div>
+      <button class="btn primary" id="login-submit" type="button">Вход</button>
+      <div class="login-or">или</div>
+      <button class="btn google" id="login-google" type="button">Вход с Google</button>
+      <div class="login-links">
+        <button class="link-btn" id="login-toggle" type="button">Нямате акаунт? Създайте</button>
+        <button class="link-btn" id="login-forgot" type="button">Забравена парола</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ЕКРАН 1: Избор / създаване на профил -->
   <div id="profile-screen" class="screen">
     <h1>Кой играе днес? 😊</h1>
     <div class="profile-grid" id="profile-grid"></div>
-    <button class="admin-link" onclick="openAdmin()">Администратор</button>
+    <button class="admin-link" onclick="openAdmin()">👤 Акаунт</button>
   </div>
 
-  <!-- ЕКРАН: Администраторски изглед (вижда всички потребители) -->
+  <!-- ЕКРАН: Акаунт — имейл, изход, всички деца в акаунта и тяхната история -->
   <div id="admin-screen" class="screen">
     <div class="admin-top">
-      <h1 style="margin:0;">📊 Всички потребители</h1>
+      <h1 style="margin:0;">👤 Акаунт</h1>
       <button class="admin-close" onclick="showProfileScreen()">✕ Затвори</button>
     </div>
+    <div class="admin-list" id="account-box"></div>
+    <h2 class="account-h2">Децата в този акаунт</h2>
     <div class="admin-list" id="admin-list"></div>
   </div>
 
@@ -607,6 +671,9 @@
 <script>
   const PROFILES_KEY = 'hubChildProfiles_v1';
   const ACTIVE_KEY = 'hubActiveProfile_v1';
+  // Акаунтът, в който е вписано устройството. Пази се и офлайн, за да
+  // може детето да играе без интернет и без да вижда екран за вход.
+  const ACCOUNT_KEY = 'hubAccount_v1';
   const AVATARS = ['🦊','🐻','🐰','🐱','🐼','🦁','🐸','🦄','🌟','🚀','🌈','⚽'];
 
   const profileScreen = document.getElementById('profile-screen');
@@ -633,13 +700,23 @@
   function setActiveProfile(profile){
     try{ localStorage.setItem(ACTIVE_KEY, JSON.stringify(profile)); }catch(e){}
   }
+  function getAccount(){
+    try{ return JSON.parse(localStorage.getItem(ACCOUNT_KEY)); }catch(e){ return null; }
+  }
+  function setAccount(acc){
+    try{
+      if(acc) localStorage.setItem(ACCOUNT_KEY, JSON.stringify(acc));
+      else localStorage.removeItem(ACCOUNT_KEY);
+    }catch(e){}
+  }
 
   const adminScreen = document.getElementById('admin-screen');
+  const loginScreen = document.getElementById('login-screen');
   const parentScreen = document.getElementById('parent-screen');
   const syncBadge = document.getElementById('sync-badge');
 
   function showScreen(el){
-    [profileScreen, newProfileScreen, menu, adminScreen, parentScreen].forEach(s => s.classList.remove('active'));
+    [loginScreen, profileScreen, newProfileScreen, menu, adminScreen, parentScreen].forEach(s => s.classList.remove('active'));
     el.classList.add('active');
   }
 
@@ -725,7 +802,8 @@
     const name = nameInput.value.trim();
     if(!name){ nameInput.focus(); return; }
     const profiles = loadProfiles();
-    const newProfile = { id: 'p' + Date.now(), name, avatar: selectedAvatar };
+    const acc = getAccount();
+    const newProfile = { id: 'p' + Date.now(), name, avatar: selectedAvatar, owner: acc ? acc.uid : undefined };
     profiles.push(newProfile);
     saveProfiles(profiles);
     whenDB(db => db.upsertProfile(newProfile.id, { name: newProfile.name, avatar: newProfile.avatar, createdAt: new Date().toISOString() }).catch(()=>{}));
@@ -908,6 +986,7 @@
       syncProfileToCloud(active);
     }
     sessionSnapshot = null;
+    if(pendingLogin){ pendingLogin = false; showLogin(); }
   }
 
   /* ---- Изпращане на статистика + "последни 5 използвания" към Firestore ---- */
@@ -978,7 +1057,8 @@
         let changed = false;
         remote.forEach(rp => {
           if(!local.find(lp => lp.id === rp.id)){
-            local.push({ id: rp.id, name: rp.name, avatar: rp.avatar || '🦊' });
+            const acc = getAccount();
+            local.push({ id: rp.id, name: rp.name, avatar: rp.avatar || '🦊', owner: acc ? acc.uid : undefined });
             changed = true;
           }
         });
@@ -997,29 +1077,68 @@
     });
   }
 
-  /* ---- Администраторски изглед (вижда всички потребители) ---- */
+  /* ---- Екран „Акаунт“ (зад родителската проверка) ---- */
   function openAdmin(){
+    Maxi.parentGate(renderAccountScreen, 'Акаунт');
+  }
+
+  function renderAccountScreen(){
     showScreen(adminScreen);
+    const acc = getAccount();
+    const box = document.getElementById('account-box');
     const listEl = document.getElementById('admin-list');
+    box.innerHTML = `<div class="admin-profile-card">
+        <div class="account-row">
+          <div><div style="opacity:0.7;font-size:0.85rem;">Вписан акаунт</div>
+            <div style="font-weight:700;font-size:1.1rem;word-break:break-all;" id="acc-email">${escapeHtml(acc ? acc.email : '')}</div></div>
+          <button class="pp-btn gray" type="button" id="acc-signout">Изход от акаунта</button>
+        </div>
+        <div class="account-note" id="acc-verify"></div>
+      </div>
+      <div id="acc-legacy"></div>`;
+    document.getElementById('acc-signout').onclick = signOutAccount;
     listEl.innerHTML = '<div class="progress-empty">Зареждане…</div>';
+
     whenDB(db => {
-      db.getAdminSettings().then(settings => {
-        if(!settings){
-          const pw = prompt('Няма зададена администраторска парола. Въведете нова парола:');
-          if(!pw){ showProfileScreen(); return; }
-          const confirmPw = prompt('Повторете паролата:');
-          if(pw !== confirmPw){ alert('Паролите не съвпадат. Опитайте пак.'); showProfileScreen(); return; }
-          db.setAdminPassword(pw).then(() => renderAdminList(db));
-        } else {
-          const pw = prompt('Администраторска парола:');
-          if(pw === null){ showProfileScreen(); return; }
-          db.checkAdminPassword(pw).then(ok => {
-            if(ok) renderAdminList(db);
-            else { alert('Грешна парола.'); showProfileScreen(); }
+      const u = db.user();
+      if(u && !u.verified){
+        const v = document.getElementById('acc-verify');
+        v.innerHTML = '📧 Имейлът още не е потвърден. <button class="link-btn" type="button" id="acc-resend">Изпрати писмото пак</button>';
+        document.getElementById('acc-resend').onclick = () => db.resendVerification()
+          .then(() => { v.textContent = '📧 Изпратихме писмо за потвърждение. Проверете пощата си.'; })
+          .catch(() => { v.textContent = '📧 Не успяхме да изпратим писмото. Опитайте по-късно.'; });
+      }
+      renderAdminList(db);
+      // Профили от старата обща база (преди акаунтите) — виждат се само от собственика.
+      db.listLegacyProfiles().then(legacy => {
+        if(!legacy.length) return;
+        const el = document.getElementById('acc-legacy');
+        el.innerHTML = `<div class="admin-profile-card">
+            <div class="account-row">
+              <div>📦 В старата обща база има <b>${legacy.length}</b> профила с история.</div>
+              <button class="pp-btn" type="button" id="acc-import">Пренеси ги в този акаунт</button>
+            </div>
+            <div class="account-note">Старите данни остават непокътнати; в акаунта се добавят копия.</div>
+          </div>`;
+        document.getElementById('acc-import').onclick = (e) => {
+          e.target.disabled = true;
+          e.target.textContent = 'Пренасяне…';
+          db.importLegacyProfiles().then(n => {
+            el.innerHTML = `<div class="admin-profile-card">✅ Пренесени са ${n} профила.</div>`;
+            cloudSyncProfiles();
+            renderAdminList(db);
+          }).catch(() => {
+            e.target.disabled = false;
+            e.target.textContent = 'Опитайте пак';
           });
-        }
-      }).catch(() => { alert('Няма връзка с облака в момента.'); showProfileScreen(); });
+        };
+      });
     });
+  }
+
+  function signOutAccount(){
+    if(!confirm('Да изляза ли от акаунта на това устройство?\n\nПрофилите на децата ще изчезнат от устройството, но остават запазени в акаунта. При следващ вход се появяват отново.')) return;
+    whenDB(db => db.signOut().catch(() => {}));
   }
 
   function renderAdminList(db){
@@ -1230,6 +1349,7 @@
     if(isActive(parentScreen)){ closeParentPanel(); return true; }
     if(isActive(adminScreen) || isActive(newProfileScreen)){ showProfileScreen(); return true; }
     if(isActive(menu)){ showProfileScreen(); return true; }
+    if(isActive(loginScreen)) return false;
     return false; // изборът на профил е най-горното ниво
   }
   window.addEventListener('popstate', (e) => {
@@ -1271,16 +1391,145 @@
     });
   }
 
-  /* ---- Старт ---- */
-  const active = getActiveProfile();
-  if(active){
-    menuGreeting.textContent = active.avatar + ' Здравей, ' + active.name + '! Какво играем днес?';
-    renderProgressCard(active);
-    showScreen(menu);
-  } else {
-    showProfileScreen();
+  /* ---- Вход за възрастни ---- */
+  const loginEmail = document.getElementById('login-email');
+  const loginPass = document.getElementById('login-pass');
+  const loginPass2 = document.getElementById('login-pass2');
+  const loginMsgEl = document.getElementById('login-msg');
+  const loginSubmit = document.getElementById('login-submit');
+  const loginGoogle = document.getElementById('login-google');
+  const loginToggle = document.getElementById('login-toggle');
+  const loginForgot = document.getElementById('login-forgot');
+  let loginMode = 'signin';
+  let pendingLogin = false;
+
+  function loginMsg(text, kind){
+    loginMsgEl.textContent = text || '';
+    loginMsgEl.className = 'login-msg' + (kind ? ' ' + kind : '');
   }
-  cloudSyncProfiles();
+  function setLoginBusy(b){
+    [loginSubmit, loginGoogle, loginToggle, loginForgot].forEach(el => { el.disabled = b; });
+  }
+  function setLoginMode(mode){
+    loginMode = mode;
+    const reg = mode === 'register';
+    document.getElementById('login-title').textContent = reg ? 'Нов акаунт за родител или специалист' : 'Вход за родители и специалисти';
+    loginPass2.hidden = !reg;
+    loginPass.autocomplete = reg ? 'new-password' : 'current-password';
+    loginPass.placeholder = reg ? 'Парола (поне 6 знака)' : 'Парола';
+    loginSubmit.textContent = reg ? 'Създай акаунт' : 'Вход';
+    loginToggle.textContent = reg ? 'Имате акаунт? Влезте' : 'Нямате акаунт? Създайте';
+    loginForgot.hidden = reg;
+    loginMsg('');
+  }
+  function showLogin(){
+    setLoginMode('signin');
+    loginPass.value = ''; loginPass2.value = '';
+    setLoginBusy(false);
+    if(!window.MaxiDB) loginMsg('Зареждане…');
+    showScreen(loginScreen);
+  }
+  function withDB(run){
+    if(window.MaxiDB){ run(window.MaxiDB); return; }
+    loginMsg('Няма връзка с интернет. Първият вход изисква интернет.', 'err');
+  }
+  function afterLoginAttempt(promise){
+    setLoginBusy(true);
+    loginMsg('Момент…');
+    promise
+      .then(() => loginMsg('Готово!', 'ok'))   // екранът се сменя от слушателя за вход
+      .catch(err => { loginMsg(err.message, 'err'); setLoginBusy(false); });
+  }
+  loginSubmit.onclick = () => withDB(db => {
+    const email = loginEmail.value.trim(), pass = loginPass.value;
+    if(!email){ loginMsg('Въведете имейл.', 'err'); loginEmail.focus(); return; }
+    if(!pass){ loginMsg('Въведете парола.', 'err'); loginPass.focus(); return; }
+    if(loginMode === 'register'){
+      if(pass.length < 6){ loginMsg('Паролата трябва да е поне 6 знака.', 'err'); return; }
+      if(pass !== loginPass2.value){ loginMsg('Паролите не съвпадат.', 'err'); loginPass2.focus(); return; }
+      afterLoginAttempt(db.register(email, pass));
+    } else {
+      afterLoginAttempt(db.signIn(email, pass));
+    }
+  });
+  loginGoogle.onclick = () => withDB(db => afterLoginAttempt(db.signInGoogle()));
+  loginToggle.onclick = () => setLoginMode(loginMode === 'register' ? 'signin' : 'register');
+  loginForgot.onclick = () => withDB(db => {
+    const email = loginEmail.value.trim();
+    if(!email){ loginMsg('Въведете имейла си горе и натиснете пак „Забравена парола“.', 'err'); loginEmail.focus(); return; }
+    setLoginBusy(true);
+    db.resetPassword(email)
+      .then(() => loginMsg('Изпратихме писмо за нова парола на ' + email + '.', 'ok'))
+      .catch(err => loginMsg(err.message, 'err'))
+      .finally(() => setLoginBusy(false));
+  });
+  [loginEmail, loginPass, loginPass2].forEach(el => el.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ e.preventDefault(); loginSubmit.click(); }
+  }));
+
+  /* ---- Старт ---- */
+  function startPlaying(){
+    const active = getActiveProfile();
+    if(active){
+      menuGreeting.textContent = active.avatar + ' Здравей, ' + active.name + '! Какво играем днес?';
+      renderProgressCard(active);
+      showScreen(menu);
+    } else {
+      showProfileScreen();
+    }
+  }
+
+  // Реакция на промяна на входа (при стартиране, след вход и след изход).
+  let handledUid;
+  function onAuthChange(u){
+    const uid = u ? u.uid : null;
+    if(uid === handledUid) return;
+    handledUid = uid;
+    const prev = getAccount();
+
+    if(u){
+      if(prev && prev.uid !== u.uid){
+        // друг акаунт на същото устройство — не смесваме децата
+        saveProfiles([]);
+        localStorage.removeItem(ACTIVE_KEY);
+      } else if(!prev){
+        // първи вход: профилите, създадени на устройството досега, минават в акаунта
+        saveProfiles(loadProfiles().map(p => Object.assign({}, p, { owner: u.uid })));
+      }
+      setAccount({ uid: u.uid, email: u.email });
+      if(isActive(loginScreen) || !prev || prev.uid !== u.uid) startPlaying();
+      cloudSyncProfiles();
+      return;
+    }
+
+    // Не е вписан.
+    if(prev){
+      // изход (от екрана „Акаунт“ или сменена парола): махаме децата на акаунта от устройството
+      setAccount(null);
+      saveProfiles([]);
+      localStorage.removeItem(ACTIVE_KEY);
+      if(isActive(appScreen)) pendingLogin = true; // не прекъсваме детето по средата на игра
+      else showLogin();
+    } else {
+      showLogin();
+      loginMsg('');
+    }
+  }
+
+  if(getAccount()){
+    // Устройството вече е вписано — детето играе веднага, дори офлайн.
+    startPlaying();
+  } else {
+    showLogin();
+    // Ако Firebase изобщо не се зареди (няма интернет при първото пускане)
+    setTimeout(() => {
+      if(!window.MaxiDB && isActive(loginScreen)) loginMsg('Няма връзка с интернет. Първият вход изисква интернет.', 'err');
+    }, 8000);
+  }
+  whenDB(db => {
+    db.onAuth(onAuthChange);
+    db.ready.then(onAuthChange);
+  });
 </script>
 
 </body>
