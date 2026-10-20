@@ -865,10 +865,17 @@
   };
   NEW_APPS.forEach(app => { APP_KEY_BY_SRC[app.file] = app.key; });
 
+  // location.replace не добавя запис в историята на браузъра — иначе
+  // бутонът „Назад“ би местил iframe-а по стари страници вместо да излиза от играта.
+  function setFrameUrl(url){
+    try{ frame.contentWindow.location.replace(new URL(url, location.href).href); }
+    catch(e){ frame.src = url; }
+  }
+
   function openApp(src){
     const active = getActiveProfile();
     const url = active ? (src + '?hubUser=' + encodeURIComponent(active.name)) : src;
-    frame.src = url;
+    setFrameUrl(url);
     appScreen.classList.add('active');
     if(active){
       const math = readMathStats(active.name);
@@ -890,7 +897,7 @@
   function closeApp(){
     appScreen.classList.remove('active');
     // изчистваме src след малко, за да спрем звук/таймери във вложеното приложение
-    setTimeout(()=>{ frame.src = ''; }, 50);
+    setTimeout(()=>{ setFrameUrl('about:blank'); }, 50);
     const active = getActiveProfile();
     if(active){
       renderProgressCard(active);
@@ -1185,7 +1192,73 @@
     box.querySelector('#pp-test').onclick = () => Maxi.speak('Здравей! Така ще звучи гласът в игрите.');
   }
 
-  window.addEventListener('popstate', closeApp);
+  /* ---- Назад: бутон „Назад“ на телефон/таблет и Esc на компютър ----
+     Всяко натискане връща точно едно ниво нагоре:
+     прозорец в играта → менюто на играта → списъка с игри → избор на профил.
+     Вложените приложения могат да изложат window.maxiBack(), която
+     затваря тяхното вътрешно ниво и връща true; иначе затваряме играта. */
+  /* Резерв от записи в историята на браузъра, по един на всяко докосване/клавиш.
+     Chrome пренебрегва записи, добавени без действие на потребителя, затова
+     ги добавяме само при истинско докосване — никога в самия обработчик „Назад“. */
+  const MAX_BACK_GUARDS = 8;
+  let backDepth = (history.state && history.state.maxiDepth) || 0;
+  if(!backDepth){ try{ history.replaceState({ maxiDepth: 0 }, ''); }catch(e){} }
+  function topUpBackGuard(e){
+    if(e && e.type === 'keydown' && (e.key === 'Escape' || e.key === 'Esc')) return;
+    if(backDepth >= MAX_BACK_GUARDS) return;
+    try{ history.pushState({ maxiDepth: backDepth + 1 }, ''); backDepth++; }catch(err){}
+  }
+  document.addEventListener('click', topUpBackGuard, true);
+  document.addEventListener('keydown', topUpBackGuard, true);
+  function isActive(el){ return el && el.classList.contains('active'); }
+  function goBack(){
+    const gate = document.getElementById('mx-gate');
+    if(gate && gate.classList.contains('open')){ gate.classList.remove('open'); return true; }
+    if(isActive(appScreen)){
+      let handled = false;
+      try{
+        const w = frame.contentWindow;
+        if(w && typeof w.maxiBack === 'function') handled = !!w.maxiBack();
+      }catch(e){}
+      if(!handled) closeApp();
+      return true;
+    }
+    if(isActive(parentScreen)){ closeParentPanel(); return true; }
+    if(isActive(adminScreen) || isActive(newProfileScreen)){ showProfileScreen(); return true; }
+    if(isActive(menu)){ showProfileScreen(); return true; }
+    return false; // изборът на профил е най-горното ниво
+  }
+  window.addEventListener('popstate', (e) => {
+    const d = (e.state && e.state.maxiDepth) || 0;
+    if(d >= backDepth){ backDepth = d; return; } // „Напред“ — нищо не правим
+    const steps = backDepth - d;
+    backDepth = d;
+    for(let i = 0; i < steps; i++){
+      if(!goBack()){
+        // най-горното ниво: връщаме се до първия запис, следващото „Назад“ излиза от приложението
+        if(backDepth > 0){ const n = backDepth; backDepth = 0; history.go(-n); }
+        break;
+      }
+    }
+  });
+  function onEscape(e){
+    if(e.key !== 'Escape' && e.key !== 'Esc') return;
+    e.preventDefault();
+    goBack();
+  }
+  document.addEventListener('keydown', onEscape);
+  // Esc вътре в играта: слушаме и документа на iframe-а при всяко зареждане
+  frame.addEventListener('load', () => {
+    try{
+      const d = frame.contentDocument;
+      if(d && !d.__maxiEsc){
+        d.__maxiEsc = true;
+        d.addEventListener('keydown', onEscape);
+        d.addEventListener('click', topUpBackGuard, true);
+        d.addEventListener('keydown', topUpBackGuard, true);
+      }
+    }catch(e){}
+  });
 
   /* ---- Регистрация на Service Worker (offline + инсталация) ---- */
   if('serviceWorker' in navigator){

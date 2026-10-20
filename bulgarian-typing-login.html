@@ -266,9 +266,9 @@
     min-height:1.8em;
     padding:0 6px;
   }
-  .target .done{ color:var(--sage); }
-  .target .next{ color:var(--ink); border-bottom:3px solid var(--gold); }
-  .target .todo{ color:#C9BCA0; }
+  .target .done{ color:#000; }
+  .target .next{ color:#D7191C; border-bottom:3px solid #D7191C; }
+  .target .todo{ color:#000; }
 
   .syllables{
     text-align:center;
@@ -1953,6 +1953,20 @@ historyClearBtn.addEventListener("click", ()=>{
   saveCurrentProfile();
   renderHistory();
 });
+
+/* ---- Назад / Esc (вика се от началния екран): едно ниво нагоре ---- */
+window.maxiBack = function(){
+  if(historyOverlayEl.classList.contains("open")){
+    historyOverlayEl.classList.remove("open");
+    hiddenInput.focus();
+    return true;
+  }
+  if(authOverlayEl.style.display === "flex" && authCreatePanel.style.display === "block"){
+    authCreatePanel.style.display = "none";
+    return true;
+  }
+  return false;
+};
 
 /* ============ INIT ============ */
 if(!tryHubAutoLogin()){

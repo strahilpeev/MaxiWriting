@@ -1,4 +1,4 @@
-const CACHE_NAME = 'uchebni-igri-v6';
+const CACHE_NAME = 'uchebni-igri-v7';
 const APP_SHELL = [
   './',
   './index.html',

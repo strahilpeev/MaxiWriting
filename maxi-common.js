@@ -313,6 +313,18 @@ M.show = function(id){
   const scr = document.getElementById(id);
   if(scr) scr.scrollTop = 0;
 };
+/* Назад / Esc (вика се от началния екран): затваря отворен прозорец,
+   после връща от играта към менюто ѝ. false = вече сме в менюто. */
+window.maxiBack = function(){
+  const modal = M.$$('.mx-modal.open').pop();
+  if(modal){ modal.classList.remove('open'); return true; }
+  const back = document.getElementById('mx-back');
+  if(back && !back.hidden){
+    if(typeof window.goMenu === 'function') window.goMenu(); else back.click();
+    return true;
+  }
+  return false;
+};
 M.feedback = function(el, text, cls){
   el.textContent = text || '';
   el.className = 'mx-feedback' + (cls ? ' ' + cls : '');

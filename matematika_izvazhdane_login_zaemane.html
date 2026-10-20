@@ -773,6 +773,15 @@ function playTone(freq, duration) {
   } catch (e) { /* тихо игнориране */ }
 }
 
+/* Назад / Esc (вика се от началния екран): затваря отворен панел. */
+window.maxiBack = function () {
+  for (const id of ['historyPanel', 'breakdown']) {
+    const el = document.getElementById(id);
+    if (el && el.classList.contains('show')) { el.classList.remove('show'); return true; }
+  }
+  return false;
+};
+
 /* ================== История на решените задачи ================== */
 function toggleHistory() {
   const el = document.getElementById('historyPanel');
