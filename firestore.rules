@@ -1,0 +1,33 @@
+rules_version = '2';
+// Правила за сигурност на базата (Firebase Console → Firestore → Rules).
+// Пазят данните от достъп отвън и от подмяна на администраторската парола,
+// без да променят поведението на приложението.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    // Профили на децата: само от приложението (анонимно вписан потребител).
+    match /profiles/{profileId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && profileId.size() < 100
+        && request.resource.data.keys().size() < 40;
+      allow delete: if false; // приложението само маркира deleted:true
+    }
+
+    // Администраторска парола: може да се зададе само веднъж (първия път).
+    // Промяна става само от Firebase Console.
+    match /settings/admin {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['passwordHash']);
+      allow update, delete: if false;
+    }
+
+    // Всичко останало е забранено.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
