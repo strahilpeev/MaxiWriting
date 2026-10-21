@@ -1219,7 +1219,14 @@
           ${sessionsHtml || '<div class="progress-empty">Все още няма използвания</div>'}
         </div>`;
       }).join('');
-    }).catch(() => { listEl.innerHTML = '<div class="progress-empty">Грешка при зареждане.</div>'; });
+    }).catch((err) => {
+      if(db.isCorrupt && db.isCorrupt(err)){
+        // повреден локален кеш — изчиства се автоматично при следващото отваряне
+        listEl.innerHTML = '<div class="progress-empty">Локалното копие на данните трябва да се обнови. <button class="pp-btn" type="button" onclick="location.reload()">🔄 Презареди</button></div>';
+      } else {
+        listEl.innerHTML = '<div class="progress-empty">Грешка при зареждане.</div>';
+      }
+    });
   }
 
   /* ---- Родителски панел ---- */

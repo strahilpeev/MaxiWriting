@@ -14,8 +14,8 @@ import {
   signInWithPopup, GoogleAuthProvider, signOut as fbSignOut
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, collection, getDocs,
-  serverTimestamp, enableIndexedDbPersistence
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache,
+  clearIndexedDbPersistence, doc, getDoc, setDoc, collection, getDocs, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -30,11 +30,28 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 auth.languageCode = "bg"; // писмата за парола и потвърждение — на български
-const db = getFirestore(app);
-
-// Позволява приложението да работи офлайн (Firestore кешира локално и
-// синхронизира сам, когато пак има връзка) — важно за таблет без постоянен wifi.
-try { enableIndexedDbPersistence(db); } catch (e) { /* няма проблем, ако не се включи */ }
+// Офлайн кеш на Firestore (IndexedDB), за да работи приложението и без wifi.
+// persistentMultipleTabManager позволява няколко отворени раздела едновременно.
+// Ако локалният кеш се повреди (Firestore дава „INTERNAL ASSERTION FAILED“,
+// напр. след смяна на правилата), при следващото отваряне го изчистваме —
+// данните са в облака, губи се само локалното копие.
+const RESET_KEY = "maxiFirestoreReset_v1";
+let needReset = false;
+try { needReset = !!localStorage.getItem(RESET_KEY); localStorage.removeItem(RESET_KEY); } catch (e) {}
+let db;
+try {
+  db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+} catch (e) {
+  db = initializeFirestore(app, { localCache: memoryLocalCache() });
+}
+if (needReset) {
+  try { await clearIndexedDbPersistence(db); } catch (e) { /* друг раздел още държи кеша — ще опитаме пак */ }
+}
+const isCorrupt = (err) => /INTERNAL ASSERTION FAILED/.test(String(err && err.message || err));
+function markCorrupt(err) {
+  if (isCorrupt(err)) { try { localStorage.setItem(RESET_KEY, "1"); } catch (e) {} }
+  throw err;
+}
 
 /* ---------- Вход ---------- */
 
@@ -136,7 +153,7 @@ async function requireUser() {
 function profilesCol(uid) { return collection(db, "accounts", uid, "profiles"); }
 function profileRef(uid, id) { return doc(db, "accounts", uid, "profiles", id); }
 
-async function listProfiles() {
+async function listProfiles_raw() {
   const user = await requireUser();
   const snap = await getDocs(profilesCol(user.uid));
   const out = [];
@@ -144,24 +161,24 @@ async function listProfiles() {
   return out;
 }
 
-async function getProfile(id) {
+async function getProfile_raw(id) {
   const user = await requireUser();
   const snap = await getDoc(profileRef(user.uid, id));
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
-async function upsertProfile(id, data) {
+async function upsertProfile_raw(id, data) {
   const user = await requireUser();
   await setDoc(profileRef(user.uid, id), { ...data, updatedAt: serverTimestamp() }, { merge: true });
 }
 
-async function deleteProfileRemote(id) {
+async function deleteProfileRemote_raw(id) {
   const user = await requireUser();
   // "Изтриване" само маркира профила – историята не се губи случайно.
   await setDoc(profileRef(user.uid, id), { deleted: true, updatedAt: serverTimestamp() }, { merge: true });
 }
 
-async function pushSession(id, appKey, record) {
+async function pushSession_raw(id, appKey, record) {
   const user = await requireUser();
   const ref = profileRef(user.uid, id);
   const snap = await getDoc(ref);
@@ -187,11 +204,12 @@ async function listLegacyProfiles() {
     snap.forEach((d) => { const p = d.data(); if (!p.deleted) out.push({ id: d.id, ...p }); });
     return out;
   } catch (e) {
+    if (isCorrupt(e)) markCorrupt(e);
     return [];
   }
 }
 
-async function importLegacyProfiles(ids) {
+async function importLegacyProfiles_raw(ids) {
   const user = await requireUser();
   const legacy = await listLegacyProfiles();
   const chosen = legacy.filter((p) => !ids || ids.includes(p.id));
@@ -213,12 +231,13 @@ window.MaxiDB = {
   resetPassword,
   resendVerification,
   signOut,
-  listProfiles,
-  getProfile,
-  upsertProfile,
-  deleteProfileRemote,
-  pushSession,
+  listProfiles: (...a) => listProfiles_raw(...a).catch(markCorrupt),
+  getProfile: (...a) => getProfile_raw(...a).catch(markCorrupt),
+  upsertProfile: (...a) => upsertProfile_raw(...a).catch(markCorrupt),
+  deleteProfileRemote: (...a) => deleteProfileRemote_raw(...a).catch(markCorrupt),
+  pushSession: (...a) => pushSession_raw(...a).catch(markCorrupt),
   listLegacyProfiles,
-  importLegacyProfiles
+  importLegacyProfiles: (...a) => importLegacyProfiles_raw(...a).catch(markCorrupt),
+  isCorrupt
 };
 window.dispatchEvent(new Event("maxidb-ready"));
