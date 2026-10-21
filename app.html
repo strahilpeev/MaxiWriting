@@ -14,9 +14,9 @@
 <meta name="apple-mobile-web-app-title" content="Учебни игри">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#5da8e8">
-<script type="module" src="firebase-shared.js?v=18"></script>
+<script type="module" src="firebase-shared.js?v=19"></script>
 <script src="maxi-common.js"></script>
-<script src="hub-rewards.js?v=18"></script>
+<script src="hub-rewards.js?v=19"></script>
 
 <style>
   :root{
@@ -991,7 +991,8 @@
       + newRecs.reduce((t, x) => t + (x.rec ? (x.rec.stars || 0) : 0), 0);
     const combinedStreak = Math.max(math ? (math.streak || 0) : 0, sub ? (sub.streak || 0) : 0,
       ...newRecs.map(x => x.rec ? (x.rec.streak || 0) : 0));
-    document.getElementById('stat-stars').textContent = combinedStars;
+    // общият басейн (по-голямото от звездите тук и в облака) — същото число, от което идва нивото
+    document.getElementById('stat-stars').textContent = window.Rewards ? Rewards.statsOf(profile).stars : combinedStars;
     document.getElementById('stat-streak').textContent = combinedStreak;
     document.getElementById('stat-points').textContent = typing ? (typing.points || 0) : 0;
 
