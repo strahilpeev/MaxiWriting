@@ -1,4 +1,4 @@
-const CACHE_NAME = 'uchebni-igri-v14';
+const CACHE_NAME = 'uchebni-igri-v15';
 const APP_SHELL = [
   './',
   './index.html',
@@ -47,6 +47,10 @@ self.addEventListener('activate', (event) => {
 // Стратегия: cache-first, с обновяване във фонов режим (stale-while-revalidate)
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  // Само файловете на самото приложение. Firebase/Firestore (firestore.googleapis.com,
+  // вход, gstatic) НЕ минават през кеша: иначе Firestore получава стари отговори
+  // за живата си връзка и спира с „INTERNAL ASSERTION FAILED“.
+  if (new URL(event.request.url).origin !== self.location.origin) return;
 
   event.respondWith(
     caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
