@@ -14,9 +14,9 @@
 <meta name="apple-mobile-web-app-title" content="Учебни игри">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#5da8e8">
-<script type="module" src="firebase-shared.js?v=17"></script>
+<script type="module" src="firebase-shared.js?v=18"></script>
 <script src="maxi-common.js"></script>
-<script src="hub-rewards.js?v=17"></script>
+<script src="hub-rewards.js?v=18"></script>
 
 <style>
   :root{
@@ -1170,16 +1170,22 @@
         const remote = remoteList.filter(p => !p.deleted);
         const local = loadProfiles();
         let changed = false;
+        // звездите на детето в облака (сбор по игри) — за нивото на ново устройство
+        const starsChanged = [];
+        const cloudStarsOf = (rp) => Object.values(rp.stats || {}).reduce((t, x) => t + (+(x && x.stars) || 0), 0);
         remote.forEach(rp => {
           const lp = local.find(x => x.id === rp.id);
           if(!lp){
             const acc = getAccount();
-            local.push({ id: rp.id, name: rp.name, avatar: rp.avatar || '🦊', owner: acc ? acc.uid : undefined, rankOptIn: !!rp.rankOptIn, rankNick: rp.rankNick || '' });
+            local.push({ id: rp.id, name: rp.name, avatar: rp.avatar || '🦊', owner: acc ? acc.uid : undefined, rankOptIn: !!rp.rankOptIn, rankNick: rp.rankNick || '', cloudStars: cloudStarsOf(rp) });
             changed = true;
-          } else if(lp.rankOptIn !== !!rp.rankOptIn || (rp.rankNick && lp.rankNick !== rp.rankNick)){
-            // класирането се включва от „Акаунт“ — може и от друго устройство
-            lp.rankOptIn = !!rp.rankOptIn; lp.rankNick = rp.rankNick || lp.rankNick || '';
-            changed = true;
+          } else {
+            if(lp.rankOptIn !== !!rp.rankOptIn || (rp.rankNick && lp.rankNick !== rp.rankNick)){
+              // класирането се включва от „Акаунт“ — може и от друго устройство
+              lp.rankOptIn = !!rp.rankOptIn; lp.rankNick = rp.rankNick || lp.rankNick || '';
+              changed = true;
+            }
+            if((lp.cloudStars || 0) !== cloudStarsOf(rp)){ lp.cloudStars = cloudStarsOf(rp); changed = true; starsChanged.push(lp); }
           }
         });
         local.forEach(lp => {
@@ -1190,6 +1196,10 @@
         if(changed){
           saveProfiles(local);
           if(profileScreen.classList.contains('active')) renderProfileGrid();
+          // нивото от облака се приема тихо — празнуваме само звезди, спечелени тук
+          if(window.Rewards) starsChanged.forEach(p => Rewards.check(p, false));
+          const act = getActiveProfile();
+          if(act && menu.classList.contains('active')) renderProgressCard(act);
         }
         setSyncBadge('☁️ синхронизирано');
         setTimeout(()=>setSyncBadge(''), 2500);

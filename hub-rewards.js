@@ -34,10 +34,14 @@ function statsOf(profile){
   const correct = num(math && math.score) + num(sub && sub.score)
     + ((typing && typing.history) || []).length
     + recs.reduce((t, r) => t + num(r.score), 0);
+  // Звездите в облака (от друго устройство или пренесени от старата база) също се броят:
+  // взимаме по-голямото, за да не започва детето от нула на нов таблет.
+  const lp = (typeof loadProfiles === 'function' ? loadProfiles() : []).find(x => x.id === profile.id) || profile;
+  const cloudStars = num(lp.cloudStars);
   const bestStreak = Math.max(0,
     num(math && (math.bestStreak || math.streak)), num(sub && (sub.bestStreak || sub.streak)),
     ...recs.map(r => num(r.bestStreak || r.streak)));
-  return { stars, correct, bestStreak };
+  return { stars: Math.max(stars, cloudStars), correct, bestStreak };
 }
 R.statsOf = statsOf;
 

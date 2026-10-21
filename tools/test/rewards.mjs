@@ -150,6 +150,22 @@ await t.click('.admin-link'); await t.waitForTimeout(200); await gate(); await t
 await t.locator('.rw-rank-ctl [data-rank-on]').first().uncheck(); await t.waitForTimeout(500);
 check(Object.keys(await t.evaluate(() => JSON.parse(localStorage.getItem('__mockRank')))).length === 0, 'изключване → махнато от класирането');
 
+// --- 8б. Ново устройство: звездите от облака се броят, без празнуване
+await t.evaluate(() => {
+  const c = JSON.parse(localStorage.getItem('__mockCloud'));
+  const acc = Object.values(c.accounts).find(a => Object.values(a.profiles).some(p => p.name === 'Мая'));
+  const [id, p] = Object.entries(acc.profiles).find(([, p]) => p.name === 'Мая');
+  p.stats = { chetene: { stars: 40 }, sbor: { stars: 12 } };   // 52 ⭐ в облака → ниво 9
+  localStorage.setItem('__mockCloud', JSON.stringify(c));
+  // „нов таблет“: махаме местните звезди на Мая
+  ['maxiChetene_v1', 'maxiChislaPari_v1', 'maxiVnimanie_v1'].forEach(k => localStorage.removeItem(k));
+});
+await t.click('#admin-screen .admin-close'); await t.waitForTimeout(200);
+await t.locator('.profile-card', { hasText: 'Мая' }).click(); await t.waitForTimeout(300);
+await t.evaluate(() => cloudSyncProfiles()); await t.waitForTimeout(600);
+check((await t.textContent('.rw-level-name')).includes('Ниво 9'), 'нов таблет: 52 ⭐ от облака → „Ниво 9“');
+check(!(await t.locator('#rw-celebrate.open').count()), '…без празнуване за нива от друго устройство');
+
 // --- 9. Без акаунт: нива работят, класирането обяснява защо го няма
 await t.evaluate(() => localStorage.clear()); await t.reload(); await t.waitForTimeout(300);
 await t.click('#login-local'); await t.waitForTimeout(200);
