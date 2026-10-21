@@ -23,7 +23,7 @@ const browser = await chromium.launch({ executablePath: exe });
 // Без service worker: иначе той сервира кеширания модул и „офлайн“ не е истински.
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
 let offline = false;
-await ctx.route('**/firebase-shared.js', (r) => offline ? r.abort() : r.fulfill({ contentType: 'text/javascript', body: MOCK }));
+await ctx.route('**/firebase-shared.js*', (r) => offline ? r.abort() : r.fulfill({ contentType: 'text/javascript', body: MOCK }));
 await ctx.route(/^https:/, (r) => r.abort());
 const t = await ctx.newPage();
 const errors = [];
