@@ -207,6 +207,15 @@
   .tile .icon{ font-size:clamp(2.6rem, 7vw, 4.5rem); line-height:1; }
   .tile .label{ font-size:clamp(1.1rem, 2.6vw, 1.6rem); font-weight:700; text-align:center; }
   .tile .sub{ font-size:clamp(0.8rem, 1.6vw, 1rem); text-align:center; opacity:0.92; font-weight:400; }
+  .tile{ position:relative; }
+  .tile-new{
+    position:absolute; top:-10px; right:-8px; z-index:2;
+    background:#e8384f; color:#fff; border:3px solid #fff; border-radius:999px;
+    padding:0.25rem 0.75rem; font-weight:800; font-size:clamp(0.85rem, 1.6vw, 1rem);
+    box-shadow:0 3px 8px rgba(0,0,0,0.25); pointer-events:none;
+    transform:rotate(6deg); animation:tile-new-bob 1.8s ease-in-out infinite;
+  }
+  @keyframes tile-new-bob{ 0%,100%{ transform:rotate(6deg) scale(1); } 50%{ transform:rotate(6deg) scale(1.1); } }
 
   .tile.srichki{ background:linear-gradient(160deg,#e2b26b,#c98a3f); }
   .tile.matematika{ background:linear-gradient(160deg,#5da8e8,#2c6fb0); }
@@ -485,6 +494,8 @@
   .btn.google{ background:#fff; color:var(--ink); border:2px solid #d7dee5; }
   .btn[disabled]{ opacity:0.6; cursor:default; }
   .login-or{ text-align:center; opacity:0.55; font-size:0.9rem; }
+  .btn.local{ background:#4f9350; color:#fff; }
+  .login-local-note{ margin:0; text-align:center; opacity:0.7; font-size:0.85rem; line-height:1.35; }
   .login-links{ display:flex; justify-content:space-between; flex-wrap:wrap; gap:0.4rem; }
   .link-btn{
     background:none; border:none; color:#2a78c2; font-weight:600;
@@ -515,6 +526,9 @@
         <button class="link-btn" id="login-toggle" type="button">Нямате акаунт? Създайте</button>
         <button class="link-btn" id="login-forgot" type="button">Забравена парола</button>
       </div>
+      <div class="login-or">или</div>
+      <button class="btn local" id="login-local" type="button">▶ Играй без акаунт</button>
+      <p class="login-local-note">Напредъкът се пази само на това устройство. По-късно можете да влезете от „👤 Акаунт“ и децата ще минат в акаунта.</p>
     </div>
   </div>
 
@@ -718,7 +732,21 @@
   function showScreen(el){
     [loginScreen, profileScreen, newProfileScreen, menu, adminScreen, parentScreen].forEach(s => s.classList.remove('active'));
     el.classList.add('active');
+    if(el === menu) refreshNewBadges();
   }
+  // „✨ N нови“ върху плочките на приложенията, докато има неотворени нови игри.
+  function refreshNewBadges(){
+    if(!window.Maxi || !Maxi.unseenNew) return;
+    document.querySelectorAll('#menu .tile').forEach(t => {
+      const m = (t.getAttribute('onclick') || '').match(/openApp\('([^']+)'\)/);
+      const old = t.querySelector('.tile-new');
+      if(old) old.remove();
+      const n = m ? Maxi.unseenNew(m[1]).length : 0;
+      if(n) t.insertAdjacentHTML('beforeend', '<span class="tile-new">✨ ' + n + (n === 1 ? ' нова' : ' нови') + '</span>');
+    });
+  }
+  // Устройството играе без акаунт — всичко е само локално, без облак.
+  const isLocalAccount = () => { const a = getAccount(); return !!(a && a.local); };
 
   /* ---- Firebase / облачна база ---- */
   function whenDB(cb){
@@ -986,11 +1014,13 @@
       syncProfileToCloud(active);
     }
     sessionSnapshot = null;
+    refreshNewBadges();
     if(pendingLogin){ pendingLogin = false; showLogin(); }
   }
 
   /* ---- Изпращане на статистика + "последни 5 използвания" към Firestore ---- */
   function syncProfileToCloud(active){
+    if(isLocalAccount()) return;
     whenDB(db => {
       const math = readMathStats(active.name);
       const sub = readSubtractionStats(active.name);
@@ -1049,6 +1079,7 @@
 
   /* ---- Синхронизиране на списъка с профили с Firestore ---- */
   function cloudSyncProfiles(){
+    if(isLocalAccount()) return;
     whenDB(db => {
       setSyncBadge('🔄 синхронизиране…');
       db.listProfiles().then(remoteList => {
@@ -1087,6 +1118,21 @@
     const acc = getAccount();
     const box = document.getElementById('account-box');
     const listEl = document.getElementById('admin-list');
+    if(acc && acc.local){
+      box.innerHTML = `<div class="admin-profile-card">
+          <div class="account-row">
+            <div><div style="font-weight:700;font-size:1.1rem;">Играете без акаунт</div>
+              <div class="account-note">Напредъкът е само на това устройство. С акаунт се пази в облака и се вижда и от друг таблет или телефон.</div></div>
+            <button class="pp-btn" type="button" id="acc-login">Вход / нов акаунт</button>
+          </div>
+        </div>`;
+      document.getElementById('acc-login').onclick = () => showLogin();
+      const kids = loadProfiles();
+      listEl.innerHTML = kids.length
+        ? kids.map(p => `<div class="admin-profile-card"><b>${escapeHtml(p.avatar || '🦊')} ${escapeHtml(p.name)}</b></div>`).join('')
+        : '<div class="progress-empty">Все още няма профили.</div>';
+      return;
+    }
     box.innerHTML = `<div class="admin-profile-card">
         <div class="account-row">
           <div><div style="opacity:0.7;font-size:0.85rem;">Вписан акаунт</div>
@@ -1424,6 +1470,7 @@
   }
   function showLogin(){
     setLoginMode('signin');
+    document.getElementById('login-local').textContent = isLocalAccount() ? '↩ Обратно към игрите' : '▶ Играй без акаунт';
     loginPass.value = ''; loginPass2.value = '';
     setLoginBusy(false);
     if(!window.MaxiDB) loginMsg('Зареждане…');
@@ -1454,6 +1501,10 @@
   });
   loginGoogle.onclick = () => withDB(db => afterLoginAttempt(db.signInGoogle()));
   loginToggle.onclick = () => setLoginMode(loginMode === 'register' ? 'signin' : 'register');
+  document.getElementById('login-local').onclick = () => {
+    if(!getAccount()) setAccount({ uid: 'local', email: '', local: true });
+    startPlaying();
+  };
   loginForgot.onclick = () => withDB(db => {
     const email = loginEmail.value.trim();
     if(!email){ loginMsg('Въведете имейла си горе и натиснете пак „Забравена парола“.', 'err'); loginEmail.focus(); return; }
@@ -1488,21 +1539,22 @@
     const prev = getAccount();
 
     if(u){
-      if(prev && prev.uid !== u.uid){
+      if(prev && !prev.local && prev.uid !== u.uid){
         // друг акаунт на същото устройство — не смесваме децата
         saveProfiles([]);
         localStorage.removeItem(ACTIVE_KEY);
-      } else if(!prev){
-        // първи вход: профилите, създадени на устройството досега, минават в акаунта
+      } else if(!prev || prev.local){
+        // първи вход (или вход след игра без акаунт): профилите на устройството минават в акаунта
         saveProfiles(loadProfiles().map(p => Object.assign({}, p, { owner: u.uid })));
       }
       setAccount({ uid: u.uid, email: u.email });
-      if(isActive(loginScreen) || !prev || prev.uid !== u.uid) startPlaying();
+      if(isActive(loginScreen) || !prev || prev.local || prev.uid !== u.uid) startPlaying();
       cloudSyncProfiles();
       return;
     }
 
     // Не е вписан.
+    if(prev && prev.local) return; // играе без акаунт — нищо не пипаме
     if(prev){
       // изход (от екрана „Акаунт“ или сменена парола): махаме децата на акаунта от устройството
       setAccount(null);

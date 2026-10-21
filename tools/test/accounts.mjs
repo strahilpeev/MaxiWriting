@@ -132,6 +132,49 @@ await t.reload(); await t.waitForTimeout(8500);
 check((await t.textContent('#login-msg')).includes('интернет'), 'първо пускане без интернет → обяснение');
 offline = false;
 
+// --- 13. Игра без акаунт (напр. входът във Firebase още не е настроен)
+await t.evaluate(() => localStorage.clear());
+await t.reload(); await t.waitForTimeout(400);
+await t.click('#login-google'); await t.waitForTimeout(100); // входът дава грешка…
+await t.click('#login-local'); await t.waitForTimeout(300);   // …но „Играй без акаунт“ пуска към игрите
+check(await activeScreen() === 'profile-screen', 'без акаунт → избор на профил');
+await t.locator('.profile-card').last().click(); await t.waitForTimeout(200);
+await t.fill('#new-profile-name', 'Иво'); await t.click('#new-profile-screen .btn.save'); await t.waitForTimeout(300);
+check(await activeScreen() === 'menu', 'без акаунт → нов профил и менюто с игрите');
+await t.reload(); await t.waitForTimeout(500);
+check(await activeScreen() === 'menu', 'без акаунт → след презареждане пак направо игрите');
+const cloudLocal = await t.evaluate(() => localStorage.getItem('__mockCloud'));
+check(!cloudLocal || !cloudLocal.includes('Иво'), 'без акаунт → нищо не отива в облака');
+
+// --- 14. Значки „НОВО“: в менюто и вътре в приложението, изчезват след отваряне
+const badge = () => t.locator('button.tile[onclick*="vnimanie"] .tile-new').textContent().catch(() => '');
+check((await badge()).includes('3 нови'), '„Внимание и памет“ показва „✨ 3 нови“');
+await t.click('button.tile[onclick*="vnimanie"]'); await t.waitForTimeout(700);
+const fr = t.frameLocator('#app-frame');
+check(await fr.locator('.mx-tile[onclick*="labirint"] .mx-new').count() === 1, 'вътре: „Лабиринт“ има значка НОВО');
+check(await fr.locator('.mx-tile[onclick*="memory"] .mx-new').count() === 0, 'вътре: старата игра „Двойки“ е без значка');
+await fr.locator('.mx-tile[onclick*="labirint"]').click(); await t.waitForTimeout(300);
+await t.click('#home-btn'); await t.waitForTimeout(400);
+check((await badge()).includes('2 нови'), 'след отваряне на „Лабиринт“ → „✨ 2 нови“');
+
+// --- 15. Вход след игра без акаунт → децата минават в акаунта
+await t.click('#switch-profile-btn'); await t.waitForTimeout(200);
+await t.click('.admin-link'); await t.waitForTimeout(200);
+const q2 = await t.textContent('#mx-gate-q');
+const [a2, b2] = q2.match(/\d+/g).map(Number);
+await t.fill('#mx-gate-in', String(a2 * b2)); await t.click('#mx-gate-ok'); await t.waitForTimeout(300);
+check((await t.textContent('#account-box')).includes('без акаунт'), 'екран „Акаунт“ казва, че се играе без акаунт');
+await t.click('#acc-login'); await t.waitForTimeout(200);
+check((await t.textContent('#login-local')).includes('Обратно'), 'от „Акаунт“ входът има бутон „Обратно към игрите“');
+await t.click('#login-toggle');
+await t.fill('#login-email', 'tatko@test.bg'); await t.fill('#login-pass', '123456'); await t.fill('#login-pass2', '123456');
+await t.click('#login-submit'); await t.waitForTimeout(700);
+check(await activeScreen() === 'menu', 'нов акаунт след игра без акаунт → направо игрите на „Иво“');
+const names3 = await t.evaluate(() => JSON.parse(localStorage.getItem('hubChildProfiles_v1')).map(p => p.name));
+check(names3.includes('Иво'), 'профилът „Иво“ остава на устройството след входа');
+const cloud3 = await t.evaluate(() => localStorage.getItem('__mockCloud'));
+check(cloud3.includes('Иво'), '„Иво“ е качен в облака на акаунта');
+
 check(errors.length === 0, 'без JavaScript грешки' + (errors.length ? ': ' + errors.join(' | ') : ''));
 await t.screenshot({ path: path.join(__dirname, 'login.png') });
 await browser.close(); server.close();

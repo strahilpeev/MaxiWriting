@@ -305,6 +305,38 @@ M.confetti = function(count){
   }
 };
 
+/* ================= Значка „НОВО“ =================
+   Новите игри носят значка, докато детето не ги отвори веднъж на това устройство.
+   Хъбът показва „✨ N нови“ на плочката на приложението, докато има неотворени. */
+M.NEW_GAMES = {
+  'chetene.html': ['chuy', 'broisrichki', 'posleden', 'glavni', 'izrechenie'],
+  'chisla-i-pari.html': ['umnozhenie', 'shabloni', 'figuri', 'kalendar'],
+  'vnimanie.html': ['simon', 'lyavo', 'labirint'],
+  'dvizhenie.html': ['tochki'],
+  'govorya.html': ['bezopasnost', 'vreme']
+};
+const SEEN_KEY = 'maxiSeenNew_v1';
+function loadSeen(){ try{ return JSON.parse(localStorage.getItem(SEEN_KEY)) || {}; }catch(e){ return {}; } }
+const thisFile = () => (location.pathname.split('/').pop() || '').toLowerCase();
+M.unseenNew = (file) => { const seen = loadSeen(); return (M.NEW_GAMES[file] || []).filter(k => !seen[file + '#' + k]); };
+M.markSeen = function(key, file){
+  file = file || thisFile();
+  if(!(M.NEW_GAMES[file] || []).includes(key)) return;
+  const seen = loadSeen();
+  seen[file + '#' + key] = Date.now();
+  try{ localStorage.setItem(SEEN_KEY, JSON.stringify(seen)); }catch(e){}
+  M.$$('.mx-new[data-k="' + key + '"]').forEach(b => b.remove());
+};
+M.decorateNew = function(){
+  const file = thisFile();
+  M.unseenNew(file).forEach(k => {
+    const tile = M.$$('.mx-tile').find(t => (t.getAttribute('onclick') || '').includes("'" + k + "'"));
+    if(tile && !tile.querySelector('.mx-new')) tile.insertAdjacentHTML('beforeend', `<span class="mx-new" data-k="${k}">НОВО</span>`);
+  });
+};
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => M.decorateNew());
+else setTimeout(() => M.decorateNew(), 0);
+
 /* ================= Екрани ================= */
 M.show = function(id){
   M.$$('.mx-screen').forEach(s => s.classList.toggle('active', s.id === id));
@@ -499,6 +531,7 @@ M.createGame = function(store, modes, opts){
   G.goMenu = function(){ G.roundId++; M.stopSpeech(); if(G.onLeave) G.onLeave(); G.onLeave = null; M.show('menu'); };
   G.openMode = function(key){
     G.mode = key;
+    M.markSeen(key);
     const lv = modes[key].levels || [];
     G.level = Math.min(store.rec.extra.levels[key] || 0, Math.max(0, lv.length - 1));
     G.renderLevels();

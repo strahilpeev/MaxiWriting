@@ -85,6 +85,16 @@ button{ font-family:inherit; color:inherit; }
   transition:transform .15s ease;
 }
 .mx-tile:active{ transform:scale(0.96); }
+.mx-tile{ position:relative; }
+/* Значка за нова игра — изчезва, щом детето отвори играта веднъж */
+.mx-new{
+  position:absolute; top:-8px; right:-6px; z-index:2;
+  background:#e8384f; color:#fff; border:3px solid #fff; border-radius:999px;
+  padding:0.2rem 0.65rem; font-weight:900; letter-spacing:0.04em;
+  font-size:calc(0.85rem * var(--ts)); box-shadow:0 3px 8px rgba(0,0,0,0.2);
+  animation:mx-new-bob 1.8s ease-in-out infinite; pointer-events:none;
+}
+@keyframes mx-new-bob{ 0%,100%{ transform:rotate(6deg) scale(1); } 50%{ transform:rotate(6deg) scale(1.1); } }
 .mx-tile .i{ font-size:clamp(2.4rem,6vw,3.6rem); line-height:1; }
 .mx-tile .l{ font-weight:800; font-size:calc(clamp(1rem,2.2vw,1.35rem) * var(--ts)); text-align:center; }
 .mx-tile .s{ font-size:calc(0.85rem * var(--ts)); opacity:0.92; text-align:center; }
