@@ -15,7 +15,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache,
-  clearIndexedDbPersistence, doc, getDoc, setDoc, collection, getDocs, serverTimestamp
+  doc, getDoc, setDoc, collection, getDocs, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -36,16 +36,25 @@ auth.languageCode = "bg"; // писмата за парола и потвърж�
 // напр. след смяна на правилата), при следващото отваряне го изчистваме —
 // данните са в облака, губи се само локалното копие.
 const RESET_KEY = "maxiFirestoreReset_v1";
+const IDB_NAME = "firestore/[DEFAULT]/" + firebaseConfig.projectId + "/main";
 let needReset = false;
-try { needReset = !!localStorage.getItem(RESET_KEY); localStorage.removeItem(RESET_KEY); } catch (e) {}
+try { needReset = !!localStorage.getItem(RESET_KEY); } catch (e) {}
 let db;
-try {
-  db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
-} catch (e) {
-  db = initializeFirestore(app, { localCache: memoryLocalCache() });
-}
 if (needReset) {
-  try { await clearIndexedDbPersistence(db); } catch (e) { /* друг раздел още държи кеша — ще опитаме пак */ }
+  // Повреден кеш: тази сесия работи с кеш в паметта (без IndexedDB), а старата
+  // база се трие във фона. Ако друг раздел я държи отворена, триенето довършва,
+  // щом той се затвори; знакът се маха чак при успех.
+  db = initializeFirestore(app, { localCache: memoryLocalCache() });
+  try {
+    const req = indexedDB.deleteDatabase(IDB_NAME);
+    req.onsuccess = () => { try { localStorage.removeItem(RESET_KEY); } catch (e) {} };
+  } catch (e) {}
+} else {
+  try {
+    db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+  } catch (e) {
+    db = initializeFirestore(app, { localCache: memoryLocalCache() });
+  }
 }
 const isCorrupt = (err) => /INTERNAL ASSERTION FAILED/.test(String(err && err.message || err));
 function markCorrupt(err) {
