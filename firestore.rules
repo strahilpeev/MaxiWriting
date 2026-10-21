@@ -13,7 +13,7 @@ service cloud.firestore {
     // профили от общата база. Имейлът трябва да е потвърден (или вход с Google).
     function isOwnerOfApp() {
       return request.auth != null
-        && request.auth.token.email == 'ВАШИЯТ-ИМЕЙЛ@gmail.com' // ← сменете с вашия имейл преди Publish
+        && request.auth.token.email == 'strahil.peev@gmail.com'
         && request.auth.token.email_verified == true;
     }
 
