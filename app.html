@@ -14,8 +14,9 @@
 <meta name="apple-mobile-web-app-title" content="Учебни игри">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#5da8e8">
-<script type="module" src="firebase-shared.js?v=16"></script>
+<script type="module" src="firebase-shared.js?v=17"></script>
 <script src="maxi-common.js"></script>
+<script src="hub-rewards.js?v=17"></script>
 
 <style>
   :root{
@@ -412,6 +413,9 @@
   }
   /* менюто вече има много плочки — подравняваме отгоре, за да не се реже заглавието */
   #menu{ justify-content:flex-start; padding-top:clamp(4rem, 8vw, 5rem); }
+  #rank-screen{ justify-content:flex-start; }
+  @media (max-width:560px){ #menu{ padding-top:5.6rem; } }
+  #rank-screen .admin-top{ max-width:640px; }
   #admin-screen{
     align-items:stretch;
     justify-content:flex-start;
@@ -504,6 +508,73 @@
   .account-h2{ width:100%; max-width:900px; margin:1.2rem auto 0.5rem auto; font-size:1.2rem; }
   .account-row{ display:flex; flex-wrap:wrap; gap:0.6rem; align-items:center; justify-content:space-between; }
   .account-note{ font-size:0.9rem; opacity:0.75; margin-top:0.4rem; }
+
+  /* ---------- Награди: ниво, значки, празнуване, класиране ---------- */
+  #rw-card{ display:flex; flex-direction:column; gap:0.5rem; }
+  .rw-level{ display:flex; align-items:center; gap:0.8rem; background:linear-gradient(135deg,#fff6db,#ffe9f3); border-radius:18px; padding:0.6rem 0.9rem; }
+  .rw-level-emoji{ font-size:clamp(2.2rem,6vw,3rem); line-height:1; }
+  .rw-level-main{ flex:1; display:flex; flex-direction:column; gap:0.3rem; min-width:0; }
+  .rw-level-name{ font-weight:800; font-size:clamp(1rem,2.4vw,1.25rem); }
+  .rw-bar{ height:14px; background:#fff; border-radius:999px; overflow:hidden; box-shadow:inset 0 0 0 2px #f2c14e; }
+  .rw-bar i{ display:block; height:100%; background:linear-gradient(90deg,#f2c14e,#e8845d); border-radius:999px; transition:width .6s ease; }
+  .rw-next{ font-size:0.85rem; opacity:0.75; }
+  .rw-badges-title{ font-size:0.85rem; font-weight:700; opacity:0.7; }
+  .rw-badges{ display:flex; flex-wrap:wrap; gap:0.35rem; }
+  .rw-badge{ font-size:clamp(1.5rem,4vw,1.9rem); cursor:pointer; line-height:1.2; }
+  .rw-badge.locked{ opacity:0.22; filter:grayscale(1); }
+  .progress-avatar[role=button]:hover{ box-shadow:0 0 0 3px #f2c14e; }
+  .rw-modal{ position:fixed; inset:0; z-index:60; background:rgba(44,62,80,0.5); display:none; align-items:center; justify-content:center; padding:1rem; }
+  .rw-modal.open{ display:flex; }
+  .rw-modal-box{ background:#fff; border-radius:26px; padding:clamp(1rem,3vw,1.8rem); width:100%; max-width:560px; max-height:92vh; overflow-y:auto;
+    display:flex; flex-direction:column; gap:0.7rem; align-items:center; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+  .rw-modal-box h3, .rw-modal-box h4{ margin:0.2rem 0; }
+  .rw-av-grid{ display:flex; flex-wrap:wrap; justify-content:center; gap:0.45rem; }
+  .rw-av{ font-size:2rem; width:3.4rem; height:3.4rem; border-radius:16px; border:3px solid #e3e8ee; background:#fff; cursor:pointer; position:relative; padding:0; }
+  .rw-av.sel{ border-color:#4f9350; background:#e6f7ec; }
+  .rw-av.locked{ opacity:0.35; cursor:default; filter:grayscale(1); }
+  .rw-av small{ position:absolute; bottom:-2px; right:-2px; font-size:0.65rem; background:#fff; border-radius:8px; padding:0 3px; filter:none; }
+  .rw-celebrate{ background:radial-gradient(circle at center, rgba(255,214,102,0.55), rgba(44,62,80,0.75)); }
+  .rw-celebrate .rw-modal-box{ animation:rw-pop .6s cubic-bezier(.2,1.6,.4,1); }
+  .rw-big{ font-size:clamp(5rem,18vw,8rem); line-height:1; animation:rw-bounce 1s ease-in-out infinite; }
+  .rw-title{ font-size:clamp(2rem,7vw,3.2rem); font-weight:900; color:#e8845d; }
+  .rw-sub{ font-size:clamp(1rem,2.6vw,1.3rem); }
+  .rw-actions{ display:flex; flex-wrap:wrap; gap:0.6rem; justify-content:center; margin-top:0.4rem; }
+  @keyframes rw-pop{ 0%{ transform:scale(0.3); opacity:0; } 100%{ transform:scale(1); opacity:1; } }
+  @keyframes rw-bounce{ 0%,100%{ transform:translateY(0) rotate(-4deg); } 50%{ transform:translateY(-14px) rotate(4deg); } }
+  .rw-confetti{ position:fixed; inset:0; z-index:70; pointer-events:none; overflow:hidden; }
+  .rw-confetti i{ position:absolute; top:-6vh; width:10px; height:16px; border-radius:3px; animation:rw-fall linear forwards; font-style:normal; }
+  .rw-confetti i.e{ width:auto; height:auto; font-size:1.8rem; }
+  @keyframes rw-fall{ to{ transform:translate(var(--dx), 112vh) rotate(var(--r)); } }
+  .rw-toast{ position:fixed; left:50%; bottom:1.4rem; transform:translateX(-50%); z-index:80; background:#2c3e50; color:#fff; border-radius:999px;
+    padding:0.7rem 1.2rem; font-weight:700; box-shadow:0 8px 24px rgba(0,0,0,0.25); transition:opacity .5s; max-width:92vw; text-align:center; }
+  .rw-toast.out{ opacity:0; }
+  .rw-rank-ctl{ margin:0.4rem 0 0.6rem; padding:0.5rem 0.7rem; background:#fff8e6; border-radius:12px; display:flex; flex-wrap:wrap; gap:0.4rem 0.8rem; align-items:center; }
+  .rw-rank-ctl label{ font-weight:700; cursor:pointer; display:flex; gap:0.4rem; align-items:center; }
+  .rw-rank-ctl input{ width:1.3rem; height:1.3rem; }
+  .rw-rank-ctl .account-note{ width:100%; margin:0; }
+  #rank-screen .rank-wrap{ width:100%; max-width:640px; display:flex; flex-direction:column; gap:0.5rem; }
+  .rw-rank-row{ display:flex; align-items:center; gap:0.7rem; background:#fff; border-radius:16px; padding:0.6rem 0.9rem; box-shadow:var(--card-shadow); }
+  .rw-rank-row.mine{ background:#fff6db; box-shadow:0 0 0 3px #f2c14e; }
+  .rw-rank-place{ font-weight:900; min-width:2.2rem; text-align:center; font-size:1.3rem; }
+  .rw-rank-av{ font-size:1.9rem; }
+  .rw-rank-name{ flex:1; font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .rw-rank-lvl{ font-weight:800; white-space:nowrap; }
+  /* Грамота: печата се само тя */
+  #rw-cert{ display:none; }
+  @media print{
+    html.rw-printing body > *:not(#rw-cert){ display:none !important; }
+    html.rw-printing #rw-cert{ display:flex !important; }
+    @page{ size:A4 landscape; margin:10mm; }
+  }
+  #rw-cert{ width:100%; height:100vh; align-items:center; justify-content:center; font-family:Georgia, 'Times New Roman', serif; color:#2c3e50; background:#fff; }
+  .rw-cert-in{ width:100%; height:100%; box-sizing:border-box; border:10px double #c98a3f; border-radius:20px; padding:6vh 6vw;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.6vh; text-align:center; background:#fffdf6; }
+  .rw-cert-stars{ font-size:5vh; }
+  .rw-cert-h{ font-size:9vh; font-weight:900; letter-spacing:0.12em; color:#c98a3f; }
+  .rw-cert-t{ font-size:3vh; font-style:italic; }
+  .rw-cert-name{ font-size:8vh; font-weight:900; border-bottom:2px solid #c98a3f; padding:0 4vw 1vh; }
+  .rw-cert-lvl{ font-size:5vh; font-weight:800; }
+  .rw-cert-foot{ display:flex; justify-content:space-between; width:80%; font-size:2.4vh; margin-top:3vh; }
 </style>
 </head>
 <body>
@@ -566,6 +637,7 @@
   <!-- ЕКРАН 2: Меню с игрите -->
   <div id="menu" class="screen">
     <div class="top-bar">
+      <button onclick="Rewards.openRanking()">🏆 Класиране</button>
       <button onclick="openParentPanel()">👨‍👩‍👧 За родители</button>
       <button id="switch-profile-btn" onclick="showProfileScreen()">🔄 Смени профила</button>
     </div>
@@ -638,6 +710,15 @@
       <button class="progress-toggle" id="progress-toggle-btn" onclick="toggleProgressHistory()">📜 Виж историята</button>
       <div class="progress-history" id="progress-history"></div>
     </div>
+  </div>
+
+  <!-- ЕКРАН: Общо класиране (прякор + аватар + ниво) -->
+  <div id="rank-screen" class="screen">
+    <div class="admin-top">
+      <h1 style="margin:0;">🏆 Класиране</h1>
+      <button class="admin-close" onclick="closeRanking()">✕ Затвори</button>
+    </div>
+    <div class="rank-wrap" id="rank-list"></div>
   </div>
 
   <!-- ЕКРАН: Родителски панел — напредък, история, експорт и общи настройки -->
@@ -730,7 +811,7 @@
   const syncBadge = document.getElementById('sync-badge');
 
   function showScreen(el){
-    [loginScreen, profileScreen, newProfileScreen, menu, adminScreen, parentScreen].forEach(s => s.classList.remove('active'));
+    [loginScreen, profileScreen, newProfileScreen, menu, adminScreen, parentScreen, document.getElementById('rank-screen')].forEach(s => s && s.classList.remove('active'));
     el.classList.add('active');
     if(el === menu) refreshNewBadges();
   }
@@ -900,6 +981,7 @@
 
   function renderProgressCard(profile){
     document.getElementById('progress-avatar').textContent = profile.avatar;
+    if(window.Rewards) Rewards.renderCard(profile);
     const math = readMathStats(profile.name);
     const sub = readSubtractionStats(profile.name);
     const typing = readTypingStats(profile.name);
@@ -984,6 +1066,7 @@
 
   function openApp(src){
     const active = getActiveProfile();
+    if(window.Rewards) Rewards.noteOpen(src);
     const url = active ? (src + '?hubUser=' + encodeURIComponent(active.name)) : src;
     setFrameUrl(url);
     appScreen.classList.add('active');
@@ -1012,6 +1095,7 @@
     if(active){
       renderProgressCard(active);
       syncProfileToCloud(active);
+      if(window.Rewards) Rewards.publish(active);
     }
     sessionSnapshot = null;
     refreshNewBadges();
@@ -1087,9 +1171,14 @@
         const local = loadProfiles();
         let changed = false;
         remote.forEach(rp => {
-          if(!local.find(lp => lp.id === rp.id)){
+          const lp = local.find(x => x.id === rp.id);
+          if(!lp){
             const acc = getAccount();
-            local.push({ id: rp.id, name: rp.name, avatar: rp.avatar || '🦊', owner: acc ? acc.uid : undefined });
+            local.push({ id: rp.id, name: rp.name, avatar: rp.avatar || '🦊', owner: acc ? acc.uid : undefined, rankOptIn: !!rp.rankOptIn, rankNick: rp.rankNick || '' });
+            changed = true;
+          } else if(lp.rankOptIn !== !!rp.rankOptIn || (rp.rankNick && lp.rankNick !== rp.rankNick)){
+            // класирането се включва от „Акаунт“ — може и от друго устройство
+            lp.rankOptIn = !!rp.rankOptIn; lp.rankNick = rp.rankNick || lp.rankNick || '';
             changed = true;
           }
         });
@@ -1216,9 +1305,11 @@
         return `<div class="admin-profile-card">
           <h3>${p.avatar || '🦊'} ${escapeHtml(p.name || p.id)}</h3>
           <div style="font-size:0.85rem; opacity:0.75; margin-bottom:0.5rem;">${statsLine || 'Все още няма статистика'}</div>
+          ${window.Rewards ? Rewards.rankControls(p) : ''}
           ${sessionsHtml || '<div class="progress-empty">Все още няма използвания</div>'}
         </div>`;
       }).join('');
+      if(window.Rewards) Rewards.bindRankControls(listEl, db, () => renderAdminList(db));
     }).catch((err) => {
       if(db.isCorrupt && db.isCorrupt(err)){
         // повреден локален кеш — изчиства се автоматично при следващото отваряне
@@ -1233,6 +1324,10 @@
   function openParentPanel(){
     if(!getActiveProfile()){ showProfileScreen(); return; }
     Maxi.parentGate(renderParentPanel, 'За родители');
+  }
+  function closeRanking(){
+    const active = getActiveProfile();
+    if(active){ renderProgressCard(active); showScreen(menu); } else showProfileScreen();
   }
   function closeParentPanel(){
     const active = getActiveProfile();
@@ -1318,6 +1413,7 @@
     document.getElementById('pp-aac').innerHTML = aac.length ? aac.map(r => `<div><span>🗣️ ${escapeHtml(r.q)}</span><span class="pi-time">${fmtWhen(r.ts)}</span></div>`).join('') : '<div class="progress-empty">Все още няма изречения от таблото</div>';
 
     renderSettings();
+    if(window.Rewards) Rewards.renderParentExtras(active);
     showScreen(parentScreen);
   }
 
@@ -1390,6 +1486,8 @@
   function goBack(){
     const gate = document.getElementById('mx-gate');
     if(gate && gate.classList.contains('open')){ gate.classList.remove('open'); return true; }
+    if(window.Rewards && Rewards.closeTop()) return true;
+    if(isActive(document.getElementById('rank-screen'))){ closeRanking(); return true; }
     if(isActive(appScreen)){
       let handled = false;
       try{

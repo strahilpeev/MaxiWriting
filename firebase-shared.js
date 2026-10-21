@@ -15,7 +15,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager, memoryLocalCache,
-  doc, getDoc, setDoc, collection, getDocs, serverTimestamp
+  doc, getDoc, setDoc, deleteDoc, collection, getDocs, serverTimestamp, query, orderBy, limit
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -230,6 +230,35 @@ async function importLegacyProfiles_raw(ids) {
   return chosen.length;
 }
 
+/* ---------- Общо класиране ----------
+   leaderboard/{uid}_{profileId}: само прякор, аватар, ниво и звезди — без истинско име.
+   Влиза само дете, за което родителят е включил класирането в „👤 Акаунт“. */
+function rankId(uid, profileId) { return uid + "_" + profileId; }
+async function publishRank_raw(profileId, entry) {
+  const user = await requireUser();
+  const level = Math.max(1, Math.min(1000, Math.floor(entry.level || 1)));
+  const stars = Math.max(0, Math.min(1000000, Math.floor(entry.stars || 0)));
+  await setDoc(doc(db, "leaderboard", rankId(user.uid, profileId)), {
+    uid: user.uid,
+    nick: String(entry.nick || "").slice(0, 40),
+    avatar: String(entry.avatar || "🦊").slice(0, 16),
+    level, stars,
+    score: level * 1000000 + stars,
+    updatedAt: serverTimestamp()
+  });
+}
+async function removeRank_raw(profileId) {
+  const user = await requireUser();
+  await deleteDoc(doc(db, "leaderboard", rankId(user.uid, profileId)));
+}
+async function listRanking_raw(n) {
+  const user = await requireUser();
+  const snap = await getDocs(query(collection(db, "leaderboard"), orderBy("score", "desc"), limit(n || 50)));
+  const out = [];
+  snap.forEach((d) => { const r = d.data(); out.push({ id: d.id, nick: r.nick, avatar: r.avatar, level: r.level, stars: r.stars, mine: r.uid === user.uid }); });
+  return out;
+}
+
 window.MaxiDB = {
   ready,
   onAuth,
@@ -247,6 +276,9 @@ window.MaxiDB = {
   pushSession: (...a) => pushSession_raw(...a).catch(markCorrupt),
   listLegacyProfiles,
   importLegacyProfiles: (...a) => importLegacyProfiles_raw(...a).catch(markCorrupt),
-  isCorrupt
+  isCorrupt,
+  publishRank: (...a) => publishRank_raw(...a).catch(markCorrupt),
+  removeRank: (...a) => removeRank_raw(...a).catch(markCorrupt),
+  listRanking: (...a) => listRanking_raw(...a).catch(markCorrupt)
 };
 window.dispatchEvent(new Event("maxidb-ready"));

@@ -50,6 +50,25 @@ service cloud.firestore {
       allow read: if isOwnerOfApp();
       allow write: if false;
     }
+    // Общо класиране: само прякор, аватар, ниво и звезди (без истинско име).
+    // Чете всеки вписан родител/специалист; пише само акаунтът, чийто uid е
+    // в началото на името на записа ({uid}_{profileId}).
+    match /leaderboard/{entryId} {
+      allow read: if request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous';
+      allow create, update: if request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
+        && entryId.matches(request.auth.uid + '_[A-Za-z0-9_-]{1,80}')
+        && request.resource.data.keys().hasOnly(['uid', 'nick', 'avatar', 'level', 'stars', 'score', 'updatedAt'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.nick is string && request.resource.data.nick.size() <= 40
+        && request.resource.data.avatar is string && request.resource.data.avatar.size() <= 16
+        && request.resource.data.level is int && request.resource.data.level >= 1 && request.resource.data.level <= 1000
+        && request.resource.data.stars is int && request.resource.data.stars >= 0
+        && request.resource.data.score == request.resource.data.level * 1000000 + request.resource.data.stars;
+      allow delete: if request.auth != null
+        && entryId.matches(request.auth.uid + '_[A-Za-z0-9_-]{1,80}');
+    }
     match /settings/{doc} {
       allow read, write: if false;
     }

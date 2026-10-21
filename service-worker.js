@@ -1,4 +1,4 @@
-const CACHE_NAME = 'uchebni-igri-v16';
+const CACHE_NAME = 'uchebni-igri-v17';
 const APP_SHELL = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const APP_SHELL = [
   './firebase-shared.js',
   './maxi-common.js',
   './maxi-common.css',
+  './hub-rewards.js',
   './chetene.html',
   './chisla-i-pari.html',
   './vnimanie.html',

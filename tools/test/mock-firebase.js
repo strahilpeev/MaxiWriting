@@ -62,6 +62,18 @@ window.MaxiDB = {
     await ready; const c = mine(); const p = c.accounts[currentUser.uid].profiles[id] = c.accounts[currentUser.uid].profiles[id] || {};
     p.sessions = p.sessions || {}; (p.sessions[appKey] = p.sessions[appKey] || []).unshift(record); write(CLOUD, c);
   },
+  async publishRank(id, e) {
+    await ready; mine();
+    const r = read('__mockRank', {});
+    r[currentUser.uid + '_' + id] = { uid: currentUser.uid, nick: e.nick, avatar: e.avatar, level: e.level, stars: e.stars, score: e.level * 1e6 + e.stars };
+    write('__mockRank', r);
+  },
+  async removeRank(id) { await ready; mine(); const r = read('__mockRank', {}); delete r[currentUser.uid + '_' + id]; write('__mockRank', r); },
+  async listRanking(n) {
+    await ready; mine();
+    return Object.entries(read('__mockRank', {})).map(([id, r]) => ({ id, ...r, mine: r.uid === currentUser.uid }))
+      .sort((a, b) => b.score - a.score).slice(0, n || 50);
+  },
   async listLegacyProfiles() { await ready; return read('__mockLegacy', []); },
   async importLegacyProfiles() {
     const legacy = read('__mockLegacy', []);
