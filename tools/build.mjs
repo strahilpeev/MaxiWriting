@@ -256,6 +256,18 @@ const HTACCESS = `# ${COPYRIGHT}
   </FilesMatch>
 </IfModule>
 Options -Indexes
+
+# SEO: един адрес за сайта — https://tapnime.eu (без www, само https)
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{REQUEST_URI} !^/\\.well-known/
+  RewriteCond %{HTTP_HOST} ^www\\.tapnime\\.eu$ [NC]
+  RewriteRule ^(.*)$ https://tapnime.eu/$1 [R=301,L]
+  RewriteCond %{REQUEST_URI} !^/\\.well-known/
+  RewriteCond %{HTTPS} off
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteRule ^(.*)$ https://tapnime.eu/$1 [R=301,L]
+</IfModule>
 `;
 
 async function main() {
