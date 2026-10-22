@@ -139,6 +139,12 @@ function writeSeoFiles() {
     `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`);
   fs.writeFileSync(path.join(OUT, 'robots.txt'),
     `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`);
+  // Тестовата среда (MAXI_TARGET=test node build.mjs → за test.tapnime.eu) не се индексира.
+  if (process.env.MAXI_TARGET === 'test') {
+    fs.writeFileSync(path.join(OUT, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
+    fs.appendFileSync(path.join(OUT, '.htaccess'),
+      '\n# Тестова среда — да не се индексира\n<IfModule mod_headers.c>\n  Header always set X-Robots-Tag "noindex, nofollow"\n</IfModule>\n');
+  }
 }
 
 async function buildHtml(file) {
@@ -284,8 +290,8 @@ async function main() {
     if (fs.statSync(path.join(SRC, d)).isDirectory()) copyDir(path.join(SRC, d), path.join(OUT, d));
   }
   fs.writeFileSync(path.join(OUT, '.htaccess'), HTACCESS);
-  fs.writeFileSync(path.join(OUT, 'COPYRIGHT.txt'), COPYRIGHT + '\n');
   writeSeoFiles(); console.log('✓ sitemap.xml, robots.txt');
+  fs.writeFileSync(path.join(OUT, 'COPYRIGHT.txt'), COPYRIGHT + '\n');
   console.log('\nГотово → dist/');
 }
 
