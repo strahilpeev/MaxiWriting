@@ -14,9 +14,9 @@
 <meta name="apple-mobile-web-app-title" content="Учебни игри">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#5da8e8">
-<script type="module" src="firebase-shared.js?v=19"></script>
+<script type="module" src="firebase-shared.js?v=21"></script>
 <script src="maxi-common.js"></script>
-<script src="hub-rewards.js?v=19"></script>
+<script src="hub-rewards.js?v=21"></script>
 
 <style>
   :root{
@@ -1648,7 +1648,22 @@
 
   // Реакция на промяна на входа (при стартиране, след вход и след изход).
   let handledUid;
+  // Анонимен вход от старата версия (преди акаунтите): правилата на базата вече
+  // не го пускат. Устройството минава в „Играй без акаунт“ — децата остават
+  // и играят; родителят може да влезе по-късно от „👤 Акаунт“ и те минават в акаунта.
+  const isLegacyAnon = (acc) => !!(acc && !acc.local && !acc.email);
+  function toLocalMode(){
+    setAccount({ uid: 'local', email: '', local: true });
+    setSyncBadge('');
+  }
   function onAuthChange(u){
+    if(u && (u.isAnonymous || u.anonymous)){
+      if(!isLocalAccount()) toLocalMode();
+      handledUid = null;
+      whenDB(db => db.signOut().catch(() => {}));
+      if(!isActive(appScreen) && !isActive(menu) && !isActive(profileScreen)) startPlaying();
+      return;
+    }
     const uid = u ? u.uid : null;
     if(uid === handledUid) return;
     handledUid = uid;
@@ -1684,6 +1699,7 @@
     }
   }
 
+  if(isLegacyAnon(getAccount())) toLocalMode();
   if(getAccount()){
     // Устройството вече е вписано — детето играе веднага, дори офлайн.
     startPlaying();

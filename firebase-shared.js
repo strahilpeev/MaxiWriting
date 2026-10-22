@@ -85,7 +85,7 @@ function onAuth(cb) {
 
 function userInfo() {
   return currentUser
-    ? { uid: currentUser.uid, email: currentUser.email || "", verified: !!currentUser.emailVerified }
+    ? { uid: currentUser.uid, email: currentUser.email || "", verified: !!currentUser.emailVerified, anonymous: !!currentUser.isAnonymous }
     : null;
 }
 

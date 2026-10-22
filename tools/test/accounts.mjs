@@ -175,6 +175,22 @@ check(names3.includes('Иво'), 'профилът „Иво“ остава н�
 const cloud3 = await t.evaluate(() => localStorage.getItem('__mockCloud'));
 check(cloud3.includes('Иво'), '„Иво“ е качен в облака на акаунта');
 
+// --- 16. Таблет от старата версия: анонимен вход → „Играй без акаунт“, децата остават
+await t.evaluate(() => {
+  localStorage.clear();
+  localStorage.setItem('hubAccount_v1', JSON.stringify({ uid: 'anon1', email: null }));
+  localStorage.setItem('hubChildProfiles_v1', JSON.stringify([{ id: 'p7', name: 'Ема', avatar: '🐰', owner: 'anon1' }]));
+  localStorage.setItem('hubActiveProfile_v1', JSON.stringify({ id: 'p7', name: 'Ема', avatar: '🐰' }));
+  localStorage.setItem('__mockAuth', JSON.stringify({ uid: 'anon1', email: '', verified: false, anonymous: true }));
+});
+await t.reload(); await t.waitForTimeout(700);
+check(await activeScreen() === 'menu', 'стар анонимен таблет → детето играе направо (без екран за вход)');
+check(await t.evaluate(() => JSON.parse(localStorage.getItem('hubAccount_v1')).local === true), '…устройството минава в „Играй без акаунт“');
+check(await t.evaluate(() => JSON.parse(localStorage.getItem('hubChildProfiles_v1')).some(p => p.name === 'Ема')), '…профилът „Ема“ остава');
+check(await t.evaluate(() => !window.MaxiDB.user()), '…анонимният вход е прекратен');
+await t.reload(); await t.waitForTimeout(500);
+check(await activeScreen() === 'menu' && await t.evaluate(() => JSON.parse(localStorage.getItem('hubChildProfiles_v1')).length === 1), 'след презареждане: пак направо игрите, „Ема“ е тук');
+
 check(errors.length === 0, 'без JavaScript грешки' + (errors.length ? ': ' + errors.join(' | ') : ''));
 await t.screenshot({ path: path.join(__dirname, 'login.png') });
 await browser.close(); server.close();
