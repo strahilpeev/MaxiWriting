@@ -10,8 +10,9 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 /* ================= Нива =================
-   Звездите от всички игри се събират в общ басейн. Първите нива идват бързо,
-   после стъпката расте с по 1: ниво 2 = 3⭐, 3 = 7⭐, 4 = 12⭐, 5 = 18⭐, …, 10 = 63⭐. */
+   Общият басейн от звезди на детето = звездите за серии (5 поредни верни) от
+   всички игри + 1 ⭐ на всеки 100 точки (сбор от всички игри) + бонусите за
+   званията във всяка игра (правилата за точките — в maxi-points.js). */
 const LEVELS = [
   ['🐣','Пиленце'], ['🐥','Пиле'], ['🐰','Зайче'], ['🐿️','Катеричка'], ['🦊','Лисиче'],
   ['🐼','Панда'], ['🐨','Коала'], ['🐬','Делфин'], ['🦉','Бухал'], ['🦁','Лъв'],
@@ -21,7 +22,7 @@ const LEVELS = [
 // Праговете са ×100: ниво 2 = 300⭐, 3 = 700⭐, 4 = 1200⭐, 5 = 1800⭐, 10 = 6300⭐.
 // Стъпката до следващото ниво расте с всяко ниво: 300, 400, 500, 600… звезди.
 const STAR_SCALE = 100;
-const LEVEL_FORMULA = 2;   // сменя се при промяна на праговете → запазените нива се преизчисляват
+const LEVEL_FORMULA = 3;   // 3: в басейна влизат и точките и званията   // сменя се при промяна на праговете → запазените нива се преизчисляват
 R.levelStart = (k) => STAR_SCALE * (k - 1) * (k + 4) / 2;
 R.levelOf = (stars) => { let k = 1; while(R.levelStart(k + 1) <= stars) k++; return k; };
 R.levelInfo = (k) => k <= LEVELS.length
@@ -32,20 +33,28 @@ R.levelInfo = (k) => k <= LEVELS.length
 function statsOf(profile){
   const name = profile.name;
   const math = readMathStats(name), sub = readSubtractionStats(name), typing = readTypingStats(name);
-  const recs = NEW_APPS.map(a => readNewApp(a, name)).filter(Boolean);
+  const recs = NEW_APPS.map(a => ({ key: a.key, r: readNewApp(a, name) }));
   const num = (v) => +v || 0;
-  const stars = num(math && math.stars) + num(sub && sub.stars) + num(typing && typing.stars) + recs.reduce((t, r) => t + num(r.stars), 0);
+  const P = window.MaxiPoints;
+  // точки по игри (ключовете са същите като в maxi-points.js)
+  const pts = { pisane: num(typing && typing.points), sbor: num(math && math.points), izvazhdane: num(sub && sub.points) };
+  recs.forEach(x => { pts[x.key] = num(x.r && x.r.points); });
+  const totalPoints = Object.values(pts).reduce((t, v) => t + v, 0);
+  const streakStars = num(math && math.stars) + num(sub && sub.stars) + num(typing && typing.stars) + recs.reduce((t, x) => t + num(x.r && x.r.stars), 0);
+  const pointStars = P ? P.pointStars(totalPoints) : 0;
+  const titleBonus = P ? Object.values(pts).reduce((t, v) => t + P.titleBonus(v), 0) : 0;
+  const local = streakStars + pointStars + titleBonus;
   const correct = num(math && math.score) + num(sub && sub.score)
     + ((typing && typing.history) || []).length
-    + recs.reduce((t, r) => t + num(r.score), 0);
+    + recs.reduce((t, x) => t + num(x.r && x.r.score), 0);
   // Звездите в облака (от друго устройство или пренесени от старата база) също се броят:
   // взимаме по-голямото, за да не започва детето от нула на нов таблет.
   const lp = (typeof loadProfiles === 'function' ? loadProfiles() : []).find(x => x.id === profile.id) || profile;
   const cloudStars = num(lp.cloudStars);
   const bestStreak = Math.max(0,
     num(math && (math.bestStreak || math.streak)), num(sub && (sub.bestStreak || sub.streak)),
-    ...recs.map(r => num(r.bestStreak || r.streak)));
-  return { stars: Math.max(stars, cloudStars), correct, bestStreak };
+    ...recs.map(x => num(x.r && (x.r.bestStreak || x.r.streak))));
+  return { stars: Math.max(local, cloudStars), correct, bestStreak, pts, totalPoints, streakStars, pointStars, titleBonus, fromCloud: cloudStars > local };
 }
 R.statsOf = statsOf;
 
@@ -54,7 +63,7 @@ const KEY = 'hubRewards_v1';
 function loadAll(){ try{ return JSON.parse(localStorage.getItem(KEY)) || {}; }catch(e){ return {}; } }
 function rec(profile){
   const all = loadAll();
-  return Object.assign({ level: 0, badges: {}, days: [], apps: {} }, all[profile.id] || {});
+  return Object.assign({ level: 0, badges: {}, days: [], apps: {}, titles: null }, all[profile.id] || {});
 }
 function saveRec(profile, r){
   const all = loadAll();
@@ -107,6 +116,20 @@ R.check = function(profile, celebrate){
   // иначе детето нямаше да празнува, докато не надмине старото си ниво.
   if(r.formula !== LEVEL_FORMULA){ if(r.level) r.level = level; r.formula = LEVEL_FORMULA; }
   const first = !r.level;
+  // Нови звания (по игри): първия път се запомнят тихо.
+  const P = window.MaxiPoints;
+  const newTitles = [];
+  if(P){
+    const firstTitles = !r.titles;
+    r.titles = r.titles || {};
+    Object.keys(s.pts).forEach(app => {
+      const idx = P.titleIndex(s.pts[app]);
+      if(!firstTitles && idx > (r.titles[app] || 0)){
+        for(let i = (r.titles[app] || 0) + 1; i <= idx; i++) newTitles.push({ app, idx: i, title: P.TITLES[app][i], bonus: P.BONUS[i] });
+      }
+      r.titles[app] = Math.max(r.titles[app] || 0, idx);
+    });
+  }
   const newBadges = BADGES.filter(b => !r.badges[b.k] && b.ok(s, r));
   newBadges.forEach(b => { r.badges[b.k] = Date.now(); });
   const up = !first && level > r.level;
@@ -114,10 +137,11 @@ R.check = function(profile, celebrate){
   r.level = Math.max(r.level, level);
   saveRec(profile, r);
   if(first) return { level, stars: s.stars };     // първо засичане — без празнуване за натрупаното досега
-  if(celebrate && up) R.celebrate(profile, level, prev, newBadges);
+  if(celebrate && up) R.celebrate(profile, level, prev, newBadges, newTitles);
+  else if(celebrate && newTitles.length) R.celebrateTitles(profile, newTitles, newBadges);
   else if(celebrate && newBadges.length) toast('Нова значка: ' + newBadges.map(b => b.e + ' ' + b.t).join(', '));
-  if(up || newBadges.length) R.publish(profile);
-  return { level, stars: s.stars, up, newBadges };
+  if(up || newBadges.length || newTitles.length) R.publish(profile);
+  return { level, stars: s.stars, up, newBadges, newTitles };
 };
 
 // Игрите в рамката пишат звездите си в localStorage → хъбът получава „storage“ събитие.
@@ -153,6 +177,9 @@ R.renderCard = function(profile){
         <div class="rw-next">още ${to - s.stars} ⭐ до ниво ${level + 1} ${R.levelInfo(level + 1).emoji}</div>
       </div>
     </div>
+    <div class="rw-sources">${s.fromCloud ? '⭐ ' + s.stars + ' (заедно с другите устройства)' :
+      '⭐ ' + s.stars + ' = ' + s.streakStars + ' за серии + ' + s.pointStars + ' от ' + s.totalPoints + ' ✏️ точки + ' + s.titleBonus + ' за звания'}</div>
+    ${titleChips(s)}
     <div class="rw-badges-title">Значки ${got} / ${BADGES.length}</div>
     <div class="rw-badges">${badges}</div>`;
   box.querySelectorAll('.rw-badge').forEach(el => el.addEventListener('click', () => {
@@ -168,6 +195,15 @@ R.renderCard = function(profile){
   }
   return res;
 };
+
+function titleChips(s){
+  const P = window.MaxiPoints; if(!P) return '';
+  const chips = Object.keys(s.pts).filter(app => s.pts[app] > 0).map(app => {
+    const next = P.nextStep(s.pts[app]);
+    return `<span class="rw-title-chip" title="${esc(P.APP_NAMES[app])}: ${s.pts[app]} точки${next ? ', следващото звание при ' + next : ''}"><b>${esc(P.APP_NAMES[app])}</b> ${esc(P.title(app, s.pts[app]))}</span>`;
+  });
+  return chips.length ? `<div class="rw-badges-title">Звания</div><div class="rw-titles">${chips.join('')}</div>` : '';
+}
 
 /* ================= Аватари за нивата ================= */
 R.unlockedAvatars = (level) => LEVELS.slice(0, Math.min(level, LEVELS.length)).map(x => x[0]);
@@ -202,7 +238,7 @@ function setAvatar(p, a){
 }
 
 /* ================= Празнуване ================= */
-R.celebrate = function(profile, level, prevLevel, newBadges){
+R.celebrate = function(profile, level, prevLevel, newBadges, newTitles){
   const info = R.levelInfo(level);
   const ov = ensureModal('rw-celebrate', 'rw-celebrate');
   const newAv = level <= LEVELS.length && info.emoji !== profile.avatar;
@@ -211,6 +247,7 @@ R.celebrate = function(profile, level, prevLevel, newBadges){
     <div class="rw-big">${info.emoji}</div>
     <div class="rw-title">Ниво ${level}!</div>
     <div class="rw-sub">Браво, ${esc(profile.name)}! Вече си <b>${esc(info.title)}</b>.</div>
+    ${newTitles && newTitles.length ? `<div class="rw-sub">Ново звание: ${newTitles.map(x => '<b>' + esc(x.title) + '</b> (+' + x.bonus + ' ⭐)').join(' · ')}</div>` : ''}
     ${newBadges && newBadges.length ? `<div class="rw-sub">Нови значки: ${newBadges.map(b => b.e + ' ' + esc(b.t)).join(' · ')}</div>` : ''}
     <div class="rw-actions">
       ${newAv ? `<button class="btn save" type="button" data-av>Сложи ${info.emoji} за аватар</button>` : ''}
@@ -227,6 +264,30 @@ R.celebrate = function(profile, level, prevLevel, newBadges){
   bigConfetti();
   playFanfare();
   if(window.Maxi) setTimeout(() => Maxi.speak('Браво, ' + profile.name + '! Ниво ' + Maxi.num(level) + '!'), 600);
+};
+
+/* Ново звание в някоя игра: бонус звезди, конфети, фанфара и глас. */
+R.celebrateTitles = function(profile, items, newBadges){
+  const P = window.MaxiPoints;
+  const last = items[items.length - 1];
+  const emoji = (last.title.match(/(\p{Extended_Pictographic}[\uFE0F\u200D\p{Extended_Pictographic}]*)\s*$/u) || [])[1] || '🏅';
+  const name = last.title.replace(/\s*\p{Extended_Pictographic}[\uFE0F\u200D\p{Extended_Pictographic}]*\s*$/u, '');
+  const bonus = items.reduce((t, x) => t + x.bonus, 0);
+  const ov = ensureModal('rw-celebrate', 'rw-celebrate');
+  ov.querySelector('.rw-modal-box').innerHTML = `
+    <div class="rw-big">${emoji}</div>
+    <div class="rw-title">Ново звание!</div>
+    <div class="rw-sub">${esc(P ? P.APP_NAMES[last.app] : '')}: <b>${esc(last.title)}</b></div>
+    <div class="rw-sub" style="font-size:1.5em;font-weight:900;color:#e8845d;">+${bonus} ⭐ бонус</div>
+    ${newBadges && newBadges.length ? `<div class="rw-sub">Нови значки: ${newBadges.map(b => b.e + ' ' + esc(b.t)).join(' · ')}</div>` : ''}
+    <div class="rw-actions"><button class="btn" type="button" data-close style="background:#3498db">Продължи ▶</button></div>`;
+  let auto = setTimeout(() => closeModal(ov), 9000);
+  ov.querySelector('.rw-modal-box').addEventListener('pointerdown', () => clearTimeout(auto), { once: true });
+  ov.querySelector('[data-close]').onclick = () => closeModal(ov);
+  ov.classList.add('open');
+  bigConfetti();
+  playFanfare();
+  if(window.Maxi) setTimeout(() => Maxi.speak('Браво, ' + profile.name + '! Ново звание: ' + name + '! Плюс ' + Maxi.num(bonus, 'f') + ' звезди!'), 600);
 };
 
 function bigConfetti(){
@@ -357,6 +418,8 @@ R.renderParentExtras = function(profile){
   const milestones = []; for(let k = 5; k <= level; k += 5) milestones.push(k);
   card.innerHTML = `<h2>🏆 Ниво, значки и грамоти</h2>
     <div style="font-size:1.05rem;margin-bottom:0.6rem;">${info.emoji} <b>Ниво ${level}</b> · ${esc(info.title)} · ${s.stars} ⭐ общо · ${s.correct} верни</div>
+    <div style="margin-bottom:0.6rem;">⭐ ${s.streakStars} за серии + ${s.pointStars} от ${s.totalPoints} ✏️ точки (1 ⭐ на 100) + ${s.titleBonus} за звания</div>
+    ${window.MaxiPoints ? '<table class="pp-table" style="margin-bottom:0.6rem;"><tr><th>Игра</th><th>✏️ Точки</th><th>Звание</th></tr>' + Object.keys(s.pts).map(app => '<tr><td>' + esc(MaxiPoints.APP_NAMES[app]) + '</td><td>' + s.pts[app] + '</td><td>' + esc(MaxiPoints.title(app, s.pts[app])) + '</td></tr>').join('') + '</table>' : ''}
     <div style="margin-bottom:0.6rem;">${BADGES.map(b => `<span title="${esc(b.t)}" style="font-size:1.6rem;${r.badges[b.k] ? '' : 'opacity:0.2;filter:grayscale(1);'}">${b.e}</span>`).join(' ')}</div>
     ${milestones.length
       ? milestones.map(k => `<button class="pp-btn" type="button" data-cert="${k}">🖨️ Грамота за ниво ${k}</button>`).join(' ')

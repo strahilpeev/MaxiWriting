@@ -1,4 +1,4 @@
-const CACHE_NAME = 'uchebni-igri-v23';
+const CACHE_NAME = 'uchebni-igri-v24';
 const APP_SHELL = [
   './',
   './index.html',
@@ -12,6 +12,7 @@ const APP_SHELL = [
   './maxi-common.js',
   './maxi-common.css',
   './hub-rewards.js',
+  './maxi-points.js',
   './chetene.html',
   './chisla-i-pari.html',
   './vnimanie.html',

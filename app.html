@@ -15,8 +15,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#5da8e8">
 <script type="module" src="firebase-shared.js?v=21"></script>
+<script src="maxi-points.js"></script>
 <script src="maxi-common.js"></script>
-<script src="hub-rewards.js?v=22"></script>
+<script src="hub-rewards.js?v=24"></script>
 
 <style>
   :root{
@@ -518,6 +519,10 @@
   .rw-bar{ height:14px; background:#fff; border-radius:999px; overflow:hidden; box-shadow:inset 0 0 0 2px #f2c14e; }
   .rw-bar i{ display:block; height:100%; background:linear-gradient(90deg,#f2c14e,#e8845d); border-radius:999px; transition:width .6s ease; }
   .rw-next{ font-size:0.85rem; opacity:0.75; }
+  .rw-sources{ font-size:0.85rem; opacity:0.8; }
+  .rw-titles{ display:flex; flex-wrap:wrap; gap:0.35rem; }
+  .rw-title-chip{ background:#f5edff; color:#5b2c83; border-radius:999px; padding:0.25rem 0.7rem; font-size:0.85rem; }
+  .rw-title-chip b{ font-weight:800; margin-right:0.25rem; }
   .rw-badges-title{ font-size:0.85rem; font-weight:700; opacity:0.7; }
   .rw-badges{ display:flex; flex-wrap:wrap; gap:0.35rem; }
   .rw-badge{ font-size:clamp(1.5rem,4vw,1.9rem); cursor:pointer; line-height:1.2; }
@@ -994,7 +999,8 @@
     // общият басейн (по-голямото от звездите тук и в облака) — същото число, от което идва нивото
     document.getElementById('stat-stars').textContent = window.Rewards ? Rewards.statsOf(profile).stars : combinedStars;
     document.getElementById('stat-streak').textContent = combinedStreak;
-    document.getElementById('stat-points').textContent = typing ? (typing.points || 0) : 0;
+    // ✏️ точките от всички игри (100 точки = 1 ⭐ в общия басейн)
+    document.getElementById('stat-points').textContent = window.Rewards ? Rewards.statsOf(profile).totalPoints : (typing ? (typing.points || 0) : 0);
 
     const historyEl = document.getElementById('progress-history');
     const mathHistory = (math && math.history) || [];
@@ -1112,13 +1118,15 @@
       const typing = readTypingStats(active.name);
 
       const statsPatch = { stats: {} };
-      if(math) statsPatch.stats.sbor = { points: math.score || 0, total: math.total || 0, streak: math.streak || 0, stars: math.stars || 0 };
-      if(sub) statsPatch.stats.izvazhdane = { points: sub.score || 0, total: sub.total || 0, streak: sub.streak || 0, stars: sub.stars || 0 };
+      if(math) statsPatch.stats.sbor = { points: math.points || 0, correct: math.score || 0, total: math.total || 0, streak: math.streak || 0, stars: math.stars || 0 };
+      if(sub) statsPatch.stats.izvazhdane = { points: sub.points || 0, correct: sub.score || 0, total: sub.total || 0, streak: sub.streak || 0, stars: sub.stars || 0 };
       if(typing) statsPatch.stats.pisane = { points: typing.points || 0, stars: typing.stars || 0 };
       NEW_APPS.forEach(app => {
         const r = readNewApp(app, active.name);
-        if(r) statsPatch.stats[app.key] = { points: r.score || 0, total: r.total || 0, streak: r.streak || 0, stars: r.stars || 0 };
+        if(r) statsPatch.stats[app.key] = { points: r.points || 0, correct: r.score || 0, total: r.total || 0, streak: r.streak || 0, stars: r.stars || 0 };
       });
+      // общият басейн (серии + точки + звания) — за нивото на други устройства
+      if(window.Rewards){ const st = Rewards.statsOf(active); statsPatch.poolStars = st.stars; statsPatch.totalPoints = st.totalPoints; }
       db.upsertProfile(active.id, statsPatch).catch(()=>{});
 
       if(!sessionSnapshot || !sessionSnapshot.appKey) return;
@@ -1173,7 +1181,8 @@
         let changed = false;
         // звездите на детето в облака (сбор по игри) — за нивото на ново устройство
         const starsChanged = [];
-        const cloudStarsOf = (rp) => Object.values(rp.stats || {}).reduce((t, x) => t + (+(x && x.stars) || 0), 0);
+        const cloudStarsOf = (rp) => typeof rp.poolStars === 'number' ? rp.poolStars
+          : Object.values(rp.stats || {}).reduce((t, x) => t + (+(x && x.stars) || 0), 0);
         remote.forEach(rp => {
           const lp = local.find(x => x.id === rp.id);
           if(!lp){

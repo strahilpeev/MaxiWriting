@@ -351,6 +351,10 @@
     margin-top: 8px;
     font-size: 15px;
   }
+  .points-line{ font-weight:800; color:#8e44ad; }
+  .points-next{ font-weight:600; opacity:0.7; }
+  .points-pop{ animation:points-pop .45s ease; display:block; }
+  @keyframes points-pop{ 0%{ transform:scale(1); } 50%{ transform:scale(1.15); } 100%{ transform:scale(1); } }
 </style>
 </head>
 <body>
@@ -385,6 +389,7 @@
 
   <button class="action btn-new btn-new-big" id="newBtnText" onclick="newProblem()">Нова задача</button>
 
+  <div class="score points-line" id="pointsLine"></div>
   <div class="score">
     <span id="scoreLabelText">Верни отговори</span>: <span id="score">0</span> / <span id="total">0</span>
   </div>
@@ -418,10 +423,22 @@
   </div>
 </div>
 
+<script src="maxi-points.js"></script>
 <script>
 /* ================== Състояние ================== */
 let a, b, sum, score = 0, total = 0;
 let streak = 0, stars = 0;
+// Точки: 15 за задача без грешна цифра, 10 с грешки (общо правило — maxi-points.js)
+let points = 0, wrongDigitsThisTask = 0;
+const POINTS_APP = 'sbor';
+function renderPoints(pop){
+  const el = document.getElementById('pointsLine');
+  if(!el) return;
+  const P = window.MaxiPoints;
+  const next = P ? P.nextStep(points) : null;
+  el.innerHTML = '✏️ <b>' + points + '</b>' + (P ? ' · ' + P.title(POINTS_APP, points) + (next ? ' <span class="points-next">(още ' + (next - points) + ')</span>' : '') : '');
+  if(pop){ el.classList.remove('points-pop'); void el.offsetWidth; el.classList.add('points-pop'); }
+}
 let history = [];
 let currentLang = 'bg';
 let showGrade = false;
@@ -667,6 +684,7 @@ function randInt(min, max) {
 
 /* ================== Задачи ================== */
 function newProblem() {
+  wrongDigitsThisTask = 0;
   const lvl = levels[currentLevel];
   let s, x, y, attempts = 0;
   do {
@@ -832,6 +850,8 @@ function checkAnswer() {
     score++;
     streak++;
     if (streak % 5 === 0) { stars++; }
+    points += window.MaxiPoints ? MaxiPoints.forAnswer(wrongDigitsThisTask === 0) : (wrongDigitsThisTask === 0 ? 15 : 10);
+    renderPoints(true);
     const praise = tr.praiseCorrect[randInt(0, tr.praiseCorrect.length - 1)];
     feedback.textContent = '✅ ' + praise + ' ' + a + ' + ' + b + ' = ' + sum;
     feedback.className = 'correct';
@@ -984,12 +1004,13 @@ function persistCurrentUser() {
   users[currentUser].total = total;
   users[currentUser].streak = streak;
   users[currentUser].stars = stars;
+  users[currentUser].points = points;
   users[currentUser].history = history;
   saveUsers(users);
 }
 
 function resetSessionStats() {
-  score = 0; total = 0; streak = 0; stars = 0; history = [];
+  score = 0; total = 0; streak = 0; stars = 0; history = []; points = 0; renderPoints(false);
   document.getElementById('score').textContent = score;
   document.getElementById('total').textContent = total;
   updateStreakDisplay();
@@ -1034,6 +1055,8 @@ function tryHubAutoLogin() {
   total = record.total || 0;
   streak = record.streak || 0;
   stars = record.stars || 0;
+  points = record.points || 0;
+  renderPoints(false);
   history = record.history || [];
   document.getElementById('score').textContent = score;
   document.getElementById('total').textContent = total;
@@ -1074,6 +1097,8 @@ function loginUser(username, password) {
   total = record.total || 0;
   streak = record.streak || 0;
   stars = record.stars || 0;
+  points = record.points || 0;
+  renderPoints(false);
   history = record.history || [];
   document.getElementById('score').textContent = score;
   document.getElementById('total').textContent = total;
@@ -1159,6 +1184,7 @@ answerInput.addEventListener('input', function (e) {
   if (enteredDigit === undefined || !/^[0-9]$/.test(enteredDigit)) return;
 
   if (idx >= sumStr.length || enteredDigit !== correctDigit) {
+    wrongDigitsThisTask++;
     speak(digitWord(enteredDigit, currentLang) + ' ' + t().wrongDigitWord);
     this.value = val.slice(0, idx);
     this.classList.remove('wrong-digit');

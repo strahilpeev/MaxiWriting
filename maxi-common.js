@@ -69,13 +69,15 @@ M.user = resolveUser();
    Форматът е същият като при математиката: { [име]: { score, total, streak,
    stars, history:[...] } }, за да може хъбът да го чете еднакво. */
 M.createStore = function(storageKey){
-  const blank = () => ({ score:0, total:0, streak:0, bestStreak:0, stars:0, history:[], extra:{} });
+  const blank = () => ({ score:0, total:0, streak:0, bestStreak:0, stars:0, points:0, history:[], extra:{} });
   function loadAll(){ try{ return JSON.parse(localStorage.getItem(storageKey)) || {}; }catch(e){ return {}; } }
   const all = loadAll();
   const rec = Object.assign(blank(), all[M.user] || {});
   const listeners = [];
+  const APP_BY_STORAGE = { maxiChetene_v1:'chetene', maxiChislaPari_v1:'pari', maxiVnimanie_v1:'vnimanie', maxiGovorya_v1:'govorya', maxiDvizhenie_v1:'dvizhenie' };
   const store = {
     rec,
+    app: APP_BY_STORAGE[storageKey] || null,
     save(){
       const fresh = loadAll();
       fresh[M.user] = rec;
@@ -83,9 +85,11 @@ M.createStore = function(storageKey){
       listeners.forEach(fn => fn(rec));
     },
     onChange(fn){ listeners.push(fn); fn(rec); },
-    /* Отчита отговор. Връща { star:true }, ако е спечелена звезда. */
-    result(mode, q, correct, answer){
+    /* Отчита отговор. Връща { star:true }, ако е спечелена звезда.
+       points — точки за завършена задача (15 без грешка, 10 с грешки). */
+    result(mode, q, correct, answer, points){
       rec.total++;
+      if(points) rec.points = (rec.points || 0) + points;
       let star = false;
       if(correct){
         rec.score++;
@@ -128,8 +132,37 @@ M.bindBadges = function(store){
     }
     if(streakEl) streakEl.textContent = rec.streak;
     lastStars = rec.stars;
+    renderPoints(store, rec);
   });
 };
+/* ✏️ точки в горната лента + званието в менюто на играта (правилата са в maxi-points.js). */
+let lastPoints = null;
+function renderPoints(store, rec){
+  const P = window.MaxiPoints;
+  if(!P || !store.app) return;
+  const pts = rec.points || 0;
+  let badge = document.getElementById('mx-points');
+  if(!badge){
+    const streak = document.getElementById('mx-streak');
+    const host = streak && streak.closest('.mx-badge');
+    if(host){
+      host.insertAdjacentHTML('afterend', '<span class="mx-badge" title="Точки">✏️ <span id="mx-points">0</span></span>');
+      badge = document.getElementById('mx-points');
+    }
+  }
+  if(badge){
+    badge.textContent = pts;
+    if(lastPoints !== null && pts > lastPoints){ badge.classList.remove('mx-pop'); void badge.offsetWidth; badge.classList.add('mx-pop'); }
+  }
+  lastPoints = pts;
+  const sub = document.querySelector('#menu .mx-sub');
+  if(sub){
+    let line = document.getElementById('mx-title-line');
+    if(!line){ line = document.createElement('p'); line.id = 'mx-title-line'; line.className = 'mx-title-line'; sub.insertAdjacentElement('afterend', line); }
+    const next = P.nextStep(pts);
+    line.textContent = '✏️ ' + pts + ' точки · ' + P.title(store.app, pts) + (next ? ' · още ' + (next - pts) + ' до следващото звание' : '');
+  }
+}
 
 /* ================= Звук (Web Audio) ================= */
 let audioCtx = null;
@@ -579,7 +612,7 @@ M.createGame = function(store, modes, opts){
   G.complete = function(q, answer, extraSpeech, o){
     o = o || {};
     const clean = G.mistakes === 0;
-    const res = store.result(G.mode, q, clean, answer);
+    const res = store.result(G.mode, q, clean, answer, window.MaxiPoints ? MaxiPoints.forAnswer(clean) : (clean ? 15 : 10));
     const p = M.praise();
     M.good();
     M.feedback($('fb'), '✅ ' + p + (res.star ? ' ⭐ Нова звезда!' : ''), 'ok');

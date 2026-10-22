@@ -155,7 +155,7 @@ await t.evaluate(() => {
   const c = JSON.parse(localStorage.getItem('__mockCloud'));
   const acc = Object.values(c.accounts).find(a => Object.values(a.profiles).some(p => p.name === 'Мая'));
   const [id, p] = Object.entries(acc.profiles).find(([, p]) => p.name === 'Мая');
-  p.stats = { chetene: { stars: 4000 }, sbor: { stars: 1200 } };   // 5200 ⭐ в облака → ниво 9
+  p.stats = { chetene: { stars: 4000 }, sbor: { stars: 1200 } }; p.poolStars = 5200;   // 5200 ⭐ в облака → ниво 9
   localStorage.setItem('__mockCloud', JSON.stringify(c));
   // „нов таблет“: махаме местните звезди на Мая
   ['maxiChetene_v1', 'maxiChislaPari_v1', 'maxiVnimanie_v1'].forEach(k => localStorage.removeItem(k));
@@ -175,7 +175,7 @@ await t.evaluate(() => {
 });
 await t.evaluate(() => Rewards.renderCard(getActiveProfile())); await t.waitForTimeout(300);
 check(!(await t.locator('#rw-celebrate.open').count()) && (await t.textContent('.rw-level-name')).includes('Ниво 9'), 'нови прагове: старото ниво 15 → тихо „Ниво 9“');
-await t.evaluate(() => { const c = JSON.parse(localStorage.getItem('__mockCloud')); Object.values(c.accounts).forEach(a => Object.values(a.profiles).forEach(p => { if(p.name === 'Мая') p.stats = { chetene: { stars: 6300 } }; })); localStorage.setItem('__mockCloud', JSON.stringify(c)); });
+await t.evaluate(() => { const c = JSON.parse(localStorage.getItem('__mockCloud')); Object.values(c.accounts).forEach(a => Object.values(a.profiles).forEach(p => { if(p.name === 'Мая'){ p.stats = { chetene: { stars: 6300 } }; p.poolStars = 6300; } })); localStorage.setItem('__mockCloud', JSON.stringify(c)); });
 await setStars('maxiChetene_v1', 'Мая', 6300);
 await t.evaluate(() => Rewards.renderCard(getActiveProfile())); await t.waitForTimeout(400);
 check((await t.textContent('#rw-celebrate .rw-title')).includes('Ниво 10'), '…а при 6300 ⭐ празнува „Ниво 10“');
@@ -190,6 +190,31 @@ check((await t.textContent('.rw-level-name')).includes('Ниво 1'), 'без а
 await t.click('#menu .top-bar button:has-text("Класиране")'); await t.waitForTimeout(300);
 check((await t.textContent('#rank-list')).includes('само за деца в акаунт'), 'без акаунт: класирането обяснява, че е само с акаунт');
 await t.keyboard.press('Escape'); await t.waitForTimeout(200);
+
+// --- 10. Точки → звезди и звания → бонус звезди
+await setStars('maxiVnimanie_v1', 'Ники', 0, { points: 40 });
+await t.evaluate(() => renderProgressCard(getActiveProfile())); await t.waitForTimeout(300);
+check((await t.textContent('#stat-points')) === '40', 'брояч ✏️ точки = 40 (всички игри)');
+check((await t.textContent('.rw-sources')).includes('0 за серии + 0 от 40 ✏️ точки + 0 за звания'), 'обяснение откъде са звездите');
+await t.click('button.tile[onclick*="vnimanie"]'); await t.waitForTimeout(600);
+await t.frameLocator('#app-frame').locator('body').evaluate(() => {
+  const all = JSON.parse(localStorage.getItem('maxiVnimanie_v1')); all['Ники'].points = 55; localStorage.setItem('maxiVnimanie_v1', JSON.stringify(all));
+});
+await t.waitForTimeout(900);
+check((await t.textContent('#rw-celebrate .rw-title').catch(() => '')).includes('Ново звание'), '55 точки във „Внимание“ → празнуване „Ново звание!“ над играта');
+check((await t.textContent('#rw-celebrate')).includes('Зорко око') && (await t.textContent('#rw-celebrate')).includes('+10 ⭐'), '…„Зорко око 👀“ и „+10 ⭐ бонус“');
+await t.click('#rw-celebrate [data-close]'); await t.waitForTimeout(200);
+await t.click('#home-btn'); await t.waitForTimeout(500);
+check((await t.textContent('#stat-stars')) === '10', 'басейнът: 10 ⭐ от званието');
+await t.evaluate(() => localStorage.setItem('bgTrainerProfiles_v1', JSON.stringify({ 'Ники': { points: 300, stars: 2, history: [] } })));
+await t.evaluate(() => Rewards.renderCard(getActiveProfile())); await t.waitForTimeout(400);
+const tc = await t.textContent('#rw-celebrate');
+check(tc.includes('Майстор на буквите') && tc.includes('+70 ⭐'), '300 точки в „Пиши и говори“ → три звания наведнъж, +70 ⭐');
+await t.click('#rw-celebrate [data-close]'); await t.waitForTimeout(200);
+await t.evaluate(() => renderProgressCard(getActiveProfile())); await t.waitForTimeout(200);
+// 2 ⭐ серии + floor(355/100)=3 ⭐ от точки + 10 + 70 за звания = 85
+check((await t.textContent('#stat-stars')) === '85', 'басейн = 2 за серии + 3 от 355 точки + 80 за звания = 85 ⭐');
+check((await t.locator('.rw-title-chip').count()) === 2, 'в менюто се виждат званията от двете игри');
 
 check(errors.length === 0, 'без JavaScript грешки' + (errors.length ? ': ' + errors.join(' | ') : ''));
 await t.screenshot({ path: path.join(__dirname, 'rewards.png') });
