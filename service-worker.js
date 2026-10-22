@@ -1,8 +1,10 @@
-const CACHE_NAME = 'uchebni-igri-v24';
+const CACHE_NAME = 'uchebni-igri-v25';
 const APP_SHELL = [
   './',
   './index.html',
   './app.html',
+  './pomosht.html',
+  './news.json',
   './manifest.json',
   './srichki-razmer.html',
   './matematika_sbor_login_preminavane.html',
@@ -53,6 +55,20 @@ self.addEventListener('fetch', (event) => {
   // вход, gstatic) НЕ минават през кеша: иначе Firestore получава стари отговори
   // за живата си връзка и спира с „INTERNAL ASSERTION FAILED“.
   if (new URL(event.request.url).origin !== self.location.origin) return;
+
+  // Новините: първо от мрежата (за да се виждат веднага), от кеша само без интернет.
+  if (new URL(event.request.url).pathname.endsWith('/news.json')) {
+    event.respondWith(
+      fetch(new Request(event.request, { cache: 'no-cache' })).then((res) => {
+        if (res && res.status === 200) {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
+        return res;
+      }).catch(() => caches.match(event.request, { ignoreSearch: true }))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {

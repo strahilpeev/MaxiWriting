@@ -246,8 +246,55 @@
   }
   #install-btn[hidden]{ display:none; }
 
+
+  /* ---------- Горна навигация ---------- */
+  .top-nav{ display:flex; align-items:center; gap:0.25rem 1rem; }
+  .top-nav .tl{ color:var(--ink); text-decoration:none; font-weight:600; font-size:0.96875rem; padding:0.5rem 0.25rem; }
+  .top-nav .tl:hover{ color:var(--action); }
+  @media (max-width:640px){ .top-nav .tl{ display:none; } }
+
+  /* ---------- Новини (зареждат се от news.json) ---------- */
+  #novini{ padding-top:0; }
+  .news-head{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:0.5rem 1rem; margin-bottom:clamp(20px, 3vw, 32px); }
+  .news-head p{ color:var(--ink-soft); font-size:0.96875rem; }
+  .news{ list-style:none; margin:0; padding:0; display:grid; gap:1rem; }
+  .news-item{
+    background:var(--paper); border:1px solid var(--line); border-radius:20px;
+    padding:clamp(18px, 3vw, 26px); display:grid; grid-template-columns:auto 1fr; gap:0.35rem 1rem;
+  }
+  .news-item .ne{ grid-row:span 4; width:52px; height:52px; border-radius:15px; background:var(--page);
+    display:flex; align-items:center; justify-content:center; font-size:1.6rem; line-height:1; }
+  .news-meta{ display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; font-size:0.875rem; color:var(--ink-soft); }
+  .news-new{ background:#e2533f; color:#fff; font-weight:700; font-size:0.75rem; letter-spacing:0.04em;
+    text-transform:uppercase; padding:0.15rem 0.55rem; border-radius:999px; }
+  .news-item h3{ font-size:1.125rem; }
+  .news-item p{ color:var(--ink-soft); font-size:0.96875rem; max-width:var(--measure); }
+  .news-item .nlink{ font-weight:600; font-size:0.96875rem; }
+  .news-games{ list-style:none; margin:0.6rem 0 0; padding:0; display:grid; grid-template-columns:1fr; gap:0.55rem 1.5rem; }
+  @media (min-width:700px){ .news-games{ grid-template-columns:1fr 1fr; } }
+  @media (min-width:1000px){ .news-games{ grid-template-columns:1fr 1fr 1fr; } }
+  .news-games li{ display:grid; grid-template-columns:2.2rem 1fr; gap:0.5rem; font-size:0.9375rem; line-height:1.4; }
+  .news-games .ge{ font-size:1.15rem; text-align:center; }
+  .news-games strong{ display:block; color:var(--ink); }
+  .news-games span.app{ color:var(--ink-soft); font-size:0.8125rem; }
+  .news-games span.gt{ color:var(--ink-soft); }
+  .news-more{ margin-top:1.25rem; }
+  .news-empty{ color:var(--ink-soft); }
+
+  /* ---------- Помощ и въпроси ---------- */
+  .faq{ display:grid; grid-template-columns:1fr; gap:0 clamp(20px, 4vw, 48px); }
+  @media (min-width:900px){ .faq{ grid-template-columns:1fr 1fr; } }
+  .faq details{ border-top:1px solid var(--line); }
+  .faq summary{ cursor:pointer; list-style:none; padding:1rem 2rem 1rem 0; font-weight:700; position:relative; }
+  .faq summary::-webkit-details-marker{ display:none; }
+  .faq summary::after{ content:'+'; position:absolute; right:0.25rem; top:0.85rem; font-family:var(--display); font-size:1.25rem; color:var(--action); }
+  .faq details[open] summary::after{ content:'–'; }
+  .faq details p{ padding:0 0 1.1rem; color:var(--ink-soft); font-size:0.96875rem; }
+  .help-cta{ margin-top:clamp(28px, 4vw, 40px); display:flex; flex-wrap:wrap; gap:0.75rem; }
+
   footer{ padding:2rem 0 2.5rem; color:var(--ink-soft); font-size:0.9375rem; border-top:1px solid var(--line); }
   footer .wrap{ display:flex; flex-wrap:wrap; justify-content:space-between; gap:0.75rem; }
+  footer nav{ display:flex; flex-wrap:wrap; gap:0.5rem 1.25rem; }
 
   @media (prefers-reduced-motion: reduce){
     *{ transition:none !important; }
@@ -262,7 +309,11 @@
     <img src="icons/icon-192.png" alt="" width="40" height="40">
     <span>Моите учебни игри</span>
   </a>
-  <a class="btn btn-main" href="app.html">Отвори игрите</a>
+  <nav class="top-nav" aria-label="Основни раздели">
+    <a class="tl" href="#novini">Новини</a>
+    <a class="tl" href="pomosht.html">Помощ</a>
+    <a class="btn btn-main" href="app.html">Отвори игрите</a>
+  </nav>
 </header>
 
 <main>
@@ -274,7 +325,7 @@
         <a class="btn btn-main" href="app.html">Отвори игрите</a>
         <a class="btn btn-quiet" href="#igri">Виж какво има вътре</a>
       </div>
-      <p class="note">Работи в браузъра — на таблет, телефон или компютър. Без регистрация с имейл.</p>
+      <p class="note">Работи в браузъра — на таблет, телефон или компютър. Може и без регистрация.</p>
     </div>
 
     <div class="notebook" aria-labelledby="demo-hint">
@@ -287,6 +338,19 @@
       </div>
     </div>
   </div>
+
+  <section id="novini" aria-labelledby="novini-h">
+    <div class="wrap">
+      <div class="news-head">
+        <h2 id="novini-h">Новини</h2>
+        <p>Какво ново има в игрите — обновява се при всяка промяна.</p>
+      </div>
+      <ul class="news" id="news-list" aria-live="polite">
+        <li class="news-empty">Новините се зареждат…</li>
+      </ul>
+      <button class="btn btn-quiet news-more" type="button" id="news-more" hidden>Покажи всички новини</button>
+    </div>
+  </section>
 
   <section class="band" id="igri">
     <div class="wrap">
@@ -479,12 +543,58 @@
       </div>
     </div>
   </section>
+
+  <section class="band" id="pomosht" aria-labelledby="pomosht-h">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2 id="pomosht-h">Помощ и въпроси</h2>
+        <p>Най-честите въпроси накратко. Подробни обяснения стъпка по стъпка има на страницата с помощ.</p>
+      </div>
+      <div class="faq">
+        <div>
+          <details>
+            <summary>Трябва ли ми акаунт?</summary>
+            <p>Не. С „▶ Играй без акаунт“ детето играе веднага и напредъкът се пази на устройството. С акаунт (имейл или Google) напредъкът се пази в облака и се вижда на всяко устройство.</p>
+          </details>
+          <details>
+            <summary>Няма глас на таблета. Какво да направя?</summary>
+            <p>В настройките на Android отворете „Преобразуване на текст в говор“, изберете Google като машина и изтеглете български език. После затворете и отворете игрите отново.</p>
+          </details>
+          <details>
+            <summary>Трябва ли интернет?</summary>
+            <p>Само първия път. След това игрите работят и без връзка, а напредъкът се изпраща в облака, когато интернетът се върне.</p>
+          </details>
+        </div>
+        <div>
+          <details>
+            <summary>Как се печелят звезди и нива?</summary>
+            <p>Всяка вярна задача носи точки — 15 без грешка, 10 с грешка. Всеки 100 точки дават звезда, а новите звания в игрите дават бонус звезди. Звездите вдигат нивото: ниво 2 е при 300 звезди, ниво 5 — при 1800.</p>
+          </details>
+          <details>
+            <summary>Как стигам до настройките за родители?</summary>
+            <p>В менюто с игрите натиснете „👨‍👩‍👧 За родители“ и отговорете на въпрос от таблицата за умножение. Там са резултатите, експортът и настройките на гласа и екрана.</p>
+          </details>
+          <details>
+            <summary>Не виждам новите игри.</summary>
+            <p>Затворете приложението и го отворете отново (или презаредете страницата). Новите игри са отбелязани със знак „НОВО“ в менюто на всяко приложение.</p>
+          </details>
+        </div>
+      </div>
+      <div class="help-cta">
+        <a class="btn btn-main" href="pomosht.html">❓ Цялата помощ и въпроси</a>
+      </div>
+    </div>
+  </section>
 </main>
 
 <footer>
   <div class="wrap">
     <span>Моите учебни игри · tapnime.eu</span>
-    <a href="app.html">Към игрите</a>
+    <nav aria-label="Долно меню">
+      <a href="#novini">Новини</a>
+      <a href="pomosht.html">Помощ и въпроси</a>
+      <a href="app.html">Към игрите</a>
+    </nav>
   </div>
 </footer>
 
@@ -619,6 +729,48 @@
   readBtn.addEventListener('click', readWord);
   nextBtn.addEventListener('click', () => { wi = (wi + 1) % WORDS.length; renderWord(); });
   renderWord();
+
+
+  /* ---------- Новини: четат се от news.json при всяко отваряне ---------- */
+  (function(){
+    const list = document.getElementById('news-list');
+    const more = document.getElementById('news-more');
+    const SHOW = 3, NEW_DAYS = 14;
+    const MONTHS = ['януари','февруари','март','април','май','юни','юли','август','септември','октомври','ноември','декември'];
+    const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const parse = (d) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d || ''); return m ? new Date(+m[1], m[2] - 1, +m[3]) : null; };
+    const fmt = (dt) => dt ? dt.getDate() + ' ' + MONTHS[dt.getMonth()] + ' ' + dt.getFullYear() : '';
+    const safeHref = (h) => /^(https?:\/\/|[\w.\-\/#?=&]+$)/i.test(h || '') && !/^\s*javascript:/i.test(h) ? h : '#';
+
+    function item(n){
+      const dt = parse(n.date);
+      const fresh = dt && (Date.now() - dt.getTime()) < NEW_DAYS * 864e5;
+      const games = Array.isArray(n.games) && n.games.length
+        ? '<ul class="news-games">' + n.games.map((g) =>
+            `<li><span class="ge" aria-hidden="true">${esc(g.emoji)}</span><span><strong>${esc(g.name)}</strong>` +
+            `${g.app ? `<span class="app">${esc(g.app)}</span> · ` : ''}<span class="gt">${esc(g.text)}</span></span></li>`).join('') + '</ul>'
+        : '';
+      const link = n.link && n.link.href ? `<a class="nlink" href="${esc(safeHref(n.link.href))}">${esc(n.link.label || 'Виж повече')} →</a>` : '';
+      return `<li class="news-item"><span class="ne" aria-hidden="true">${esc(n.emoji || '📣')}</span>` +
+        `<div class="news-meta">${fresh ? '<span class="news-new">Ново</span>' : ''}<time datetime="${esc(n.date)}">${esc(fmt(dt))}</time></div>` +
+        `<h3>${esc(n.title)}</h3>${n.text ? `<p>${esc(n.text)}</p>` : ''}${games}${link}</li>`;
+    }
+
+    function render(items, all){
+      items = items.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+      const shown = all ? items : items.slice(0, SHOW);
+      list.innerHTML = shown.length ? shown.map(item).join('') : '<li class="news-empty">Все още няма новини.</li>';
+      more.hidden = all || items.length <= SHOW;
+    }
+
+    let data = [];
+    more.addEventListener('click', () => render(data, true));
+    // no-cache: браузърът винаги пита сървъра дали има нова версия
+    fetch('news.json', { cache: 'no-cache' })
+      .then((r) => { if(!r.ok) throw new Error(r.status); return r.json(); })
+      .then((j) => { data = (j && j.items) || []; render(data, false); })
+      .catch(() => { list.innerHTML = '<li class="news-empty">Новините не можаха да се заредят. Опитайте пак, когато има интернет.</li>'; });
+  })();
 
   /* ---------- Инсталиране като приложение ---------- */
   if('serviceWorker' in navigator){

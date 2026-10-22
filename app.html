@@ -404,6 +404,8 @@
     -webkit-tap-highlight-color:transparent;
   }
   .admin-link:hover{ opacity:0.7; }
+  a.help-link{ display:inline-block; text-decoration:none; }
+  .help-link-login{ display:block; margin-top:0.9rem; text-align:center; color:#2f6fae; font-weight:600; text-decoration:none; }
   .sync-badge{
     position:fixed;
     bottom:0.6rem;
@@ -605,6 +607,7 @@
       <div class="login-or">или</div>
       <button class="btn local" id="login-local" type="button">▶ Играй без акаунт</button>
       <p class="login-local-note">Напредъкът се пази само на това устройство. По-късно можете да влезете от „👤 Акаунт“ и децата ще минат в акаунта.</p>
+      <a class="help-link-login" href="pomosht.html" target="_top">❓ Помощ и въпроси</a>
     </div>
   </div>
 
@@ -613,6 +616,7 @@
     <h1>Кой играе днес? 😊</h1>
     <div class="profile-grid" id="profile-grid"></div>
     <button class="admin-link" onclick="openAdmin()">👤 Акаунт</button>
+    <a class="admin-link help-link" href="pomosht.html" target="_top">❓ Помощ и въпроси</a>
   </div>
 
   <!-- ЕКРАН: Акаунт — имейл, изход, всички деца в акаунта и тяхната история -->
