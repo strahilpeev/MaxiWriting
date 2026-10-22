@@ -78,8 +78,73 @@ const metaTags =
   `<meta name="author" content="Strahil Peev">` +
   `<meta name="copyright" content="${COPYRIGHT.replace(/"/g, '&quot;')}">`;
 
+
+// ---------- SEO ----------
+// Работят върху изходния HTML преди минифицирането.
+const SITE = OFFICIAL_URL.replace(/\/$/, '');
+const escHtml = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const stripTags = (h) => h.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+const MONTHS_BG = ['януари','февруари','март','април','май','юни','юли','август','септември','октомври','ноември','декември'];
+
+// Новините се зареждат с JavaScript, но първите 3 влизат и направо в HTML-а,
+// за да ги виждат търсачките и браузъри без JavaScript. Скриптът после ги подменя с най-новите.
+function staticNews(html) {
+  let items = [];
+  try { items = JSON.parse(fs.readFileSync(path.join(SRC, 'news.json'), 'utf8')).items || []; } catch (e) { return html; }
+  items = items.slice().sort((a, b) => String(b.date).localeCompare(String(a.date))).slice(0, 3);
+  const li = items.map((n) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(n.date || '');
+    const when = m ? `${+m[3]} ${MONTHS_BG[m[2] - 1]} ${m[1]}` : '';
+    const games = (n.games || []).length
+      ? '<ul class="news-games">' + n.games.map((g) =>
+          `<li><span class="ge" aria-hidden="true">${escHtml(g.emoji)}</span><span><strong>${escHtml(g.name)}</strong>` +
+          `${g.app ? `<span class="app">${escHtml(g.app)}</span> · ` : ''}<span class="gt">${escHtml(g.text)}</span></span></li>`).join('') + '</ul>'
+      : '';
+    const link = n.link && n.link.href ? `<a class="nlink" href="${escHtml(n.link.href)}">${escHtml(n.link.label || 'Виж повече')} →</a>` : '';
+    return `<li class="news-item"><span class="ne" aria-hidden="true">${escHtml(n.emoji || '📣')}</span>` +
+      `<div class="news-meta"><time datetime="${escHtml(n.date)}">${when}</time></div>` +
+      `<h3>${escHtml(n.title)}</h3>${n.text ? `<p>${escHtml(n.text)}</p>` : ''}${games}${link}</li>`;
+  }).join('');
+  return li ? html.replace(/<li class="news-empty">Новините се зареждат…<\/li>/, li) : html;
+}
+
+// FAQPage за търсачките — сглобява се от въпросите в раздела #vaprosi,
+// така че винаги съвпада с видимия текст.
+function faqJsonLd(html) {
+  const sec = /<section[^>]*id="vaprosi"[\s\S]*?<\/section>/.exec(html);
+  if (!sec) return html.replace('<!-- FAQPAGE_JSONLD -->', '');
+  const qa = [];
+  sec[0].replace(/<details>\s*<summary>([\s\S]*?)<\/summary>([\s\S]*?)<\/details>/g, (m, q, a) => {
+    qa.push({ '@type': 'Question', name: stripTags(q), acceptedAnswer: { '@type': 'Answer', text: stripTags(a) } });
+  });
+  const ld = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: qa };
+  return html.replace('<!-- FAQPAGE_JSONLD -->',
+    `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>`);
+}
+
+// Само страниците, които имат смисъл в търсачка. Приложението (вход, игри в рамка) е с noindex.
+const SITEMAP_PAGES = [['', 'index.html', '1.0'], ['pomosht.html', 'pomosht.html', '0.7']];
+function lastMod(file) {
+  try {
+    const d = new Date(fs.statSync(path.join(SRC, file)).mtime);
+    const news = new Date(fs.statSync(path.join(SRC, 'news.json')).mtime);
+    return (file === 'index.html' && news > d ? news : d).toISOString().slice(0, 10);
+  } catch (e) { return new Date().toISOString().slice(0, 10); }
+}
+function writeSeoFiles() {
+  const urls = SITEMAP_PAGES.map(([u, f, pr]) =>
+    `  <url><loc>${SITE}/${u}</loc><lastmod>${lastMod(f)}</lastmod><priority>${pr}</priority></url>`).join('\n');
+  fs.writeFileSync(path.join(OUT, 'sitemap.xml'),
+    `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`);
+  fs.writeFileSync(path.join(OUT, 'robots.txt'),
+    `User-agent: *\nAllow: /\n\nSitemap: ${SITE}/sitemap.xml\n`);
+}
+
 async function buildHtml(file) {
   let html = fs.readFileSync(path.join(SRC, file), 'utf8');
+  if (file === 'index.html') html = staticNews(html);
+  if (file === 'pomosht.html') html = faqJsonLd(html);
 
   // Обфускира само вградените класически скриптове.
   html = html.replace(/<script(\b[^>]*)>([\s\S]*?)<\/script>/gi, (m, attrs, body) => {
@@ -208,6 +273,7 @@ async function main() {
   }
   fs.writeFileSync(path.join(OUT, '.htaccess'), HTACCESS);
   fs.writeFileSync(path.join(OUT, 'COPYRIGHT.txt'), COPYRIGHT + '\n');
+  writeSeoFiles(); console.log('✓ sitemap.xml, robots.txt');
   console.log('\nГотово → dist/');
 }
 
