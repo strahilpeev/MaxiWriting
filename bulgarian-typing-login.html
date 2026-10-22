@@ -1711,15 +1711,15 @@ function speakLastSyllableThenWhole(){
   ]);
 }
 
-/* Похвала (винаги на български), после последната сричка и цялата дума —
-   както „Сбор“ казва похвалата и отговора. */
+/* При последната буква: първо последната сричка (както при всички други
+   срички), после цялата дума и накрая похвалата (винаги на български). */
 function speakPraiseThenWord(praiseMsg){
   const cleanPraise = praiseMsg.replace(/[^\p{L}\p{N}\s.,!?'-]/gu, "").trim();
   const syll = lastSyllable();
   sayQueue([
-    cleanPraise ? { text: cleanPraise, lang: "bg-BG", voice: bgVoice, rate: 0.98 } : null,
     syll && syll !== target ? { text: syll, lang: currentLangCode(), voice: currentVoice(), rate: 0.8 } : null,
-    { text: target, lang: currentLangCode(), voice: currentVoice(), rate: 0.92 }
+    { text: target, lang: currentLangCode(), voice: currentVoice(), rate: 0.92 },
+    cleanPraise ? { text: cleanPraise, lang: "bg-BG", voice: bgVoice, rate: 0.98 } : null
   ]);
 }
 
