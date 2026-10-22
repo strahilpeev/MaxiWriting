@@ -18,7 +18,11 @@ const LEVELS = [
   ['🐯','Тигър'], ['🦅','Орел'], ['🐘','Слон'], ['🦒','Жираф'], ['🐳','Кит'],
   ['🚀','Ракета'], ['🌟','Звезда'], ['🌈','Дъга'], ['🐉','Дракон'], ['🦄','Еднорог']
 ];
-R.levelStart = (k) => (k - 1) * (k + 4) / 2;
+// Праговете са ×100: ниво 2 = 300⭐, 3 = 700⭐, 4 = 1200⭐, 5 = 1800⭐, 10 = 6300⭐.
+// Стъпката до следващото ниво расте с всяко ниво: 300, 400, 500, 600… звезди.
+const STAR_SCALE = 100;
+const LEVEL_FORMULA = 2;   // сменя се при промяна на праговете → запазените нива се преизчисляват
+R.levelStart = (k) => STAR_SCALE * (k - 1) * (k + 4) / 2;
 R.levelOf = (stars) => { let k = 1; while(R.levelStart(k + 1) <= stars) k++; return k; };
 R.levelInfo = (k) => k <= LEVELS.length
   ? { emoji: LEVELS[k - 1][0], title: LEVELS[k - 1][1] }
@@ -99,6 +103,9 @@ R.check = function(profile, celebrate){
   const s = statsOf(profile);
   const level = R.levelOf(s.stars);
   const r = rec(profile);
+  // Праговете са сменени: приемаме тихо новото (по-ниско) ниво, без празнуване,
+  // иначе детето нямаше да празнува, докато не надмине старото си ниво.
+  if(r.formula !== LEVEL_FORMULA){ if(r.level) r.level = level; r.formula = LEVEL_FORMULA; }
   const first = !r.level;
   const newBadges = BADGES.filter(b => !r.badges[b.k] && b.ok(s, r));
   newBadges.forEach(b => { r.badges[b.k] = Date.now(); });
@@ -353,7 +360,7 @@ R.renderParentExtras = function(profile){
     <div style="margin-bottom:0.6rem;">${BADGES.map(b => `<span title="${esc(b.t)}" style="font-size:1.6rem;${r.badges[b.k] ? '' : 'opacity:0.2;filter:grayscale(1);'}">${b.e}</span>`).join(' ')}</div>
     ${milestones.length
       ? milestones.map(k => `<button class="pp-btn" type="button" data-cert="${k}">🖨️ Грамота за ниво ${k}</button>`).join(' ')
-      : '<div class="pp-muted">Грамота има на всяко 5-то ниво (първата е на ниво 5 — 18 ⭐).</div>'}`;
+      : '<div class="pp-muted">Грамота има на всяко 5-то ниво (първата е на ниво 5 — ${R.levelStart(5)} ⭐).</div>'}`;
   card.querySelectorAll('[data-cert]').forEach(b => b.onclick = () => R.printCertificate(profile, +b.dataset.cert));
 };
 

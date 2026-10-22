@@ -65,19 +65,19 @@ await t.locator('.profile-card.add-new').click(); await t.waitForTimeout(200);
 await t.fill('#new-profile-name', 'Мая'); await t.click('#new-profile-screen .btn.save'); await t.waitForTimeout(400);
 check(await activeScreen() === 'menu', 'нов профил → менюто');
 check((await t.textContent('.rw-level-name')).includes('Ниво 1'), 'менюто показва „Ниво 1 · Пиленце“');
-check((await t.textContent('.rw-next')).includes('още 3 ⭐ до ниво 2'), '…и „още 3 ⭐ до ниво 2“');
+check((await t.textContent('.rw-next')).includes('още 300 ⭐ до ниво 2'), '…и „още 300 ⭐ до ниво 2“');
 
 // --- 2. Звезди от различни игри се събират; ново ниво по време на игра → празнуване
-await setStars('maxiChetene_v1', 'Мая', 1);
+await setStars('maxiChetene_v1', 'Мая', 100);
 await t.click('button.tile[onclick*="chisla-i-pari"]'); await t.waitForTimeout(600);
 // играта в рамката записва звезди (както при верни отговори) → хъбът получава „storage“
 await t.frameLocator('#app-frame').locator('body').evaluate(() => {
   const all = JSON.parse(localStorage.getItem('maxiChislaPari_v1') || '{}');
-  all['Мая'] = Object.assign({ score: 12, total: 14, streak: 10, bestStreak: 10, stars: 2, history: [], extra: {} }, all['Мая'] || {}, { stars: 2 });
+  all['Мая'] = Object.assign({ score: 12, total: 14, streak: 10, bestStreak: 10, stars: 2, history: [], extra: {} }, all['Мая'] || {}, { stars: 200 });
   localStorage.setItem('maxiChislaPari_v1', JSON.stringify(all));
 });
 await t.waitForTimeout(900);
-check(await t.locator('#rw-celebrate.open').isVisible(), '1 ⭐ (Четене) + 2 ⭐ (Числа) = 3 → празнуване „Ниво 2“ над играта');
+check(await t.locator('#rw-celebrate.open').isVisible(), '100 ⭐ (Четене) + 200 ⭐ (Числа) = 300 → празнуване „Ниво 2“ над играта');
 check((await t.textContent('#rw-celebrate .rw-title')).includes('Ниво 2'), 'надпис „Ниво 2!“');
 check(await t.locator('.rw-confetti i').count() > 50, 'конфети');
 check(await t.evaluate(() => window.__osc) > 20, 'фанфара (синтезирана, ~6.5 s)');
@@ -101,9 +101,9 @@ await t.locator('#rw-avatar-modal .rw-av[data-a="🐣"]').click(); await t.waitF
 check((await t.textContent('#progress-avatar')) === '🐣', 'избран аватар 🐣');
 
 // --- 5. Ниво 5 → грамота
-await setStars('maxiVnimanie_v1', 'Мая', 15);   // 1 + 2 + 15 = 18 ⭐ → ниво 5
+await setStars('maxiVnimanie_v1', 'Мая', 1500);   // 100 + 200 + 1500 = 1800 ⭐ → ниво 5
 await t.evaluate(() => Rewards.renderCard(getActiveProfile())); await t.waitForTimeout(400);
-check((await t.textContent('#rw-celebrate .rw-title')).includes('Ниво 5'), '18 ⭐ → „Ниво 5!“');
+check((await t.textContent('#rw-celebrate .rw-title')).includes('Ниво 5'), '1800 ⭐ → „Ниво 5!“');
 check(await t.locator('#rw-celebrate [data-cert]').isVisible(), 'на ниво 5 има бутон „🖨️ Грамота“');
 await t.click('#rw-celebrate [data-cert]'); await t.waitForTimeout(400);
 check(await t.evaluate(() => window.__printed) === 1, 'грамотата се изпраща за печат');
@@ -155,7 +155,7 @@ await t.evaluate(() => {
   const c = JSON.parse(localStorage.getItem('__mockCloud'));
   const acc = Object.values(c.accounts).find(a => Object.values(a.profiles).some(p => p.name === 'Мая'));
   const [id, p] = Object.entries(acc.profiles).find(([, p]) => p.name === 'Мая');
-  p.stats = { chetene: { stars: 40 }, sbor: { stars: 12 } };   // 52 ⭐ в облака → ниво 9
+  p.stats = { chetene: { stars: 4000 }, sbor: { stars: 1200 } };   // 5200 ⭐ в облака → ниво 9
   localStorage.setItem('__mockCloud', JSON.stringify(c));
   // „нов таблет“: махаме местните звезди на Мая
   ['maxiChetene_v1', 'maxiChislaPari_v1', 'maxiVnimanie_v1'].forEach(k => localStorage.removeItem(k));
@@ -163,8 +163,23 @@ await t.evaluate(() => {
 await t.click('#admin-screen .admin-close'); await t.waitForTimeout(200);
 await t.locator('.profile-card', { hasText: 'Мая' }).click(); await t.waitForTimeout(300);
 await t.evaluate(() => cloudSyncProfiles()); await t.waitForTimeout(600);
-check((await t.textContent('.rw-level-name')).includes('Ниво 9'), 'нов таблет: 52 ⭐ от облака → „Ниво 9“');
+check((await t.textContent('.rw-level-name')).includes('Ниво 9'), 'нов таблет: 5200 ⭐ от облака → „Ниво 9“');
 check(!(await t.locator('#rw-celebrate.open').count()), '…без празнуване за нива от друго устройство');
+
+// --- 8в. Смяна на праговете: запазено старо (високо) ниво → тихо преизчисляване, после нормално празнуване
+await t.evaluate(() => {
+  const all = JSON.parse(localStorage.getItem('hubRewards_v1'));
+  const id = getActiveProfile().id;
+  all[id].level = 15; delete all[id].formula;            // „старата формула“ беше дала ниво 15
+  localStorage.setItem('hubRewards_v1', JSON.stringify(all));
+});
+await t.evaluate(() => Rewards.renderCard(getActiveProfile())); await t.waitForTimeout(300);
+check(!(await t.locator('#rw-celebrate.open').count()) && (await t.textContent('.rw-level-name')).includes('Ниво 9'), 'нови прагове: старото ниво 15 → тихо „Ниво 9“');
+await t.evaluate(() => { const c = JSON.parse(localStorage.getItem('__mockCloud')); Object.values(c.accounts).forEach(a => Object.values(a.profiles).forEach(p => { if(p.name === 'Мая') p.stats = { chetene: { stars: 6300 } }; })); localStorage.setItem('__mockCloud', JSON.stringify(c)); });
+await setStars('maxiChetene_v1', 'Мая', 6300);
+await t.evaluate(() => Rewards.renderCard(getActiveProfile())); await t.waitForTimeout(400);
+check((await t.textContent('#rw-celebrate .rw-title')).includes('Ниво 10'), '…а при 6300 ⭐ празнува „Ниво 10“');
+await t.click('#rw-celebrate [data-close]'); await t.waitForTimeout(200);
 
 // --- 9. Без акаунт: нива работят, класирането обяснява защо го няма
 await t.evaluate(() => localStorage.clear()); await t.reload(); await t.waitForTimeout(300);
