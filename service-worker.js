@@ -1,9 +1,10 @@
-const CACHE_NAME = 'uchebni-igri-v26';
+const CACHE_NAME = 'uchebni-igri-v27';
 const APP_SHELL = [
   './',
   './index.html',
   './app.html',
   './pomosht.html',
+  './ceni.html',
   './news.json',
   './manifest.json',
   './srichki-razmer.html',
@@ -14,6 +15,7 @@ const APP_SHELL = [
   './maxi-common.js',
   './maxi-common.css',
   './hub-rewards.js',
+  './hub-sub.js',
   './maxi-points.js',
   './chetene.html',
   './chisla-i-pari.html',

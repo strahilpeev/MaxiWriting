@@ -5,6 +5,7 @@
 export const ALLOWED_HOSTS = [
   'tapnime.eu',
   'www.tapnime.eu',
+  'test.tapnime.eu',
   'strahilpeev.github.io',
   'localhost',
   '127.0.0.1'

@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node verify.mjs && node test/accounts.mjs && node test/accounts.mjs dist && node test/rewards.mjs && node test/rewards.mjs dist"
+    "test": "node verify.mjs && node test/api.mjs && node test/sub.mjs && node test/sub.mjs dist && node test/accounts.mjs && node test/accounts.mjs dist && node test/rewards.mjs && node test/rewards.mjs dist"
   },
   "author": "",
   "license": "ISC",

@@ -48,6 +48,7 @@ window.MaxiDB = {
   resetPassword() { return Promise.resolve(); },
   resendVerification() { return Promise.resolve(); },
   signOut() { setUser(null); return Promise.resolve(); },
+  idToken() { return currentUser ? Promise.resolve('mock-token-' + currentUser.uid) : fail('not-signed-in'); },
   async listProfiles() {
     await ready; const c = mine();
     return Object.entries(c.accounts[currentUser.uid].profiles).map(([id, p]) => ({ id, ...p }));

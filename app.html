@@ -19,6 +19,7 @@
 <script src="maxi-points.js"></script>
 <script src="maxi-common.js"></script>
 <script src="hub-rewards.js?v=24"></script>
+<script src="hub-sub.js?v=1"></script>
 
 <style>
   :root{
@@ -553,6 +554,28 @@
   .rw-confetti i{ position:absolute; top:-6vh; width:10px; height:16px; border-radius:3px; animation:rw-fall linear forwards; font-style:normal; }
   .rw-confetti i.e{ width:auto; height:auto; font-size:1.8rem; }
   @keyframes rw-fall{ to{ transform:translate(var(--dx), 112vh) rotate(var(--r)); } }
+
+  /* ---------- Абонамент ---------- */
+  .sub-banner{ margin:0 auto 0.8rem; max-width:720px; background:#fff4d6; color:#5a4300; border-radius:14px; padding:0.6rem 1rem;
+    font-weight:600; text-align:center; cursor:pointer; }
+  .sub-banner[hidden]{ display:none; }
+  .sub-card .sub-title{ font-weight:800; font-size:1.1rem; margin-bottom:0.35rem; }
+  .sub-line{ font-weight:600; margin:0.2rem 0 0.6rem; }
+  .sub-line.ok{ color:#2e7d32; } .sub-line.warn{ color:#b3541e; }
+  .sub-plans{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:0.7rem; margin:0.4rem 0 0.5rem; }
+  .sub-plan{ position:relative; display:flex; flex-direction:column; align-items:center; gap:0.15rem; padding:0.9rem 0.6rem;
+    border-radius:18px; border:3px solid #d6e0ea; background:#fff; cursor:pointer; font:inherit; color:inherit; }
+  .sub-plan.best{ border-color:#2f6fae; }
+  .sub-plan:disabled{ opacity:0.6; }
+  .sub-plan .sp-l{ font-weight:700; } .sub-plan .sp-p{ font-size:1.6rem; font-weight:800; } .sub-plan .sp-per{ font-size:0.85rem; opacity:0.7; }
+  .sub-plan .sp-note{ position:absolute; top:-0.7rem; background:#2f6fae; color:#fff; font-size:0.72rem; font-weight:700; padding:0.1rem 0.55rem; border-radius:999px; }
+  .sub-fine{ font-size:0.8rem; opacity:0.7; line-height:1.4; }
+  .sub-wall{ position:fixed; inset:0; z-index:35; background:rgba(31,48,71,0.55); display:none; align-items:center; justify-content:center; padding:1rem; }
+  .sub-wall.open{ display:flex; }
+  .sub-box{ background:#fff; border-radius:24px; padding:1.5rem; max-width:520px; width:100%; text-align:center; max-height:92vh; overflow:auto; }
+  .sub-box h2{ margin:0.3rem 0 0.5rem; }
+  .sub-box .sub-big{ font-size:3rem; }
+  .sub-row{ display:flex; flex-wrap:wrap; gap:0.6rem; justify-content:center; margin-top:1rem; }
   .rw-toast{ position:fixed; left:50%; bottom:1.4rem; transform:translateX(-50%); z-index:80; background:#2c3e50; color:#fff; border-radius:999px;
     padding:0.7rem 1.2rem; font-weight:700; box-shadow:0 8px 24px rgba(0,0,0,0.25); transition:opacity .5s; max-width:92vw; text-align:center; }
   .rw-toast.out{ opacity:0; }
@@ -651,6 +674,7 @@
       <button onclick="openParentPanel()">👨‍👩‍👧 За родители</button>
       <button id="switch-profile-btn" onclick="showProfileScreen()">🔄 Смени профила</button>
     </div>
+    <div class="sub-banner" id="sub-banner" hidden onclick="openAdmin()"></div>
     <h1 id="menu-greeting">Какво искаш да поиграем днес? 🌟</h1>
     <div class="tiles">
       <button class="tile srichki" onclick="openApp('srichki-razmer.html')">
@@ -1077,6 +1101,8 @@
   }
 
   function openApp(src){
+    // Абонамент: след пробния период игрите се отключват от родител
+    if(window.Sub && !Sub.canPlay()){ Sub.showWall(); Sub.refresh(); return; }
     const active = getActiveProfile();
     if(window.Rewards) Rewards.noteOpen(src);
     const url = active ? (src + '?hubUser=' + encodeURIComponent(active.name)) : src;
@@ -1241,6 +1267,8 @@
           </div>
         </div>`;
       document.getElementById('acc-login').onclick = () => showLogin();
+      box.insertAdjacentHTML('beforeend', '<div id="acc-sub"></div>');
+      if(window.Sub) Sub.renderAccount(document.getElementById('acc-sub'));
       const kids = loadProfiles();
       listEl.innerHTML = kids.length
         ? kids.map(p => `<div class="admin-profile-card"><b>${escapeHtml(p.avatar || '🦊')} ${escapeHtml(p.name)}</b></div>`).join('')
@@ -1255,7 +1283,9 @@
         </div>
         <div class="account-note" id="acc-verify"></div>
       </div>
+      <div id="acc-sub"></div>
       <div id="acc-legacy"></div>`;
+    if(window.Sub){ Sub.renderAccount(document.getElementById('acc-sub')); Sub.refresh(); }
     document.getElementById('acc-signout').onclick = signOutAccount;
     listEl.innerHTML = '<div class="progress-empty">Зареждане…</div>';
 
@@ -1511,6 +1541,7 @@
   function goBack(){
     const gate = document.getElementById('mx-gate');
     if(gate && gate.classList.contains('open')){ gate.classList.remove('open'); return true; }
+    if(window.Sub && Sub.wallOpen()){ Sub.closeWall(); return true; }
     if(window.Rewards && Rewards.closeTop()) return true;
     if(isActive(document.getElementById('rank-screen'))){ closeRanking(); return true; }
     if(isActive(appScreen)){

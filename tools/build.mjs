@@ -124,7 +124,7 @@ function faqJsonLd(html) {
 }
 
 // Само страниците, които имат смисъл в търсачка. Приложението (вход, игри в рамка) е с noindex.
-const SITEMAP_PAGES = [['', 'index.html', '1.0'], ['pomosht.html', 'pomosht.html', '0.7']];
+const SITEMAP_PAGES = [['', 'index.html', '1.0'], ['ceni.html', 'ceni.html', '0.8'], ['pomosht.html', 'pomosht.html', '0.7']];
 function lastMod(file) {
   try {
     const d = new Date(fs.statSync(path.join(SRC, file)).mtime);
@@ -266,7 +266,7 @@ Options -Indexes
   RewriteCond %{REQUEST_URI} !^/\\.well-known/
   RewriteCond %{HTTPS} off
   RewriteCond %{HTTP:X-Forwarded-Proto} !https
-  RewriteRule ^(.*)$ https://tapnime.eu/$1 [R=301,L]
+  RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
 </IfModule>
 `;
 

@@ -1,0 +1,10 @@
+# Само трите адреса на абонамента; образецът и общите функции не се отварят отвън.
+<FilesMatch "^(lib|config\.example)\.php$">
+  Require all denied
+</FilesMatch>
+# Firebase токенът идва в заглавката Authorization — някои сървъри я махат.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+</IfModule>
