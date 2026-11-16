@@ -555,6 +555,47 @@ M.parentGate = function(onOk, title){
    #fb, #hintBtn, #nextBtn и екрани #menu / #play.
    Инсталира глобални функции (openMode, newRound, complete, miss…),
    за да са удобни от HTML и от кода на режимите. */
+/* ================= Изолация на игрите =================
+   Игрите в едно приложение са в един файл и делят общия код. За да не може грешка
+   в една игра да спре другите:
+   - M.isolate(key, fn) пуска кода на играта при зареждане; ако гръмне, само тази игра
+     се изключва (плочката ѝ показва „🔧 почива“), а останалите работят;
+   - M.guard(key, fn) пази функцията, която отваря игра (напр. openDraw);
+   - createGame пази всеки кръг: грешка показва „Тази игра почива“ вместо празен екран. */
+M.brokenGames = {};
+function tilesOf(key){
+  return M.$$('.mx-tile').filter(t => t.dataset.game === key || (t.getAttribute('onclick') || '').includes("'" + key + "'"));
+}
+M.markBroken = function(key, err){
+  M.brokenGames[key] = String((err && err.message) || err || 'грешка');
+  try{ console.error('[Maxi] Играта „' + key + '“ е изключена:', err); }catch(e){}
+  const mark = () => tilesOf(key).forEach(t => {
+    t.classList.add('mx-broken'); t.setAttribute('aria-disabled', 'true');
+    if(!t.querySelector('.mx-fix')) t.insertAdjacentHTML('beforeend', '<span class="mx-fix">🔧 почива</span>');
+  });
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mark); else mark();
+};
+M.isolate = function(key, fn){
+  try{ return fn(); }catch(e){ M.markBroken(key, e); return undefined; }
+};
+M.gameDown = function(key){
+  M.speak('Тази игра почива. Избери друга.');
+  const t = tilesOf(key)[0];
+  if(t){ t.classList.remove('mx-shake'); void t.offsetWidth; t.classList.add('mx-shake'); }
+};
+M.guard = function(key, fn){
+  if(typeof fn !== 'function') return function(){ M.gameDown(key); };
+  return function(){
+    if(M.brokenGames[key]){ M.gameDown(key); return; }
+    try{ return fn.apply(this, arguments); }
+    catch(e){
+      try{ console.error('[Maxi] Грешка в „' + key + '“:', e); }catch(x){}
+      M.show('menu');
+      M.gameDown(key);
+    }
+  };
+};
+
 M.createGame = function(store, modes, opts){
   opts = opts || {};
   const $ = (id) => document.getElementById(id);
@@ -563,6 +604,7 @@ M.createGame = function(store, modes, opts){
 
   G.goMenu = function(){ G.roundId++; M.stopSpeech(); if(G.onLeave) G.onLeave(); G.onLeave = null; M.show('menu'); };
   G.openMode = function(key){
+    if(!modes[key] || M.brokenGames[key]){ M.gameDown(key); return; }
     G.mode = key;
     M.markSeen(key);
     const lv = modes[key].levels || [];
@@ -581,7 +623,7 @@ M.createGame = function(store, modes, opts){
       b.onclick = () => { G.level = i; store.rec.extra.levels[G.mode] = i; store.save(); G.renderLevels(); G.newRound(); };
       box.appendChild(b);
     });
-    if(modes[G.mode].extraControls) modes[G.mode].extraControls(box);
+    if(modes[G.mode].extraControls){ try{ modes[G.mode].extraControls(box); }catch(e){ try{ console.error(e); }catch(x){} } }
   };
   G.newRound = function(){
     G.roundId++;
@@ -595,7 +637,14 @@ M.createGame = function(store, modes, opts){
     $('nextBtn').hidden = true;
     $('hintBtn').hidden = true;
     M.feedback($('fb'), '');
-    modes[G.mode].round();
+    try{ modes[G.mode].round(); }
+    catch(e){
+      // Грешка само в тази игра: показваме спокойно съобщение, другите игри не се засягат.
+      try{ console.error('[Maxi] Грешка в „' + G.mode + '“:', e); }catch(x){}
+      $('area').innerHTML = '<div class="mx-down">🔧<b>Тази игра почива.</b><span>Избери друга игра.</span>' +
+        '<button class="mx-btn" type="button" onclick="goMenu()">↩ Към игрите</button></div>';
+      M.speak('Тази игра почива. Избери друга.');
+    }
   };
   G.setPrompt = function(text, speech, silent){
     $('prompt').textContent = text;

@@ -94,9 +94,9 @@
   </div>
   <div class="mx-section-title">🌿 Спокойно кътче</div>
   <div class="mx-tiles">
-    <button class="mx-tile g6" onclick="openBreath()"><span class="i">🌬️</span><span class="l">Дишай с мен</span><span class="s">Вдишай… издишай…</span></button>
-    <button class="mx-tile g5" onclick="openBubbles()"><span class="i">🫧</span><span class="l">Балончета</span><span class="s">Пукни ги леко</span></button>
-    <button class="mx-tile g1" onclick="openLights()"><span class="i">✨</span><span class="l">Светлинки</span><span class="s">Рисувай със светлина</span></button>
+    <button class="mx-tile g6" data-game="dishane" onclick="openBreath()"><span class="i">🌬️</span><span class="l">Дишай с мен</span><span class="s">Вдишай… издишай…</span></button>
+    <button class="mx-tile g5" data-game="balonche" onclick="openBubbles()"><span class="i">🫧</span><span class="l">Балончета</span><span class="s">Пукни ги леко</span></button>
+    <button class="mx-tile g1" data-game="svetlinki" onclick="openLights()"><span class="i">✨</span><span class="l">Светлинки</span><span class="s">Рисувай със светлина</span></button>
   </div>
 </section>
 
@@ -582,14 +582,14 @@ const DRAW_COLORS = [
 ];
 const DRAW_SIZES = [[8, 'тънко'], [18, 'средно'], [34, 'дебело']];
 const D = { color: DRAW_COLORS[1][0], size: 1, eraser: false, undo: [], strokes: 0, start: 0, used: false, ctx: null, w: 0, h: 0, pts: {} };
-(function buildDrawTools(){
+M.isolate('risuvane', function buildDrawTools(){
   $('drawColors').innerHTML = DRAW_COLORS.map(([c, n]) =>
     `<button class="swatch" type="button" style="--c:${c}" data-c="${c}" aria-label="${n}" title="${n}"></button>`).join('');
   $('drawSizes').innerHTML = DRAW_SIZES.map(([px, n], i) =>
     `<button class="tool size" type="button" data-i="${i}" aria-label="${n}"><span class="dot" style="width:${Math.min(34, px)}px;height:${Math.min(34, px)}px"></span>${n}</button>`).join('');
   M.$$('.swatch', $('drawColors')).forEach(b => b.onclick = () => { D.color = b.dataset.c; D.eraser = false; M.tone(660, 0.06, 'sine'); renderDrawTools(); });
   M.$$('.tool.size', $('drawSizes')).forEach(b => b.onclick = () => { D.size = +b.dataset.i; M.tone(560, 0.06, 'sine'); renderDrawTools(); });
-})();
+});
 function renderDrawTools(){
   M.$$('.swatch', $('drawColors')).forEach(b => b.classList.toggle('on', !D.eraser && b.dataset.c === D.color));
   M.$$('.tool.size', $('drawSizes')).forEach(b => {
@@ -660,7 +660,7 @@ function drawSave(){
   M.chime && M.chime();
   M.speak('Рисунката е запазена.');
 }
-(function(){
+M.isolate('risuvane', function(){
   const cv = $('drawCanvas');
   const pos = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   const seg = (a, b) => {
@@ -686,7 +686,7 @@ function drawSave(){
     D.pts[e.pointerId] = prev;
   });
   ['pointerup', 'pointercancel'].forEach(t => cv.addEventListener(t, (e) => { delete D.pts[e.pointerId]; }));
-})();
+});
 
 /* ================= Светлинки ================= */
 let lctx = null, parts = [], lRaf = null, lStart = 0, lTouches = 0;
@@ -716,7 +716,7 @@ function openLights(){
   };
   lRaf = requestAnimationFrame(loop);
 }
-(function(){
+M.isolate('svetlinki', function(){
   const cv = $('lightsCanvas');
   let hue = 180;
   const add = (e) => {
@@ -727,10 +727,15 @@ function openLights(){
   };
   cv.addEventListener('pointerdown', (e) => { cv.setPointerCapture(e.pointerId); lTouches++; M.tone(M.pick(PENTA) / 2, 0.5, 'sine'); add(e); });
   cv.addEventListener('pointermove', (e) => { if(e.buttons || e.pointerType === 'touch') add(e); });
-})();
+});
 
 /* ================= Изход към менюто: спираме всичко и записваме ================= */
 G = M.createGame(store, MODES);
+// Всяка игра извън MODES се отваря „пазено“: грешка в нея не засяга другите.
+openBreath = M.guard('dishane', openBreath);
+openBubbles = M.guard('balonche', openBubbles);
+openLights = M.guard('svetlinki', openLights);
+openDraw = M.guard('risuvane', openDraw);
 const baseGoMenu = G.goMenu;
 window.goMenu = function(){
   if($('bubbles').classList.contains('active') && popped) store.log('balonche', popped === 1 ? '1 пукнато балонче' : popped + ' пукнати балончета');

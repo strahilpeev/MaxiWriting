@@ -961,7 +961,8 @@ const THEMES_RAW = [
  "музика 🎵|песен 🎶|нота 🎵|пиано 🎹|китара 🎸|цигулка 🎻|барабан 🥁|тромпет 🎺|флейта 🪈|гайда 🎶|тъпан 🥁|хор 🎤|концерт 🎼|танц 💃|балет 🩰|театър 🎭|кино 🎬|картина 🖼️|рисунка 🎨|художник 🧑‍🎨|скулптура 🗿|глина 🏺|хартия 📄|мозайка 🧩|приказка 📖|стихотворение 📜|книга 📕|герой 🦸|юнак 🛡️|змей 🐉|принцеса 👸|джудже 🧙|вълшебник 🧙|фея 🧚"]
 ];
 const THEMES = {};
-THEMES_RAW.forEach(([key, icon, name, subject, raw]) => {
+// Темите са отделна част: ако нещо в тях се счупи, писането работи без тях.
+try{ THEMES_RAW.forEach(([key, icon, name, subject, raw]) => {
   const words = [];
   raw.split("|").forEach(it => {
     it = it.trim(); if(!it) return;
@@ -971,7 +972,7 @@ THEMES_RAW.forEach(([key, icon, name, subject, raw]) => {
     words.push({ w, e });
   });
   THEMES[key] = { icon, name, subject, words };
-});
+}); }catch(e){ try{ console.error('[Maxi] Темите са изключени:', e); }catch(x){} Object.keys(THEMES).forEach(k => delete THEMES[k]); }
 
 /* English & German vocabulary with Bulgarian translations, for the
    language toggle. Each entry: [word in that language, Bulgarian translation]. */
@@ -1660,7 +1661,7 @@ const levelSelect = document.getElementById("levelSelect");
 const syllableSelect = document.getElementById("syllableSelect");
 const themeSelect = document.getElementById("themeSelect");
 // Менюто с темите, групирани по предмет.
-(function fillThemes(){
+try{ (function fillThemes(){
   const groups = {};
   Object.keys(THEMES).forEach(k => { const t = THEMES[k]; (groups[t.subject] = groups[t.subject] || []).push(k); });
   Object.keys(groups).forEach(subj => {
@@ -1673,7 +1674,8 @@ const themeSelect = document.getElementById("themeSelect");
     });
     themeSelect.appendChild(og);
   });
-})();
+})(); }catch(e){ try{ console.error('[Maxi] Менюто с темите е изключено:', e); }catch(x){} }
+if(!Object.keys(THEMES).length) themeSelect.style.display = "none";
 
 function setLanguage(newLang){
   lang = newLang;
@@ -1684,7 +1686,7 @@ function setLanguage(newLang){
   const isBg = lang === "bg";
   modeToggleWrap.style.display = isBg ? "" : "none";
   levelSelect.style.display = (isBg && mode === "word") ? "" : "none";
-  themeSelect.style.display = (isBg && mode === "word") ? "" : "none";
+  themeSelect.style.display = (isBg && mode === "word" && Object.keys(THEMES).length) ? "" : "none";
   syllableSelect.style.display = (mode === "word") ? "" : "none";
   imageToggleWrap.style.display = (isBg && mode === "sentence") ? "none" : "";
 
@@ -1701,7 +1703,7 @@ modeWordBtn.addEventListener("click", ()=>{
   modeWordBtn.classList.add("active");
   modeSentenceBtn.classList.remove("active");
   levelSelect.style.display = (lang === "bg") ? "" : "none";
-  themeSelect.style.display = (lang === "bg") ? "" : "none";
+  themeSelect.style.display = (lang === "bg" && Object.keys(THEMES).length) ? "" : "none";
   syllableSelect.style.display = "";
   imageToggleWrap.style.display = "";
   correctStreak = 0; streakCountEl.textContent = 0;

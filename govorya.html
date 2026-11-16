@@ -110,11 +110,11 @@
   <h1 class="mx-h1">Говоря и планирам 💬</h1>
   <p class="mx-sub">Избери</p>
   <div class="mx-tiles">
-    <button class="mx-tile g2" onclick="openAAC()"><span class="i">🗣️</span><span class="l">Моето табло</span><span class="s">Кажи с картинки</span></button>
-    <button class="mx-tile g4" onclick="openGrafik()"><span class="i">📅</span><span class="l">Моят ден</span><span class="s">Сега и после</span></button>
-    <button class="mx-tile g8" onclick="openFeel()"><span class="i">💛</span><span class="l">Как се чувствам?</span><span class="s">Кажи ми</span></button>
+    <button class="mx-tile g2" data-game="aac" onclick="openAAC()"><span class="i">🗣️</span><span class="l">Моето табло</span><span class="s">Кажи с картинки</span></button>
+    <button class="mx-tile g4" data-game="grafik" onclick="openGrafik()"><span class="i">📅</span><span class="l">Моят ден</span><span class="s">Сега и после</span></button>
+    <button class="mx-tile g8" data-game="chuvstva" onclick="openFeel()"><span class="i">💛</span><span class="l">Как се чувствам?</span><span class="s">Кажи ми</span></button>
     <button class="mx-tile g7" onclick="openMode('emocii')"><span class="i">😀😢</span><span class="l">Познай емоцията</span><span class="s">Кое лице е…?</span></button>
-    <button class="mx-tile g3" onclick="openTimer()"><span class="i">⏳</span><span class="l">Таймер</span><span class="s">Колко време остава?</span></button>
+    <button class="mx-tile g3" data-game="taimer" onclick="openTimer()"><span class="i">⏳</span><span class="l">Таймер</span><span class="s">Колко време остава?</span></button>
     <button class="mx-tile g6" onclick="openMode('bezopasnost')"><span class="i">🚦</span><span class="l">Светофар и безопасност</span><span class="s">Как да се пазя?</span></button>
     <button class="mx-tile g1" onclick="openMode('vreme')"><span class="i">☂️🧤</span><span class="l">Облечи се за времето</span><span class="s">Какво ще облечеш?</span></button>
   </div>
@@ -660,6 +660,11 @@ const MODES = {
   }
 };
 G = M.createGame(store, MODES);
+// Игрите извън MODES се отварят „пазено“: грешка в една не засяга другите.
+openAAC = M.guard('aac', openAAC);
+openGrafik = M.guard('grafik', openGrafik);
+openFeel = M.guard('chuvstva', openFeel);
+openTimer = M.guard('taimer', openTimer);
 const baseGoMenu = G.goMenu;
 window.goMenu = function(){
   if(tRun){ tRun = false; clearInterval(tTick); releaseWake(); tLeft = tTotal; }

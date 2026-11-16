@@ -256,3 +256,12 @@ html.mx-contrast .mx-tile{ outline:3px solid #000; }
   .mx-screen{ padding-top:7.2rem; }
   .mx-title{ display:none; }
 }
+
+/* ---------- Изключена игра (вж. M.isolate в maxi-common.js) ---------- */
+.mx-tile.mx-broken{ filter:grayscale(0.85); opacity:0.6; }
+.mx-fix{ position:absolute; top:0.5rem; right:0.5rem; background:#fff; color:#2c3e50; border-radius:999px; padding:0.15rem 0.6rem;
+  font-size:0.8rem; font-weight:800; box-shadow:var(--shadow); }
+.mx-tile.mx-shake{ animation:mx-shake .4s ease; }
+@keyframes mx-shake{ 20%,60%{ transform:translateX(-6px); } 40%,80%{ transform:translateX(6px); } }
+.mx-down{ display:flex; flex-direction:column; align-items:center; gap:0.6rem; padding:1.5rem; font-size:2.6rem; text-align:center; }
+.mx-down b{ font-size:calc(1.3rem * var(--ts)); } .mx-down span{ font-size:calc(1rem * var(--ts)); color:var(--ink-soft); }
