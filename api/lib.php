@@ -220,9 +220,11 @@ function maxi_status(array $who, array $u): array {
 /* ---------------- Кодове за достъп ----------------
    Еднократен код отключва игрите за един акаунт без плащане — без срок или за N дни.
    Кодовете се пазят в data_dir/codes.json (извън публичната папка):
-     { "ABCD2345": { "created": 1700000000, "days": null, "note": "…",
-                     "usedBy": "uid", "usedAt": 1700000000, "email": "…", "revoked": false } }
-   Показват се като MAXI-ABCD-2345. Букви без лесни за бъркане знаци (няма I, L, O, 0, 1). */
+     { "ABCD2345EFGH6789": { "created": 1700000000, "days": null, "note": "…",
+                             "usedBy": "uid", "usedAt": 1700000000, "email": "…", "revoked": false } }
+   Показват се като MAXI-ABCD-2345-EFGH-6789: 16 случайни знака от 31 (≈79 бита, random_int) —
+   не могат да се налучкат. Букви без лесни за бъркане знаци (няма I, L, O, 0, 1).
+   Всеки код се използва само веднъж. Старите 8-знакови кодове (MAXI-XXXX-XXXX) още се приемат. */
 
 const MAXI_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
@@ -231,16 +233,16 @@ function maxi_is_admin(array $who): bool {
         && in_array($who['email'], array_map('strtolower', (array)maxi_config()['admin_emails']), true);
 }
 
-// „maxi-abcd 2345“, „МАХI…“ на кирилица и т.н. → „ABCD2345“.
+// „maxi-abcd 2345 …“, „МАХI…“ на кирилица и т.н. → „ABCD2345…“ (16 знака; 8 при старите кодове).
 function maxi_code_norm(string $s): string {
     static $cyr = ['А'=>'A','В'=>'B','Е'=>'E','К'=>'K','М'=>'M','Н'=>'H','О'=>'O','Р'=>'P','С'=>'C','Т'=>'T','Х'=>'X','У'=>'Y',
                    'а'=>'A','в'=>'B','е'=>'E','к'=>'K','м'=>'M','н'=>'H','о'=>'O','р'=>'P','с'=>'C','т'=>'T','х'=>'X','у'=>'Y'];
     $s = strtoupper(strtr(substr($s, 0, 256), $cyr));
     $s = preg_replace('/[^A-Z0-9]/', '', $s);
-    if (strlen($s) === 12 && strpos($s, 'MAXI') === 0) $s = substr($s, 4);
-    return strlen($s) === 8 ? $s : '';
+    if ((strlen($s) === 20 || strlen($s) === 12) && strpos($s, 'MAXI') === 0) $s = substr($s, 4);
+    return (strlen($s) === 16 || strlen($s) === 8) ? $s : '';
 }
-function maxi_code_show(string $k): string { return 'MAXI-' . substr($k, 0, 4) . '-' . substr($k, 4, 4); }
+function maxi_code_show(string $k): string { return 'MAXI-' . implode('-', str_split($k, 4)); }
 
 function maxi_codes_file(): string { return maxi_config()['data_dir'] . '/codes.json'; }
 function maxi_codes_load(): array {
@@ -268,7 +270,7 @@ function maxi_code_new(array $codes): string {
     $n = strlen(MAXI_CODE_ALPHABET);
     do {
         $k = '';
-        for ($i = 0; $i < 8; $i++) $k .= MAXI_CODE_ALPHABET[random_int(0, $n - 1)];
+        for ($i = 0; $i < 16; $i++) $k .= MAXI_CODE_ALPHABET[random_int(0, $n - 1)];
     } while (isset($codes[$k]));
     return $k;
 }

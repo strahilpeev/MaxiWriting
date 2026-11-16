@@ -49,6 +49,7 @@ await ctx.route('**/api/*.php', (r) => {
       return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, codes: made }) });
     }
     if (b.action === 'note') { mockCodes.find((c) => c.code === b.code).note = b.note; }
+    if (b.action === 'delete') { mockCodes.splice(mockCodes.findIndex((c) => c.code === b.code), 1); }
     return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, codes: mockCodes }) });
   }
   if (file === 'portal.php') return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, url: 'http://localhost:8702/app.html' }) });
@@ -199,6 +200,8 @@ await t.evaluate(() => Sub.refresh()); await t.waitForTimeout(400);
 check(await t.locator('#acc-sub tr.sa-fresh').count() === 2 && (await t.inputValue('#acc-sub .sa-count')) === '2', 'след обновяване кодовете и формата не изчезват');
 await t.fill('#acc-sub .sa-note-row[data-code="MAXI-NEW0-3456"]', 'Мая'); await t.press('#acc-sub .sa-note-row[data-code="MAXI-NEW0-3456"]', 'Enter'); await t.waitForTimeout(300);
 check(mockCodes.find(c => c.code === 'MAXI-NEW0-3456').note === 'Мая', 'бележката на ред се сменя и се записва');
+await t.click('#acc-sub .sa-del[data-code="MAXI-NEW1-3456"]'); await t.waitForTimeout(400);
+check(!mockCodes.some(c => c.code === 'MAXI-NEW1-3456') && !(await t.locator('#acc-sub .sa-del[data-code="MAXI-NEW1-3456"]').count()), '🗑️ изтрива кода и той изчезва от таблицата');
 await t.evaluate(() => { if (window.closeAdmin) closeAdmin(); else history.back(); }); await t.waitForTimeout(200);
 
 // --- 9. „Играй без акаунт“: пробен период на устройството

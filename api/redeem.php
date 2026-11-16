@@ -1,6 +1,6 @@
 <?php
 // Код за достъп: родителят въвежда еднократен код и игрите се отключват без плащане.
-// Всеки код важи за един акаунт. До 10 грешни опита на час за акаунт.
+// Всеки код се използва само веднъж (един акаунт, едно въвеждане). До 10 грешни опита на час за акаунт.
 declare(strict_types=1);
 require __DIR__ . '/lib.php';
 maxi_require_post();
@@ -18,8 +18,8 @@ $code = maxi_code_norm((string)(maxi_body()['code'] ?? ''));
 $res = maxi_codes_tx(function (array &$codes) use ($code, $who, $now) {
     if ($code === '' || !isset($codes[$code]) || !empty($codes[$code]['revoked'])) return 'invalid';
     $c = &$codes[$code];
-    if (!empty($c['usedBy']) && $c['usedBy'] !== $who['uid']) return 'used';
-    if (empty($c['usedBy'])) { $c['usedBy'] = $who['uid']; $c['usedAt'] = $now; $c['email'] = $who['email']; }
+    if (!empty($c['usedBy'])) return 'used';
+    $c['usedBy'] = $who['uid']; $c['usedAt'] = $now; $c['email'] = $who['email'];
     return $c;
 });
 

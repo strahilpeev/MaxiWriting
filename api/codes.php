@@ -4,6 +4,7 @@
 //   {"action":"list"}                                              → всички кодове
 //   {"action":"revoke","code":"MAXI-ABCD-2345"}                    → спира код (и достъпа по него)
 //   {"action":"note","code":"MAXI-ABCD-2345","note":"…"}           → сменя бележката
+//   {"action":"delete","code":"MAXI-ABCD-2345"}                    → изтрива кода (използван → акаунтът губи достъпа)
 declare(strict_types=1);
 require __DIR__ . '/lib.php';
 maxi_require_post();
@@ -61,6 +62,16 @@ if ($action === 'note') {
     $ok = maxi_codes_tx(function (array &$codes) use ($k, $note) {
         if ($k === '' || !isset($codes[$k])) return false;
         $codes[$k]['note'] = $note;
+        return true;
+    });
+    if (!$ok) maxi_fail(404, 'no-code');
+    maxi_json(200, ['ok' => true]);
+}
+if ($action === 'delete') {
+    $k = maxi_code_norm((string)($b['code'] ?? ''));
+    $ok = maxi_codes_tx(function (array &$codes) use ($k) {
+        if ($k === '' || !isset($codes[$k])) return false;
+        unset($codes[$k]);
         return true;
     });
     if (!$ok) maxi_fail(404, 'no-code');

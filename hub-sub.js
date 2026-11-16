@@ -126,7 +126,7 @@ S.portal = (btn) => go('portal.php', {}, btn);
 
 const CODE_ERRORS = {
   invalid: 'Няма такъв код. Проверете буквите и цифрите.',
-  used: 'Този код вече е използван в друг акаунт.',
+  used: 'Този код вече е използван. Всеки код важи само веднъж.',
   'too-many': 'Много грешни опити. Опитайте пак след един час.',
   'already-active': 'Игрите вече са отключени в този акаунт.',
   'not-configured': 'Кодовете още не са включени.'
@@ -157,11 +157,11 @@ function codeFormHtml(open){
       <summary>🎟️ Имам код за достъп</summary>
       <div class="sub-code-row">
         <input class="sub-code-in" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
-          maxlength="20" placeholder="MAXI-XXXX-XXXX" aria-label="Код за достъп">
+          maxlength="40" placeholder="MAXI-XXXX-XXXX-XXXX-XXXX" aria-label="Код за достъп">
         <button class="pp-btn sub-code-go" type="button">Отключи</button>
       </div>
       <div class="sub-code-msg" aria-live="polite"></div>
-      <div class="sub-fine">Кодът се въвежда веднъж и отключва игрите за всички деца и устройства в акаунта, без карта.</div>
+      <div class="sub-fine">Кодът се използва само веднъж и отключва игрите за всички деца и устройства в акаунта, без карта.</div>
     </details>`;
 }
 function bindCode(root){
@@ -205,7 +205,7 @@ function codesTable(list, fresh){
         <td class="sa-code"><button class="sa-copy1" type="button" data-code="${esc(c.code)}" title="Копирай">${esc(c.code)} 📋</button></td>
         <td><input class="sa-note-row" type="text" maxlength="100" value="${esc(c.note)}" data-code="${esc(c.code)}" placeholder="бележка…"></td>
         <td>${c.days ? c.days + ' дни' : 'без срок'}</td><td>${state}</td>
-        <td>${c.revoked ? '' : `<button class="pp-btn gray sa-revoke" type="button" data-code="${esc(c.code)}">Спри</button>`}</td></tr>`;
+        <td class="sa-acts">${c.revoked ? '' : `<button class="pp-btn gray sa-revoke" type="button" data-code="${esc(c.code)}">Спри</button>`}<button class="pp-btn gray sa-del" type="button" data-code="${esc(c.code)}" title="Изтрий" aria-label="Изтрий ${esc(c.code)}">🗑️</button></td></tr>`;
     }).join('')}</table>`;
 }
 function bindAdmin(box){
@@ -224,6 +224,11 @@ function bindAdmin(box){
     out.querySelectorAll('.sa-revoke').forEach(b => b.onclick = () => {
       if(!confirm('Да спра ли ' + b.dataset.code + '? Ако е използван, игрите в онзи акаунт ще се заключат.')) return;
       api('codes.php', { action: 'revoke', code: b.dataset.code }).then(r => r && r.ok ? list() : fail(r), () => fail());
+    });
+    out.querySelectorAll('.sa-del').forEach(b => b.onclick = () => {
+      const used = !!b.closest('tr').querySelector('td:nth-child(4)').textContent.match(/@|използван/);
+      if(!confirm('Да изтрия ли ' + b.dataset.code + '?' + (used ? ' Кодът е използван — игрите в онзи акаунт ще се заключат.' : ''))) return;
+      api('codes.php', { action: 'delete', code: b.dataset.code }).then(r => { if(r && r.ok){ toast('Кодът е изтрит'); list(); } else fail(r); }, () => fail());
     });
   }, () => fail());
   box.querySelector('.sa-make').onclick = function(){

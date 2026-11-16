@@ -146,7 +146,12 @@ try {
   chk((await call('codes.php', token({ sub: 'uidO2', email: 'owner@example.com', email_verified: false }), { action: 'list' })).code === 403, 'собственик с непотвърден имейл → 403');
   chk((await call('codes.php', OWN, { action: 'create', count: 99 })).code === 400, 'повече от 50 кода наведнъж → 400');
   r = await call('codes.php', OWN, { action: 'create', count: 3, note: 'Училище №1' });
-  chk(r.code === 200 && r.j.codes.length === 3 && r.j.codes.every((c) => /^MAXI-[A-HJ-KMNP-Z2-9]{4}-[A-HJ-KMNP-Z2-9]{4}$/.test(c.code)), '3 кода във вид MAXI-XXXX-XXXX без I, L, O, 0, 1');
+  chk(r.code === 200 && r.j.codes.length === 3 && r.j.codes.every((c) => /^MAXI(-[A-HJ-KMNP-Z2-9]{4}){4}$/.test(c.code)), '3 кода във вид MAXI-XXXX-XXXX-XXXX-XXXX (16 знака) без I, L, O, 0, 1');
+  const big = await call('codes.php', OWN, { action: 'create', count: 50 });
+  const bodies = big.j.codes.map((c) => c.code.slice(5).replace(/-/g, ''));
+  const freq = {}; bodies.join('').split('').forEach((ch) => freq[ch] = (freq[ch] || 0) + 1);
+  chk(new Set(bodies).size === 50 && Object.keys(freq).length >= 28, '50 кода — всички различни, използват почти всички 31 знака (случайни)');
+  for (const c of big.j.codes) await call('codes.php', OWN, { action: 'delete', code: c.code });
   const [c1, c2, c3] = r.j.codes.map((c) => c.code);
   r = await call('codes.php', OWN, { action: 'create', count: 1, days: 30 });
   const c30 = r.j.codes[0].code;
@@ -185,6 +190,8 @@ try {
   drec.code.until = Math.floor(Date.now() / 1000) - 10; drec.firstSeen -= 40 * 86400; fs.writeFileSync(df, JSON.stringify(drec));
   r = await call('status.php', T3);
   chk(r.j.active === false && r.j.kind === 'trial', 'изтекъл код → пак е нужен абонамент');
+  r = await call('redeem.php', T3, { code: c30 });
+  chk(r.code === 409 && r.j.error === 'used' && (await call('status.php', T3)).j.active === false, 'изтеклият код не може да се въведе пак в същия акаунт (само веднъж)');
 
   // бележка към код
   chk((await call('codes.php', OWN, { action: 'note', code: c3, note: 'Семейство Иванови ' + 'я'.repeat(200) })).code === 200, 'бележката на кода се сменя');
@@ -203,9 +210,28 @@ try {
   const L = Object.fromEntries(r.j.codes.map((c) => [c.code, c]));
   chk(L[c1].email === 'parent@example.com' && L[c1].usedAt && L[c2].revoked && !L[c3].usedAt && L[c1].note === 'Училище №1', 'списъкът показва кой е използвал кода, спрените и свободните');
 
+  // изтриване
+  r = await call('codes.php', OWN, { action: 'create', count: 2 });
+  const [d1, d2] = r.j.codes.map((c) => c.code);
+  chk((await call('codes.php', P, { action: 'delete', code: d1 })).code === 403, 'родител не може да трие кодове');
+  chk((await call('codes.php', OWN, { action: 'delete', code: d1 })).code === 200, 'собственикът изтрива код');
+  r = await call('codes.php', OWN, { action: 'list' });
+  chk(!r.j.codes.some((c) => c.code === d1) && r.j.codes.some((c) => c.code === d2), 'изтритият код изчезва от списъка, другите остават');
+  chk((await call('redeem.php', token({ sub: 'uidH', email: 'h@example.com' }), { code: d1 })).j.error === 'invalid', 'изтрит код не може да се въведе');
+  chk((await call('codes.php', OWN, { action: 'delete', code: d1 })).code === 404, 'изтриване на несъществуващ код → 404');
+  const TH = token({ sub: 'uidI', email: 'i@example.com' });
+  await call('redeem.php', TH, { code: d2 });
+  await call('codes.php', OWN, { action: 'delete', code: d2 });
+  chk((await call('status.php', TH)).j.kind !== 'code', 'изтрит използван код → акаунтът губи достъпа');
+  // стар 8-знаков код още важи
+  const cf = path.join(DATA, 'codes.json'), all = JSON.parse(fs.readFileSync(cf, 'utf8'));
+  all['ABCD2345'] = { created: 1, days: null, note: '', usedBy: null }; fs.writeFileSync(cf, JSON.stringify(all));
+  r = await call('redeem.php', token({ sub: 'uidJ', email: 'j@example.com' }), { code: 'maxi-abcd-2345' });
+  chk(r.code === 200 && r.j.kind === 'code', 'стар код MAXI-XXXX-XXXX още се приема');
+
   // защита от налучкване: 10 грешни опита на час
   const G = token({ sub: 'uidG', email: 'g@example.com' });
-  for (let i = 0; i < 10; i++) await call('redeem.php', G, { code: 'MAXI-ZZZZ-ZZZ' + 'ABCDEFGHJK'[i] });
+  for (let i = 0; i < 10; i++) await call('redeem.php', G, { code: 'MAXI-ZZZZ-ZZZZ-ZZZZ-ZZZ' + 'ABCDEFGHJK'[i] });
   r = await call('redeem.php', G, { code: c3 });
   chk(r.code === 429 && r.j.error === 'too-many', '11-ти опит след 10 грешни → изчакване (дори с верен код)');
   chk(fs.existsSync(path.join(DATA, 'codes.json')) && (fs.statSync(path.join(DATA, 'codes.json')).mode & 0o077) === 0, 'codes.json е достъпен само за сървъра (0600)');
