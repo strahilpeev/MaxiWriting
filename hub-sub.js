@@ -173,61 +173,86 @@ function bindCode(root){
   });
 }
 
-/* ---- Създаване на кодове (само собственикът) ---- */
+/* ---- Кодове за достъп (само собственикът) ----
+   Панелът се прави веднъж и се пази: когато „Акаунт“ се изчертае наново
+   (например след проверка на абонамента), формата и списъкът не се губят. */
+let adminBox = null;
 function adminHtml(){
-  return `<details class="sub-admin">
-      <summary>🛠️ Кодове за достъп (само за вас)</summary>
+  return `<div class="sub-title" style="margin-top:0.4rem">🎟️ Кодове за достъп <span class="sa-only">(виждате го само вие)</span></div>
       <div class="sub-admin-row">
         <label>Брой <input class="sa-count" type="number" min="1" max="50" value="1"></label>
         <label>Важи <select class="sa-days">
           <option value="">без срок</option><option value="30">30 дни</option><option value="90">90 дни</option><option value="365">1 година</option>
         </select></label>
         <label class="sa-note-l">Бележка <input class="sa-note" type="text" maxlength="100" placeholder="напр. за кого е"></label>
-      </div>
-      <div class="sub-row" style="margin-top:0.5rem">
         <button class="pp-btn sa-make" type="button">➕ Създай</button>
-        <button class="pp-btn gray sa-list" type="button">📋 Всички кодове</button>
       </div>
-      <div class="sa-out"></div>
-    </details>`;
+      <div class="sa-msg sub-code-msg" aria-live="polite"></div>
+      <div class="sa-out"><div class="account-note">Зареждане…</div></div>`;
 }
-function codesTable(list, withRevoke){
-  if(!list.length) return '<div class="account-note">Още няма кодове.</div>';
-  return `<table class="sa-table"><tr><th>Код</th><th>Срок</th><th>Състояние</th><th>Бележка</th>${withRevoke ? '<th></th>' : ''}</tr>${
+function copyText(text){
+  return (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+    .then(() => toast('Копирано ✅'), () => toast('Маркирайте кода и го копирайте.'));
+}
+function codesTable(list, fresh){
+  if(!list.length) return '<div class="account-note">Още няма кодове. Създайте първия отгоре.</div>';
+  const free = list.filter(c => !c.usedAt && !c.revoked).length;
+  return `<div class="account-note">Общо ${list.length} · свободни ${free}</div>
+    <table class="sa-table"><tr><th>Код</th><th>Бележка</th><th>Срок</th><th>Състояние</th><th></th></tr>${
     list.map(c => {
-      const state = c.revoked ? '⛔ спрян' : c.usedAt ? `✅ ${esc(c.email || 'използван')}, ${fmtDate(c.usedAt)}` : '🆕 свободен';
-      return `<tr><td class="sa-code">${esc(c.code)}</td><td>${c.days ? c.days + ' дни' : 'без срок'}</td><td>${state}</td><td>${esc(c.note)}</td>${
-        withRevoke ? `<td>${c.revoked ? '' : `<button class="pp-btn gray sa-revoke" type="button" data-code="${esc(c.code)}">Спри</button>`}</td>` : ''}</tr>`;
+      const state = c.revoked ? '⛔ спрян' : c.usedAt ? `✅ ${esc(c.email || 'използван')}<br><small>${fmtDate(c.usedAt)}</small>` : '🆕 свободен';
+      return `<tr${fresh && fresh.has(c.code) ? ' class="sa-fresh"' : ''}>
+        <td class="sa-code"><button class="sa-copy1" type="button" data-code="${esc(c.code)}" title="Копирай">${esc(c.code)} 📋</button></td>
+        <td><input class="sa-note-row" type="text" maxlength="100" value="${esc(c.note)}" data-code="${esc(c.code)}" placeholder="бележка…"></td>
+        <td>${c.days ? c.days + ' дни' : 'без срок'}</td><td>${state}</td>
+        <td>${c.revoked ? '' : `<button class="pp-btn gray sa-revoke" type="button" data-code="${esc(c.code)}">Спри</button>`}</td></tr>`;
     }).join('')}</table>`;
 }
-function bindAdmin(root){
-  const box = root.querySelector('.sub-admin'); if(!box) return;
-  const out = box.querySelector('.sa-out');
-  const fail = (j) => { out.innerHTML = `<div class="sub-code-msg bad">${j && j.error === 'not-admin' ? 'Нямате права.' : 'Не успях. Проверете интернета.'}</div>`; };
-  const list = () => api('codes.php', { action: 'list' }).then(j => {
+function bindAdmin(box){
+  const out = box.querySelector('.sa-out'), msg = box.querySelector('.sa-msg');
+  const say = (t, ok) => { msg.textContent = t || ''; msg.className = 'sa-msg sub-code-msg' + (ok ? ' ok' : ' bad'); };
+  const fail = (j) => say(j && j.error === 'not-admin' ? 'Нямате права.' : 'Не успях. Проверете интернета.');
+  const list = (fresh) => api('codes.php', { action: 'list' }).then(j => {
     if(!(j && j.ok)) return fail(j);
-    out.innerHTML = codesTable(j.codes, true);
+    out.innerHTML = codesTable(j.codes, fresh);
+    out.querySelectorAll('.sa-copy1').forEach(b => b.onclick = () => copyText(b.dataset.code));
+    out.querySelectorAll('.sa-note-row').forEach(inp => {
+      inp.onchange = () => api('codes.php', { action: 'note', code: inp.dataset.code, note: inp.value })
+        .then(r => r && r.ok ? toast('Бележката е запазена ✅') : fail(r), () => fail());
+      inp.onkeydown = (e) => { if(e.key === 'Enter') inp.blur(); };
+    });
     out.querySelectorAll('.sa-revoke').forEach(b => b.onclick = () => {
       if(!confirm('Да спра ли ' + b.dataset.code + '? Ако е използван, игрите в онзи акаунт ще се заключат.')) return;
       api('codes.php', { action: 'revoke', code: b.dataset.code }).then(r => r && r.ok ? list() : fail(r), () => fail());
     });
   }, () => fail());
-  box.querySelector('.sa-list').onclick = list;
   box.querySelector('.sa-make').onclick = function(){
-    const btn = this; btn.disabled = true;
+    const btn = this; btn.disabled = true; say('');
     api('codes.php', { action: 'create', count: +box.querySelector('.sa-count').value || 1,
       days: box.querySelector('.sa-days').value || null, note: box.querySelector('.sa-note').value })
       .then(j => {
         btn.disabled = false;
         if(!(j && j.ok)) return fail(j);
-        const text = j.codes.map(c => c.code).join('\n');
-        out.innerHTML = `<div class="sub-line ok">Нови кодове:</div><pre class="sa-new">${esc(text)}</pre>
-          <button class="pp-btn sa-copy" type="button">📋 Копирай</button>`;
-        out.querySelector('.sa-copy').onclick = () => {
-          (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Копирано ✅'), () => toast('Маркирайте кодовете и ги копирайте.'));
-        };
+        const made = j.codes.map(c => c.code);
+        say(made.length === 1 ? 'Създаден е ' + made[0] + ' — оцветен е в списъка.' : 'Създадени са ' + made.length + ' кода — оцветени са в списъка.', true);
+        box.querySelector('.sa-note').value = '';
+        if(made.length > 1){
+          const b = document.createElement('button'); b.className = 'pp-btn sa-copy'; b.type = 'button'; b.textContent = '📋 Копирай новите';
+          b.onclick = () => copyText(made.join('\n')); msg.appendChild(document.createTextNode(' ')); msg.appendChild(b);
+        }
+        list(new Set(made));
       }, () => { btn.disabled = false; fail(); });
   };
+  list();
+}
+function adminPanel(){
+  if(!adminBox){
+    adminBox = document.createElement('div');
+    adminBox.className = 'sub-admin';
+    adminBox.innerHTML = adminHtml();
+    bindAdmin(adminBox);
+  }
+  return adminBox;
 }
 
 /* ---------------- Изглед ---------------- */
@@ -292,9 +317,9 @@ S.renderAccount = function(el){
   } else if(st && st.kind !== 'free'){
     actions = plansHtml() + (st.kind === 'code' ? '' : codeFormHtml(false));
   }
-  if(!isLocal() && st && st.admin) actions += adminHtml();
   el.innerHTML = `<div class="admin-profile-card sub-card"><div class="sub-title">Абонамент</div>${statusHtml(st)}${actions}</div>`;
-  bindPlans(el); bindCode(el); bindAdmin(el);
+  bindPlans(el); bindCode(el);
+  if(!isLocal() && st && st.admin) el.firstElementChild.appendChild(adminPanel());
   const p = el.querySelector('#sub-portal'); if(p) p.onclick = () => S.portal(p);
 };
 

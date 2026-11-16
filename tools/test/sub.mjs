@@ -24,6 +24,7 @@ const DAY = 86400, now = () => Math.floor(Date.now() / 1000);
 let server_state = { ok: true, kind: 'trial', active: true, trialEnds: now() + 10 * DAY };
 let serverDown = false;
 const calls = [];
+const mockCodes = [{ code: 'MAXI-ABCD-2345', created: 1, days: null, note: '', usedAt: 1, email: 'mama@test.bg', revoked: false }];
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
@@ -42,9 +43,13 @@ await ctx.route('**/api/*.php', (r) => {
   }
   if (file === 'codes.php') {
     const b = JSON.parse(r.request().postData() || '{}');
-    const codes = b.action === 'create' ? [{ code: 'MAXI-NEW2-3456', created: now(), days: null, note: b.note, usedAt: null, email: '', revoked: false }]
-      : [{ code: 'MAXI-ABCD-2345', created: now(), days: null, note: '', usedAt: now(), email: 'mama@test.bg', revoked: false }];
-    return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, codes }) });
+    if (b.action === 'create') {
+      const made = Array.from({ length: b.count }, (_, i) => ({ code: 'MAXI-NEW' + i + '-3456', created: now(), days: null, note: b.note, usedAt: null, email: '', revoked: false }));
+      mockCodes.unshift(...made);
+      return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, codes: made }) });
+    }
+    if (b.action === 'note') { mockCodes.find((c) => c.code === b.code).note = b.note; }
+    return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, codes: mockCodes }) });
   }
   if (file === 'portal.php') return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, url: 'http://localhost:8702/app.html' }) });
   r.fulfill({ status: 404, body: '' });
@@ -182,14 +187,18 @@ check(!(await t.locator('#acc-sub .sub-admin').count()), 'родителят н�
 server_state = { ok: true, kind: 'free', active: true, admin: true };
 await t.evaluate(() => Sub.refresh()); await t.waitForTimeout(300);
 check(await t.locator('#acc-sub .sub-admin').count() === 1, 'собственикът вижда „Кодове за достъп“');
-await t.click('#acc-sub .sub-admin summary');
+await t.waitForTimeout(300);
+check((await t.textContent('#acc-sub .sa-table')).includes('mama@test.bg'), 'списъкът с кодовете се показва веднага, с кой го е използвал');
 await t.fill('#acc-sub .sa-count', '2'); await t.fill('#acc-sub .sa-note', 'Училище');
-await t.click('#acc-sub .sa-make'); await t.waitForTimeout(300);
-const mk = calls.filter(c => c.file === 'codes.php').at(-1);
-check(mk && JSON.parse(mk.body).action === 'create' && JSON.parse(mk.body).count === 2 && JSON.parse(mk.body).note === 'Училище', '„Създай“ → codes.php create, брой 2, бележка');
-check((await t.textContent('#acc-sub .sa-new')).includes('MAXI-NEW2-3456'), 'новите кодове се показват');
-await t.click('#acc-sub .sa-list'); await t.waitForTimeout(300);
-check((await t.textContent('#acc-sub .sa-table')).includes('mama@test.bg'), '„Всички кодове“ показва кой го е използвал');
+await t.click('#acc-sub .sa-make'); await t.waitForTimeout(400);
+const mk = calls.filter(c => c.file === 'codes.php' && JSON.parse(c.body).action === 'create').at(-1);
+check(mk && JSON.parse(mk.body).count === 2 && JSON.parse(mk.body).note === 'Училище', '„Създай“ → codes.php create, брой 2, бележка');
+check(await t.locator('#acc-sub tr.sa-fresh').count() === 2, 'новите кодове са в таблицата и са оцветени');
+// проверката на абонамента изчертава „Акаунт“ наново — панелът и списъкът остават
+await t.evaluate(() => Sub.refresh()); await t.waitForTimeout(400);
+check(await t.locator('#acc-sub tr.sa-fresh').count() === 2 && (await t.inputValue('#acc-sub .sa-count')) === '2', 'след обновяване кодовете и формата не изчезват');
+await t.fill('#acc-sub .sa-note-row[data-code="MAXI-NEW0-3456"]', 'Мая'); await t.press('#acc-sub .sa-note-row[data-code="MAXI-NEW0-3456"]', 'Enter'); await t.waitForTimeout(300);
+check(mockCodes.find(c => c.code === 'MAXI-NEW0-3456').note === 'Мая', 'бележката на ред се сменя и се записва');
 await t.evaluate(() => { if (window.closeAdmin) closeAdmin(); else history.back(); }); await t.waitForTimeout(200);
 
 // --- 9. „Играй без акаунт“: пробен период на устройството

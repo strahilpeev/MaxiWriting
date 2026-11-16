@@ -3,6 +3,7 @@
 //   {"action":"create","count":5,"days":null,"note":"Училище №1"}  → нови кодове
 //   {"action":"list"}                                              → всички кодове
 //   {"action":"revoke","code":"MAXI-ABCD-2345"}                    → спира код (и достъпа по него)
+//   {"action":"note","code":"MAXI-ABCD-2345","note":"…"}           → сменя бележката
 declare(strict_types=1);
 require __DIR__ . '/lib.php';
 maxi_require_post();
@@ -38,7 +39,7 @@ if ($action === 'create') {
         if ($days < 1 || $days > 3650) maxi_fail(400, 'days');
     } else $days = null;
     $note = trim(preg_replace('/\s+/u', ' ', (string)($b['note'] ?? '')) ?? '');
-    if (strlen($note) > 300) $note = substr($note, 0, 300);
+    if (preg_match('/^.{0,100}/us', $note, $m)) $note = $m[0];
     $new = maxi_codes_tx(function (array &$codes) use ($count, $days, $note, $now) {
         $made = [];
         for ($i = 0; $i < $count; $i++) {
@@ -52,6 +53,18 @@ if ($action === 'create') {
 }
 if ($action === 'list') {
     maxi_json(200, ['ok' => true, 'codes' => codes_view(maxi_codes_load())]);
+}
+if ($action === 'note') {
+    $k = maxi_code_norm((string)($b['code'] ?? ''));
+    $note = trim(preg_replace('/\s+/u', ' ', (string)($b['note'] ?? '')) ?? '');
+    if (preg_match('/^.{0,100}/us', $note, $m)) $note = $m[0];
+    $ok = maxi_codes_tx(function (array &$codes) use ($k, $note) {
+        if ($k === '' || !isset($codes[$k])) return false;
+        $codes[$k]['note'] = $note;
+        return true;
+    });
+    if (!$ok) maxi_fail(404, 'no-code');
+    maxi_json(200, ['ok' => true]);
 }
 if ($action === 'revoke') {
     $k = maxi_code_norm((string)($b['code'] ?? ''));

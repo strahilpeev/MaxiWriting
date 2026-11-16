@@ -186,6 +186,13 @@ try {
   r = await call('status.php', T3);
   chk(r.j.active === false && r.j.kind === 'trial', 'изтекъл код → пак е нужен абонамент');
 
+  // бележка към код
+  chk((await call('codes.php', OWN, { action: 'note', code: c3, note: 'Семейство Иванови ' + 'я'.repeat(200) })).code === 200, 'бележката на кода се сменя');
+  r = await call('codes.php', OWN, { action: 'list' });
+  const n3 = r.j.codes.find((c) => c.code === c3).note;
+  chk(n3.startsWith('Семейство Иванови') && [...n3].length === 100, 'дългата бележка се съкращава до 100 знака, без да се чупи кирилицата');
+  chk((await call('codes.php', P, { action: 'note', code: c3, note: 'x' })).code === 403, 'родител не може да сменя бележки');
+
   // спиране на код
   r = await call('codes.php', OWN, { action: 'revoke', code: c2 });
   chk(r.code === 200, 'собственикът спира код');
