@@ -16,5 +16,7 @@ return [
     'site' => 'https://test.tapnime.eu',
     // Акаунти с безплатен достъп (потвърден имейл)
     'free_emails' => ['strahil.peev@gmail.com'],
+    // Кой може да създава кодове за достъп в „👤 Акаунт“ (ако липсва — същите като free_emails)
+    'admin_emails' => ['strahil.peev@gmail.com'],
     'firebase_project' => 'maxiwriting',
 ];

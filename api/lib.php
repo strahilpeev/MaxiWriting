@@ -20,6 +20,8 @@ function maxi_config(): array {
     $cfg = require $file;
     $cfg['env'] = $env;
     $cfg += ['trial_days' => 14, 'free_emails' => [], 'firebase_project' => 'maxiwriting'];
+    // Кой може да създава кодове за достъп (по подразбиране — акаунтите с безплатен достъп).
+    if (!isset($cfg['admin_emails'])) $cfg['admin_emails'] = $cfg['free_emails'];
     if (empty($cfg['data_dir'])) $cfg['data_dir'] = MAXI_PRIVATE . "/data-$env";
     if (!is_dir($cfg['data_dir'])) @mkdir($cfg['data_dir'], 0700, true);
     return $cfg;
@@ -182,6 +184,14 @@ function maxi_status(array $who, array $u): array {
     if ($who['verified'] && in_array($who['email'], array_map('strtolower', (array)$cfg['free_emails']), true)) {
         return ['active' => true, 'kind' => 'free'];
     }
+    // Код за достъп: без срок или до определена дата (и не е спрян от собственика).
+    if (!empty($u['code']['code'])) {
+        $until = $u['code']['until'] ?? null;
+        $c = maxi_codes_load()[$u['code']['code']] ?? null;
+        if ($c && empty($c['revoked']) && ($c['usedBy'] ?? '') === $who['uid'] && ($until === null || (int)$until > $now)) {
+            return ['active' => true, 'kind' => 'code', 'until' => $until === null ? null : (int)$until];
+        }
+    }
     if (!empty($u['customer'])) {
         $subs = stripe('GET', 'subscriptions', ['customer' => $u['customer'], 'status' => 'all', 'limit' => 10]);
         $best = null;
@@ -205,4 +215,60 @@ function maxi_status(array $who, array $u): array {
         }
     }
     return ['active' => $now < $trialEnds, 'kind' => 'trial', 'trialEnds' => $trialEnds, 'trialDays' => (int)$cfg['trial_days']];
+}
+
+/* ---------------- Кодове за достъп ----------------
+   Еднократен код отключва игрите за един акаунт без плащане — без срок или за N дни.
+   Кодовете се пазят в data_dir/codes.json (извън публичната папка):
+     { "ABCD2345": { "created": 1700000000, "days": null, "note": "…",
+                     "usedBy": "uid", "usedAt": 1700000000, "email": "…", "revoked": false } }
+   Показват се като MAXI-ABCD-2345. Букви без лесни за бъркане знаци (няма I, L, O, 0, 1). */
+
+const MAXI_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+function maxi_is_admin(array $who): bool {
+    return $who['verified'] && $who['email'] !== ''
+        && in_array($who['email'], array_map('strtolower', (array)maxi_config()['admin_emails']), true);
+}
+
+// „maxi-abcd 2345“, „МАХI…“ на кирилица и т.н. → „ABCD2345“.
+function maxi_code_norm(string $s): string {
+    static $cyr = ['А'=>'A','В'=>'B','Е'=>'E','К'=>'K','М'=>'M','Н'=>'H','О'=>'O','Р'=>'P','С'=>'C','Т'=>'T','Х'=>'X','У'=>'Y',
+                   'а'=>'A','в'=>'B','е'=>'E','к'=>'K','м'=>'M','н'=>'H','о'=>'O','р'=>'P','с'=>'C','т'=>'T','х'=>'X','у'=>'Y'];
+    $s = strtoupper(strtr(substr($s, 0, 256), $cyr));
+    $s = preg_replace('/[^A-Z0-9]/', '', $s);
+    if (strlen($s) === 12 && strpos($s, 'MAXI') === 0) $s = substr($s, 4);
+    return strlen($s) === 8 ? $s : '';
+}
+function maxi_code_show(string $k): string { return 'MAXI-' . substr($k, 0, 4) . '-' . substr($k, 4, 4); }
+
+function maxi_codes_file(): string { return maxi_config()['data_dir'] . '/codes.json'; }
+function maxi_codes_load(): array {
+    $f = maxi_codes_file();
+    if (!is_file($f)) return [];
+    $j = json_decode((string)file_get_contents($f), true);
+    return is_array($j) ? $j : [];
+}
+// Промяна на кодовете под заключване (два таблета да не вземат един код едновременно).
+function maxi_codes_tx(callable $fn) {
+    $h = fopen(maxi_codes_file(), 'c+');
+    if (!$h) maxi_fail(500, 'storage');
+    flock($h, LOCK_EX);
+    $raw = stream_get_contents($h);
+    $codes = json_decode((string)$raw, true);
+    if (!is_array($codes)) $codes = [];
+    $result = $fn($codes);
+    ftruncate($h, 0); rewind($h);
+    fwrite($h, json_encode($codes, JSON_UNESCAPED_UNICODE));
+    fflush($h); flock($h, LOCK_UN); fclose($h);
+    @chmod(maxi_codes_file(), 0600);
+    return $result;
+}
+function maxi_code_new(array $codes): string {
+    $n = strlen(MAXI_CODE_ALPHABET);
+    do {
+        $k = '';
+        for ($i = 0; $i < 8; $i++) $k .= MAXI_CODE_ALPHABET[random_int(0, $n - 1)];
+    } while (isset($codes[$k]));
+    return $k;
 }

@@ -1,4 +1,4 @@
-/* Абонамент: пробен период, екран „Отключи игрите“ и състояние в „👤 Акаунт“.
+/* Абонамент: пробен период, екран „Отключи игрите“, код за достъп и състояние в „👤 Акаунт“.
    Сървърът (api/*.php на tapnime.eu) пита Stripe и пази началото на пробния период.
    Тук пазим последния отговор, за да работят игрите и без интернет.
 
@@ -60,6 +60,7 @@ S.canPlay = function(){
   if(st.kind === 'off' || st.kind === 'free') return true;
   if(st.kind === 'trial' || st.kind === 'local-trial') return now() < st.trialEnds;
   if(st.kind === 'subscription') return now() < (st.periodEnd || 0) + S.GRACE_DAYS * DAY;
+  if(st.kind === 'code') return !st.until || now() < st.until + S.GRACE_DAYS * DAY;
   return !!st.active;
 };
 
@@ -79,20 +80,24 @@ function api(file, body){
   });
 }
 
+// Запомня отговора на сървъра (status.php или redeem.php), за да важи и без интернет.
+function save(j, a){
+  const st = { uid: a.uid, kind: j.kind, active: !!j.active, trialEnds: j.trialEnds || null, periodEnd: j.periodEnd || null,
+    until: j.until || null, interval: j.interval || null, cancelAtPeriodEnd: !!j.cancelAtPeriodEnd, status: j.status || null,
+    admin: !!j.admin, checkedAt: now() };
+  // Часовникът на устройството може да е грешен — пренасяме датите спрямо часа на сървъра.
+  const skew = j.now ? now() - j.now : 0;
+  if(Math.abs(skew) > 300){ ['trialEnds', 'periodEnd', 'until'].forEach(k => { if(st[k]) st[k] += skew; }); }
+  write(CACHE_KEY, st);
+}
+
 let refreshing = null;
 S.refresh = function(){
   if(!S.enabled() || isLocal()){ render(); return Promise.resolve(S.state()); }
   if(refreshing) return refreshing;
   const a = acct();
   refreshing = api('status.php').then(j => {
-    if(j && j.ok){
-      const st = { uid: a.uid, kind: j.kind, active: !!j.active, trialEnds: j.trialEnds || null, periodEnd: j.periodEnd || null,
-        interval: j.interval || null, cancelAtPeriodEnd: !!j.cancelAtPeriodEnd, status: j.status || null, checkedAt: now() };
-      // Часовникът на устройството може да е грешен — пренасяме датите спрямо часа на сървъра.
-      const skew = j.now ? now() - j.now : 0;
-      if(Math.abs(skew) > 300){ ['trialEnds', 'periodEnd'].forEach(k => { if(st[k]) st[k] += skew; }); }
-      write(CACHE_KEY, st);
-    }
+    if(j && j.ok) save(j, a);
     return S.state();
   }).catch(() => S.state()).finally(() => { refreshing = null; render(); });
   return refreshing;
@@ -117,6 +122,114 @@ function go(file, body, btn){
 S.checkout = (plan, btn) => go('checkout.php', { plan }, btn);
 S.portal = (btn) => go('portal.php', {}, btn);
 
+/* ---------------- Код за достъп ---------------- */
+
+const CODE_ERRORS = {
+  invalid: 'Няма такъв код. Проверете буквите и цифрите.',
+  used: 'Този код вече е използван в друг акаунт.',
+  'too-many': 'Много грешни опити. Опитайте пак след един час.',
+  'already-active': 'Игрите вече са отключени в този акаунт.',
+  'not-configured': 'Кодовете още не са включени.'
+};
+S.redeem = function(code, btn, msgEl){
+  const say = (t, ok) => { if(msgEl){ msgEl.textContent = t; msgEl.className = 'sub-code-msg' + (ok ? ' ok' : ' bad'); } };
+  code = String(code || '').trim();
+  if(!code){ say('Напишете кода.'); return Promise.resolve(false); }
+  const a = acct();
+  if(btn){ btn.disabled = true; btn.dataset.t = btn.textContent; btn.textContent = 'Момент…'; }
+  const done = () => { if(btn){ btn.disabled = false; btn.textContent = btn.dataset.t; } };
+  return api('redeem.php', { code }).then(j => {
+    done();
+    if(j && j.ok){
+      save(j, a);
+      say('✅ Готово!', true);
+      toast('🎉 Игрите са отключени. Приятна игра!');
+      S.closeWall(); render();
+      return true;
+    }
+    say(CODE_ERRORS[j && j.error] || 'Не успях да проверя кода. Опитайте пак.');
+    return false;
+  }).catch(() => { done(); say('Няма връзка с интернет. Кодът се проверява онлайн веднъж.'); return false; });
+};
+
+function codeFormHtml(open){
+  return `<details class="sub-code"${open ? ' open' : ''}>
+      <summary>🎟️ Имам код за достъп</summary>
+      <div class="sub-code-row">
+        <input class="sub-code-in" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false"
+          maxlength="20" placeholder="MAXI-XXXX-XXXX" aria-label="Код за достъп">
+        <button class="pp-btn sub-code-go" type="button">Отключи</button>
+      </div>
+      <div class="sub-code-msg" aria-live="polite"></div>
+      <div class="sub-fine">Кодът се въвежда веднъж и отключва игрите за всички деца и устройства в акаунта, без карта.</div>
+    </details>`;
+}
+function bindCode(root){
+  root.querySelectorAll('.sub-code').forEach(box => {
+    const inp = box.querySelector('.sub-code-in'), go = box.querySelector('.sub-code-go'), msg = box.querySelector('.sub-code-msg');
+    const run = () => S.redeem(inp.value, go, msg);
+    go.onclick = run;
+    inp.onkeydown = (e) => { if(e.key === 'Enter') run(); };
+  });
+}
+
+/* ---- Създаване на кодове (само собственикът) ---- */
+function adminHtml(){
+  return `<details class="sub-admin">
+      <summary>🛠️ Кодове за достъп (само за вас)</summary>
+      <div class="sub-admin-row">
+        <label>Брой <input class="sa-count" type="number" min="1" max="50" value="1"></label>
+        <label>Важи <select class="sa-days">
+          <option value="">без срок</option><option value="30">30 дни</option><option value="90">90 дни</option><option value="365">1 година</option>
+        </select></label>
+        <label class="sa-note-l">Бележка <input class="sa-note" type="text" maxlength="100" placeholder="напр. за кого е"></label>
+      </div>
+      <div class="sub-row" style="margin-top:0.5rem">
+        <button class="pp-btn sa-make" type="button">➕ Създай</button>
+        <button class="pp-btn gray sa-list" type="button">📋 Всички кодове</button>
+      </div>
+      <div class="sa-out"></div>
+    </details>`;
+}
+function codesTable(list, withRevoke){
+  if(!list.length) return '<div class="account-note">Още няма кодове.</div>';
+  return `<table class="sa-table"><tr><th>Код</th><th>Срок</th><th>Състояние</th><th>Бележка</th>${withRevoke ? '<th></th>' : ''}</tr>${
+    list.map(c => {
+      const state = c.revoked ? '⛔ спрян' : c.usedAt ? `✅ ${esc(c.email || 'използван')}, ${fmtDate(c.usedAt)}` : '🆕 свободен';
+      return `<tr><td class="sa-code">${esc(c.code)}</td><td>${c.days ? c.days + ' дни' : 'без срок'}</td><td>${state}</td><td>${esc(c.note)}</td>${
+        withRevoke ? `<td>${c.revoked ? '' : `<button class="pp-btn gray sa-revoke" type="button" data-code="${esc(c.code)}">Спри</button>`}</td>` : ''}</tr>`;
+    }).join('')}</table>`;
+}
+function bindAdmin(root){
+  const box = root.querySelector('.sub-admin'); if(!box) return;
+  const out = box.querySelector('.sa-out');
+  const fail = (j) => { out.innerHTML = `<div class="sub-code-msg bad">${j && j.error === 'not-admin' ? 'Нямате права.' : 'Не успях. Проверете интернета.'}</div>`; };
+  const list = () => api('codes.php', { action: 'list' }).then(j => {
+    if(!(j && j.ok)) return fail(j);
+    out.innerHTML = codesTable(j.codes, true);
+    out.querySelectorAll('.sa-revoke').forEach(b => b.onclick = () => {
+      if(!confirm('Да спра ли ' + b.dataset.code + '? Ако е използван, игрите в онзи акаунт ще се заключат.')) return;
+      api('codes.php', { action: 'revoke', code: b.dataset.code }).then(r => r && r.ok ? list() : fail(r), () => fail());
+    });
+  }, () => fail());
+  box.querySelector('.sa-list').onclick = list;
+  box.querySelector('.sa-make').onclick = function(){
+    const btn = this; btn.disabled = true;
+    api('codes.php', { action: 'create', count: +box.querySelector('.sa-count').value || 1,
+      days: box.querySelector('.sa-days').value || null, note: box.querySelector('.sa-note').value })
+      .then(j => {
+        btn.disabled = false;
+        if(!(j && j.ok)) return fail(j);
+        const text = j.codes.map(c => c.code).join('\n');
+        out.innerHTML = `<div class="sub-line ok">Нови кодове:</div><pre class="sa-new">${esc(text)}</pre>
+          <button class="pp-btn sa-copy" type="button">📋 Копирай</button>`;
+        out.querySelector('.sa-copy').onclick = () => {
+          (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Копирано ✅'), () => toast('Маркирайте кодовете и ги копирайте.'));
+        };
+      }, () => { btn.disabled = false; fail(); });
+  };
+}
+
 /* ---------------- Изглед ---------------- */
 
 function plansHtml(){
@@ -138,6 +251,11 @@ function statusHtml(st){
   if(!st) return '<div class="sub-line">⏳ Проверяваме абонамента…</div>';
   switch(st.kind){
     case 'free': return '<div class="sub-line ok">✅ Пълен достъп</div>';
+    case 'code':
+      if(st.until && now() >= st.until) return '<div class="sub-line warn">⏰ Срокът на кода за достъп изтече.</div>';
+      return st.until
+        ? `<div class="sub-line ok">✅ Отключено с код за достъп — до ${fmtDate(st.until)}</div>`
+        : '<div class="sub-line ok">✅ Отключено с код за достъп</div>';
     case 'subscription': {
       const plan = st.interval === 'year' ? 'годишен' : 'месечен';
       const when = st.periodEnd ? fmtDate(st.periodEnd) : '';
@@ -165,22 +283,26 @@ S.renderAccount = function(el){
   const st = S.state();
   let actions = '';
   if(isLocal()){
-    actions = `<div class="account-note">За абонамент е нужен акаунт — така важи за всички деца и устройства.</div>`;
+    actions = `<div class="account-note">За абонамент или код за достъп е нужен акаунт — така важи за всички деца и устройства.</div>`;
   } else if(st && st.kind === 'subscription'){
     actions = `<button class="pp-btn" type="button" id="sub-portal">⚙️ Управление на абонамента</button>
       <div class="account-note">Смяна на карта, фактури, смяна на плана или спиране.</div>`;
+  } else if(st && st.kind === 'code' && !st.until){
+    actions = '';
   } else if(st && st.kind !== 'free'){
-    actions = plansHtml();
+    actions = plansHtml() + (st.kind === 'code' ? '' : codeFormHtml(false));
   }
+  if(!isLocal() && st && st.admin) actions += adminHtml();
   el.innerHTML = `<div class="admin-profile-card sub-card"><div class="sub-title">Абонамент</div>${statusHtml(st)}${actions}</div>`;
-  bindPlans(el);
+  bindPlans(el); bindCode(el); bindAdmin(el);
   const p = el.querySelector('#sub-portal'); if(p) p.onclick = () => S.portal(p);
 };
 
 /* ---- Екран „Отключи игрите“, когато пробният период е свършил ---- */
 function wallTitle(){
   const st = S.state();
-  return st && st.kind === 'subscription' ? 'Абонаментът трябва да се поднови' : 'Пробният период свърши';
+  return st && st.kind === 'subscription' ? 'Абонаментът трябва да се поднови'
+    : st && st.kind === 'code' ? 'Срокът на кода свърши' : 'Пробният период свърши';
 }
 S.showWall = function(){
   let m = document.getElementById('sub-wall');
@@ -206,12 +328,13 @@ S.showWall = function(){
       m.querySelector('.sub-box').innerHTML = local
         ? `<h2>Отключете всички игри</h2>
            <p>Абонаментът е към акаунт на родителя и важи за всички деца и устройства.</p>
+           <p class="sub-fine">Имате код за достъп? Влезте в акаунта и го въведете тук.</p>
            <div class="sub-row"><button class="pp-btn" type="button" id="sw-login">Вход / нов акаунт</button>
            <button class="pp-btn gray" type="button" id="sw-close2">Затвори</button></div>`
         : `<h2>Отключете всички игри</h2>
-           ${statusHtml(S.state())}${plansHtml()}
+           ${statusHtml(S.state())}${plansHtml()}${codeFormHtml(false)}
            <div class="sub-row"><button class="pp-btn gray" type="button" id="sw-close2">Затвори</button></div>`;
-      bindPlans(m);
+      bindPlans(m); bindCode(m);
       const c = m.querySelector('#sw-close2'); if(c) c.onclick = S.closeWall;
       const l = m.querySelector('#sw-login'); if(l) l.onclick = () => { S.closeWall(); if(typeof showLogin === 'function') showLogin(); };
     };
@@ -231,6 +354,8 @@ function render(){
       const d = daysLeft(st.trialEnds);
       if(now() >= st.trialEnds) text = '⏰ Пробният период свърши — родител може да го отключи от „👤 Акаунт“';
       else if(d <= 3) text = `🎁 Пробният период свършва след ${d === 1 ? '1 ден' : d + ' дни'}`;
+    } else if(st && st.kind === 'code' && st.until && now() >= st.until){
+      text = '⏰ Срокът на кода свърши — родител може да отключи игрите от „👤 Акаунт“';
     } else if(st && st.kind === 'subscription' && st.status === 'past_due'){
       text = '⚠️ Абонаментът не е платен — проверете в „👤 Акаунт“';
     }

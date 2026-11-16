@@ -140,6 +140,69 @@ try {
   chk(r.code === 200 && r.j.url && stripe.portal === 1, 'портал за управление');
   chk((await call('portal.php', token({ sub: 'uidNew', email: 'n@example.com' }))).code === 404, 'портал без клиент → 404');
 
+  // кодове за достъп: само собственикът ги създава
+  const OWN = token({ sub: 'uidO', email: 'owner@example.com' });
+  chk((await call('codes.php', token({}), { action: 'list' })).code === 403, 'родител не може да създава кодове → 403');
+  chk((await call('codes.php', token({ sub: 'uidO2', email: 'owner@example.com', email_verified: false }), { action: 'list' })).code === 403, 'собственик с непотвърден имейл → 403');
+  chk((await call('codes.php', OWN, { action: 'create', count: 99 })).code === 400, 'повече от 50 кода наведнъж → 400');
+  r = await call('codes.php', OWN, { action: 'create', count: 3, note: 'Училище №1' });
+  chk(r.code === 200 && r.j.codes.length === 3 && r.j.codes.every((c) => /^MAXI-[A-HJ-KMNP-Z2-9]{4}-[A-HJ-KMNP-Z2-9]{4}$/.test(c.code)), '3 кода във вид MAXI-XXXX-XXXX без I, L, O, 0, 1');
+  const [c1, c2, c3] = r.j.codes.map((c) => c.code);
+  r = await call('codes.php', OWN, { action: 'create', count: 1, days: 30 });
+  const c30 = r.j.codes[0].code;
+  chk(r.j.codes[0].days === 30, 'код за 30 дни');
+  r = await call('status.php', OWN);
+  chk(r.j.admin === true, 'status.php казва на собственика, че е администратор');
+  r = await call('status.php', token({}));
+  chk(!('admin' in r.j), '…а на родителя — не');
+
+  // родител с изтекъл пробен период въвежда код
+  const P = token({});
+  r = await call('redeem.php', P, { code: 'MAXI-AAAA-AAAA' });
+  chk(r.code === 400 && r.j.error === 'invalid', 'грешен код → invalid');
+  r = await call('redeem.php', P, { code: '  ' + c1.toLowerCase().replace(/-/g, ' ') + ' ' });
+  chk(r.code === 200 && r.j.active === true && r.j.kind === 'code' && r.j.until === null, 'код с малки букви и интервали → отключено без срок');
+  r = await call('status.php', P);
+  chk(r.j.active === true && r.j.kind === 'code', 'status.php помни кода');
+  chk((await call('checkout.php', P, { plan: 'month' })).code === 409, 'с код без срок не се плаща');
+  chk((await call('redeem.php', P, { code: c2 })).j.error === 'already-active', 'втори код в същия акаунт не се хаби');
+  const T2 = token({ sub: 'uidC', email: 'c@example.com' });
+  r = await call('redeem.php', T2, { code: c1 });
+  chk(r.code === 409 && r.j.error === 'used', 'използван код в друг акаунт → used');
+  // кирилица вместо латиница (А, В, Е, К, М, Н, Р, С, Т, Х)
+  const cyr = { A: 'А', B: 'В', E: 'Е', K: 'К', M: 'М', H: 'Н', P: 'Р', C: 'С', T: 'Т', X: 'Х' };
+  r = await call('redeem.php', T2, { code: c2.replace(/[ABEKMHPCTX]/g, (ch) => cyr[ch]) });
+  chk(r.code === 200 && r.j.kind === 'code', 'код, написан с кирилски букви → приема се');
+
+  // код със срок
+  const T3 = token({ sub: 'uidD', email: 'd@example.com' });
+  r = await call('redeem.php', T3, { code: c30 });
+  chk(r.j.kind === 'code' && Math.round((r.j.until - r.j.now) / 86400) === 30, 'код за 30 дни → до след 30 дни');
+  await call('checkout.php', T3, { plan: 'year' });
+  chk(+stripe.sessions.at(-1)['subscription_data[trial_end]'] === r.j.until, 'абонамент по време на кода → плащането започва в края му');
+  const df = path.join(DATA, 'users', 'uidD.json');
+  const drec = JSON.parse(fs.readFileSync(df, 'utf8'));
+  drec.code.until = Math.floor(Date.now() / 1000) - 10; drec.firstSeen -= 40 * 86400; fs.writeFileSync(df, JSON.stringify(drec));
+  r = await call('status.php', T3);
+  chk(r.j.active === false && r.j.kind === 'trial', 'изтекъл код → пак е нужен абонамент');
+
+  // спиране на код
+  r = await call('codes.php', OWN, { action: 'revoke', code: c2 });
+  chk(r.code === 200, 'собственикът спира код');
+  r = await call('status.php', T2);
+  chk(r.j.kind !== 'code', 'спрян код → акаунтът губи достъпа');
+  chk((await call('redeem.php', token({ sub: 'uidE', email: 'e@example.com' }), { code: c2 })).j.error === 'invalid', 'спрян код не може да се въведе');
+  r = await call('codes.php', OWN, { action: 'list' });
+  const L = Object.fromEntries(r.j.codes.map((c) => [c.code, c]));
+  chk(L[c1].email === 'parent@example.com' && L[c1].usedAt && L[c2].revoked && !L[c3].usedAt && L[c1].note === 'Училище №1', 'списъкът показва кой е използвал кода, спрените и свободните');
+
+  // защита от налучкване: 10 грешни опита на час
+  const G = token({ sub: 'uidG', email: 'g@example.com' });
+  for (let i = 0; i < 10; i++) await call('redeem.php', G, { code: 'MAXI-ZZZZ-ZZZ' + 'ABCDEFGHJK'[i] });
+  r = await call('redeem.php', G, { code: c3 });
+  chk(r.code === 429 && r.j.error === 'too-many', '11-ти опит след 10 грешни → изчакване (дори с верен код)');
+  chk(fs.existsSync(path.join(DATA, 'codes.json')) && (fs.statSync(path.join(DATA, 'codes.json')).mode & 0o077) === 0, 'codes.json е достъпен само за сървъра (0600)');
+
   // защитени файлове
   const lib = await fetch('http://127.0.0.1:8794/api/lib.php');
   const libText = await lib.text();

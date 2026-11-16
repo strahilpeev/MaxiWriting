@@ -34,6 +34,18 @@ await ctx.route('**/api/*.php', (r) => {
   if (serverDown) return r.abort();
   if (file === 'status.php') return r.fulfill({ contentType: 'application/json', body: JSON.stringify(Object.assign({ now: now() }, server_state)) });
   if (file === 'checkout.php') return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, url: 'http://localhost:8702/app.html?abonament=ok' }) });
+  if (file === 'redeem.php') {
+    const code = JSON.parse(r.request().postData() || '{}').code;
+    if (code.replace(/[^A-Z0-9]/gi, '').toUpperCase() !== 'MAXIABCD2345') return r.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ ok: false, error: 'invalid' }) });
+    server_state = { ok: true, kind: 'code', active: true, until: null };
+    return r.fulfill({ contentType: 'application/json', body: JSON.stringify(Object.assign({ now: now() }, server_state)) });
+  }
+  if (file === 'codes.php') {
+    const b = JSON.parse(r.request().postData() || '{}');
+    const codes = b.action === 'create' ? [{ code: 'MAXI-NEW2-3456', created: now(), days: null, note: b.note, usedAt: null, email: '', revoked: false }]
+      : [{ code: 'MAXI-ABCD-2345', created: now(), days: null, note: '', usedAt: now(), email: 'mama@test.bg', revoked: false }];
+    return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, codes }) });
+  }
   if (file === 'portal.php') return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, url: 'http://localhost:8702/app.html' }) });
   r.fulfill({ status: 404, body: '' });
 });
@@ -141,6 +153,44 @@ await t.evaluate(() => Sub.refresh()); await t.waitForTimeout(200);
 await t.click('button.tile[onclick*="chetene"]'); await t.waitForTimeout(300);
 check(await appOpen(), 'без отговор от сървъра и без кеш → играе');
 await closeGameIfOpen();
+
+// --- 8б. код за достъп вместо плащане
+server_state = { ok: true, kind: 'trial', active: false, trialEnds: now() - 60 };
+await t.evaluate(() => Sub.refresh()); await t.waitForTimeout(200);
+await t.click('button.tile[onclick*="chetene"]'); await t.waitForTimeout(300);
+check(await wallOpen(), 'изтекъл пробен период → екранът за отключване');
+await t.click('#sw-parent'); await passGate(); await t.waitForTimeout(150);
+check(await t.locator('#sub-wall .sub-code summary').isVisible(), 'на екрана има „🎟️ Имам код за достъп“');
+await t.click('#sub-wall .sub-code summary');
+await t.fill('#sub-wall .sub-code-in', 'maxi-zzzz-9999'); await t.click('#sub-wall .sub-code-go'); await t.waitForTimeout(300);
+check((await t.textContent('#sub-wall .sub-code-msg')).includes('Няма такъв код') && await wallOpen(), 'грешен код → съобщение, екранът остава');
+await t.fill('#sub-wall .sub-code-in', 'maxi abcd 2345'); await t.press('#sub-wall .sub-code-in', 'Enter'); await t.waitForTimeout(400);
+check(!(await wallOpen()) && await t.evaluate(() => Sub.state().kind === 'code'), 'верен код (Enter) → екранът се затваря, състояние „код“');
+await t.click('button.tile[onclick*="chetene"]'); await t.waitForTimeout(300);
+check(await appOpen(), 'с код → играта се отваря');
+await closeGameIfOpen();
+serverDown = true;
+await t.goto(APP); await t.waitForTimeout(700);
+await t.click('button.tile[onclick*="chetene"]'); await t.waitForTimeout(300);
+check(await appOpen(), 'код без срок + без интернет → играе');
+await closeGameIfOpen(); serverDown = false;
+await t.evaluate(() => openAdmin()); await passGate(); await t.waitForTimeout(400);
+const accCode = await t.textContent('#acc-sub');
+check(accCode.includes('Отключено с код') && !(await t.locator('#acc-sub [data-plan]').count()), '„Акаунт“: „Отключено с код за достъп“, без планове');
+check(!(await t.locator('#acc-sub .sub-admin').count()), 'родителят не вижда създаването на кодове');
+// собственикът създава кодове
+server_state = { ok: true, kind: 'free', active: true, admin: true };
+await t.evaluate(() => Sub.refresh()); await t.waitForTimeout(300);
+check(await t.locator('#acc-sub .sub-admin').count() === 1, 'собственикът вижда „Кодове за достъп“');
+await t.click('#acc-sub .sub-admin summary');
+await t.fill('#acc-sub .sa-count', '2'); await t.fill('#acc-sub .sa-note', 'Училище');
+await t.click('#acc-sub .sa-make'); await t.waitForTimeout(300);
+const mk = calls.filter(c => c.file === 'codes.php').at(-1);
+check(mk && JSON.parse(mk.body).action === 'create' && JSON.parse(mk.body).count === 2 && JSON.parse(mk.body).note === 'Училище', '„Създай“ → codes.php create, брой 2, бележка');
+check((await t.textContent('#acc-sub .sa-new')).includes('MAXI-NEW2-3456'), 'новите кодове се показват');
+await t.click('#acc-sub .sa-list'); await t.waitForTimeout(300);
+check((await t.textContent('#acc-sub .sa-table')).includes('mama@test.bg'), '„Всички кодове“ показва кой го е използвал');
+await t.evaluate(() => { if (window.closeAdmin) closeAdmin(); else history.back(); }); await t.waitForTimeout(200);
 
 // --- 9. „Играй без акаунт“: пробен период на устройството
 await t.evaluate(() => {
