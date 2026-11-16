@@ -49,6 +49,25 @@
   .dots-svg .shape-fill{ opacity:0; transition:opacity .8s ease; }
   .dots-svg .shape-fill.show{ opacity:0.55; }
   @keyframes dot-pulse{ 50%{ transform:scale(1.6); } }
+  /* Рисувай свободно */
+  #draw{ gap:0.6rem; padding-bottom:0.8rem; overflow:hidden; }
+  .draw-wrap{ flex:1 1 auto; width:100%; max-width:1200px; min-height:0; position:relative; }
+  #drawCanvas{ position:absolute; inset:0; width:100%; height:100%; touch-action:none; background:#fff; border-radius:22px;
+    border:3px solid var(--line); box-shadow:var(--shadow); cursor:crosshair; }
+  .draw-tools{ flex:0 0 auto; width:100%; max-width:1200px; display:flex; flex-wrap:wrap; gap:0.55rem; align-items:center; justify-content:center; }
+  .draw-colors, .draw-sizes, .draw-acts{ display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center; justify-content:center; }
+  .draw-sep{ width:2px; align-self:stretch; background:var(--line); border-radius:2px; }
+  .swatch{ width:clamp(50px,6.4vw,72px); height:clamp(50px,6.4vw,72px); border-radius:50%; border:4px solid #fff; background:var(--c);
+    box-shadow:0 0 0 2px var(--line), var(--shadow); cursor:pointer; padding:0; transition:transform .12s; }
+  .swatch.on{ transform:scale(1.15); box-shadow:0 0 0 5px #2c3e50, var(--shadow); }
+  .tool{ min-width:clamp(64px,8vw,86px); height:clamp(54px,7vw,72px); border-radius:20px; border:3px solid var(--line); background:#fff;
+    font-weight:800; font-size:calc(0.85rem * var(--ts)); cursor:pointer; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:0.1rem; box-shadow:var(--shadow); padding:0.2rem 0.5rem; line-height:1.1; }
+  .tool .ti{ font-size:1.7rem; line-height:1; }
+  .tool.on{ border-color:#2c3e50; background:#fff4d6; transform:scale(1.06); }
+  .tool:active, .swatch:active{ transform:scale(0.94); }
+  .tool.size .dot{ display:block; border-radius:50%; background:#2c3e50; }
+  .tool.armed{ background:#ffe0e0; border-color:#c0392b; }
 </style>
 </head>
 <body>
@@ -67,6 +86,11 @@
   <div class="mx-tiles">
     <button class="mx-tile g2" onclick="openMode('prosledi')"><span class="i">✍️</span><span class="l">Проследи с пръстче</span><span class="s">Цифри и букви</span></button>
     <button class="mx-tile g8" onclick="openMode('tochki')"><span class="i">1·2·3</span><span class="l">Свържи точките</span><span class="s">По ред до картинка</span></button>
+    <button class="mx-tile g4" onclick="openMode('konturi')"><span class="i">🏠</span><span class="l">Проследи предмет</span><span class="s">Къща, топка, рибка…</span></button>
+  </div>
+  <div class="mx-section-title">🎨 Рисуване</div>
+  <div class="mx-tiles">
+    <button class="mx-tile g7" onclick="openDraw('risuvane')"><span class="i">🎨</span><span class="l">Рисувай свободно</span><span class="s">Цветове и гума</span></button>
   </div>
   <div class="mx-section-title">🌿 Спокойно кътче</div>
   <div class="mx-tiles">
@@ -107,6 +131,22 @@
 <section id="bubbles" class="mx-screen">
   <div class="field" id="bubbleField"></div>
   <div class="field-info" id="bubbleInfo">🫧 0</div>
+</section>
+
+<section id="draw" class="mx-screen">
+  <div class="draw-wrap"><canvas id="drawCanvas" aria-label="Лист за рисуване"></canvas></div>
+  <div class="draw-tools">
+    <div class="draw-colors" id="drawColors"></div>
+    <span class="draw-sep" aria-hidden="true"></span>
+    <div class="draw-sizes" id="drawSizes"></div>
+    <span class="draw-sep" aria-hidden="true"></span>
+    <div class="draw-acts">
+      <button class="tool" id="eraserBtn" type="button" onclick="drawEraser()"><span class="ti">🧽</span>Гума</button>
+      <button class="tool" type="button" onclick="drawUndo()"><span class="ti">↩️</span>Назад</button>
+      <button class="tool" id="clearBtn" type="button" onclick="drawClear()"><span class="ti">🗑️</span>Нов лист</button>
+      <button class="tool" type="button" onclick="drawSave()"><span class="ti">💾</span>Запази</button>
+    </div>
+  </div>
 </section>
 
 <section id="lights" class="mx-screen">
@@ -169,6 +209,37 @@ const DOT_SHAPES = [
 ];
 let lastDotShape = null;
 
+/* ================= Проследи предмет =================
+   Контурите са SVG пътеки в квадрат 100×100. Детето минава с пръстче по линиите;
+   броим колко от линиите е покрило и колко от рисунката е близо до тях (както при буквите). */
+const OUTLINES = [
+  [ // Лесни — една линия
+    { n:'топка', a:'топката', col:'#e74c3c', d:'M50,12 A38,38 0 1,1 49.9,12 Z' },
+    { n:'къща', a:'къщата', col:'#e67e22', d:'M20,90 L20,46 L50,14 L80,46 L80,90 Z' },
+    { n:'сърце', a:'сърцето', col:'#e84393', d:'M50,86 C14,62 4,42 18,26 C30,13 45,18 50,32 C55,18 70,13 82,26 C96,42 86,62 50,86 Z' },
+    { n:'балон', a:'балона', col:'#9b59b6', d:'M50,8 C73,8 83,27 81,44 C79,62 63,74 50,74 C37,74 21,62 19,44 C17,27 27,8 50,8 Z M50,74 Q42,84 50,94' },
+    { n:'ябълка', a:'ябълката', col:'#c0392b', d:'M50,30 C36,18 12,24 14,50 C16,76 36,93 50,86 C64,93 84,76 86,50 C88,24 64,18 50,30 Z M50,30 Q51,18 58,9' },
+    { n:'яйце', a:'яйцето', col:'#f1c40f', d:'M50,10 C72,10 84,40 84,60 C84,80 68,92 50,92 C32,92 16,80 16,60 C16,40 28,10 50,10 Z' }
+  ],
+  [ // Средни — няколко части
+    { n:'къщичка с врата', a:'къщичката', col:'#e67e22', d:'M20,90 L20,46 L50,14 L80,46 L80,90 Z M42,90 L42,66 L58,66 L58,90 M28,52 L38,52 L38,62 L28,62 Z' },
+    { n:'слънце', a:'слънцето', col:'#f1c40f', d:'M50,30 A20,20 0 1,1 49.9,30 Z M50,6 L50,20 M50,80 L50,94 M6,50 L20,50 M80,50 L94,50 M19,19 L29,29 M71,71 L81,81 M81,19 L71,29 M29,71 L19,81' },
+    { n:'рибка', a:'рибката', col:'#3498db', d:'M12,50 Q40,20 70,50 Q40,80 12,50 Z M70,50 L92,30 L92,70 Z M28,44 A3,3 0 1,1 27.9,44 Z' },
+    { n:'облак', a:'облака', col:'#74b9ff', d:'M26,72 C10,72 10,50 26,48 C26,30 46,26 53,40 C60,24 84,28 81,48 C96,50 93,72 78,72 Z' },
+    { n:'звезда', a:'звездата', col:'#f39c12', d:'M50,8 L61,38 L93,38 L67,57 L77,88 L50,69 L23,88 L33,57 L7,38 L39,38 Z' },
+    { n:'лист', a:'листа', col:'#27ae60', d:'M16,84 C16,42 48,14 86,14 C86,52 58,84 16,84 Z M16,84 L66,34' }
+  ],
+  [ // Трудни — много линии
+    { n:'кола', a:'колата', col:'#e74c3c', d:'M8,66 L8,50 L24,47 L35,30 L68,30 L80,47 L93,51 L93,66 Z M28,58 A9,9 0 1,1 27.9,58 Z M74,58 A9,9 0 1,1 73.9,58 Z' },
+    { n:'цвете', a:'цветето', col:'#e84393', d:'M50,22 A9,9 0 1,1 49.9,22 Z M50,8 A8,8 0 1,1 49.9,8 Z M64,22 A8,8 0 1,1 63.9,22 Z M36,22 A8,8 0 1,1 35.9,22 Z M50,40 L50,92 M50,74 Q66,58 76,66 Q66,78 50,74' },
+    { n:'дърво', a:'дървото', col:'#27ae60', d:'M50,8 C66,8 80,20 78,34 C90,40 88,60 72,62 C66,70 34,70 28,62 C12,60 10,40 22,34 C20,20 34,8 50,8 Z M43,68 L43,92 L57,92 L57,68' },
+    { n:'чадър', a:'чадъра', col:'#8e44ad', d:'M8,50 Q50,2 92,50 Q81,42 71,50 Q60,42 50,50 Q40,42 29,50 Q19,42 8,50 Z M50,50 L50,84 Q50,93 42,93 Q35,93 35,86' },
+    { n:'лодка', a:'лодката', col:'#2980b9', d:'M8,62 L92,62 L76,84 L24,84 Z M50,62 L50,10 M50,14 L82,56 L50,56' },
+    { n:'сладолед', a:'сладоледа', col:'#fd79a8', d:'M32,50 L50,94 L68,50 Z M30,50 C22,22 78,22 70,50 Z' }
+  ]
+];
+let lastOutline = null;
+
 const MODES = {
   tochki: {
     levels: ['До 5', 'До 10', 'До 14'],
@@ -226,6 +297,97 @@ const MODES = {
       ['pointerup', 'pointercancel'].forEach(t => svg.addEventListener(t, () => { dragging = false; }));
       showNext();
       G.setHint(() => { markNext(true); M.speak('Следващото е ' + M.num(next + 1) + '.'); });
+    }
+  },
+  konturi: {
+    levels: ['Лесни', 'Средни', 'Трудни'],
+    round(){
+      const sh = M.pick(OUTLINES[G.level].filter(o => o !== lastOutline));
+      lastOutline = sh;
+      G.setPrompt('Проследи с пръстче: ' + sh.n, 'Проследи с пръстче ' + sh.a + '.');
+      const area = $('area');
+      const wrap = document.createElement('div'); wrap.className = 'trace-wrap';
+      const cv = document.createElement('canvas'); cv.id = 'traceCanvas';
+      wrap.appendChild(cv); area.appendChild(wrap);
+      const cssW = Math.min(area.clientWidth || 600, 640), cssH = Math.round(Math.min(cssW * 0.85, window.innerHeight * 0.52));
+      const dpr = window.devicePixelRatio || 1;
+      cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
+      cv.style.width = cssW + 'px'; cv.style.height = cssH + 'px';
+      const ctx = cv.getContext('2d');
+      ctx.scale(dpr, dpr);
+      // пътеката (100×100) се вписва в листа
+      const k = Math.min(cssW, cssH) * 0.9 / 100, ox = (cssW - 100 * k) / 2, oy = (cssH - 100 * k) / 2;
+      const path = new Path2D(sh.d);
+      const brush = Math.max(16, Math.min(cssW, cssH) * 0.055);
+      const mk = () => { const c = document.createElement('canvas'); c.width = cssW; c.height = cssH; return c; };
+      const strokeShape = (c, width, style) => {
+        c.save(); c.translate(ox, oy); c.scale(k, k);
+        c.lineWidth = width / k; c.lineCap = 'round'; c.lineJoin = 'round'; c.strokeStyle = style || '#000';
+        c.stroke(path); c.restore();
+      };
+      const mask = mk(), mctx = mask.getContext('2d');   // самата линия
+      const tol = mk(), tctx = tol.getContext('2d');     // линията с толеранс
+      const user = mk(), uctx = user.getContext('2d');   // рисунката на детето
+      strokeShape(mctx, brush * 0.5);
+      strokeShape(tctx, brush * 2.3);
+      let solved = false;
+      const drawGuide = () => {
+        ctx.clearRect(0, 0, cssW, cssH);
+        if(solved){ ctx.save(); ctx.translate(ox, oy); ctx.scale(k, k); ctx.globalAlpha = 0.45; ctx.fillStyle = sh.col; ctx.fill(path, 'evenodd'); ctx.restore(); }
+        strokeShape(ctx, brush, '#e3ecf5');
+        ctx.save(); ctx.setLineDash([10, 8]); strokeShape(ctx, 3, '#9bb3cc'); ctx.restore();
+        ctx.drawImage(user, 0, 0, cssW, cssH);
+      };
+      const step = 4;
+      const md = mctx.getImageData(0, 0, cssW, cssH).data, td = tctx.getImageData(0, 0, cssW, cssH).data;
+      let lineCells = 0;
+      for(let y = 0; y < cssH; y += step) for(let x = 0; x < cssW; x += step) if(md[(y * cssW + x) * 4 + 3] > 128) lineCells++;
+      const evaluate = () => {
+        const ud = uctx.getImageData(0, 0, cssW, cssH).data;
+        let covered = 0, userCells = 0, inside = 0;
+        for(let y = 0; y < cssH; y += step) for(let x = 0; x < cssW; x += step){
+          const i = (y * cssW + x) * 4 + 3;
+          const u = ud[i] > 60;
+          if(md[i] > 128 && u) covered++;
+          if(u){ userCells++; if(td[i] > 60) inside++; }
+        }
+        return { cover: lineCells ? covered / lineCells : 0, acc: userCells ? inside / userCells : 0, drawn: userCells };
+      };
+      const win = (r) => {
+        solved = true;
+        uctx.globalCompositeOperation = 'source-in'; uctx.fillStyle = '#2e9e5b'; uctx.fillRect(0, 0, cssW, cssH); uctx.globalCompositeOperation = 'source-over';
+        drawGuide();
+        complete(sh.n, Math.round(r.cover * 100) + '%', 'Получи се ' + sh.n + '!');
+      };
+      drawGuide();
+      let drawing = false, last = null;
+      const pos = (e) => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * cssW / r.width, y: (e.clientY - r.top) * cssH / r.height }; };
+      const line = (a, b) => {
+        uctx.strokeStyle = '#3498db'; uctx.lineWidth = brush; uctx.lineCap = 'round'; uctx.lineJoin = 'round';
+        uctx.beginPath(); uctx.moveTo(a.x, a.y); uctx.lineTo(b.x, b.y); uctx.stroke();
+      };
+      cv.addEventListener('pointerdown', (e) => { if(G.done()) return; cv.setPointerCapture(e.pointerId); drawing = true; last = pos(e); line(last, last); drawGuide(); });
+      cv.addEventListener('pointermove', (e) => { if(!drawing) return; const p = pos(e); line(last, p); last = p; drawGuide(); });
+      const end = () => {
+        if(!drawing) return;
+        drawing = false;
+        const r = evaluate();
+        if(r.cover >= 0.7 && r.acc >= 0.7) win(r);
+        else if(r.acc < 0.5 && r.drawn > 60){ G.mistakes++; M.bad(); M.feedback($('fb'), 'Опитай по-близо до линията 🙂', 'bad'); M.speak('Опитай по-близо до линиите.'); }
+      };
+      cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end); cv.addEventListener('pointerleave', end);
+      const tools = document.createElement('div'); tools.className = 'mx-row';
+      const clear = document.createElement('button'); clear.className = 'mx-btn gray'; clear.textContent = '🧽 Изчисти';
+      clear.onclick = () => { if(G.done()) return; uctx.clearRect(0, 0, cssW, cssH); drawGuide(); M.feedback($('fb'), ''); };
+      const check = document.createElement('button'); check.className = 'mx-btn green'; check.textContent = 'Готово ✓';
+      check.onclick = () => {
+        if(G.done()) return;
+        const r = evaluate();
+        if(r.cover >= 0.55 && r.acc >= 0.6) win(r);
+        else { M.feedback($('fb'), 'Още малко — мини по всички линии', 'bad'); M.speak('Още малко. Мини по всички линии.'); }
+      };
+      tools.appendChild(clear); tools.appendChild(check);
+      area.appendChild(tools);
     }
   },
   prosledi: {
@@ -409,6 +571,123 @@ function spawnBubble(W, H){
   bubbles.push(b);
 }
 
+/* ================= Рисувай свободно =================
+   Голям бял лист, големи бутони за цвят, дебелина и гума. Рисува се с един или
+   повече пръста; „Назад“ връща последната линия. Рисунката остава, докато детето
+   е в играта (и при завъртане на таблета). */
+const DRAW_COLORS = [
+  ['#2c3e50', 'черно'], ['#e74c3c', 'червено'], ['#e67e22', 'оранжево'], ['#f1c40f', 'жълто'], ['#2ecc71', 'зелено'],
+  ['#1e8449', 'тъмнозелено'], ['#3498db', 'синьо'], ['#1a3d8f', 'тъмносиньо'], ['#9b59b6', 'лилаво'], ['#fd79a8', 'розово'],
+  ['#8d5524', 'кафяво'], ['#95a5a6', 'сиво']
+];
+const DRAW_SIZES = [[8, 'тънко'], [18, 'средно'], [34, 'дебело']];
+const D = { color: DRAW_COLORS[1][0], size: 1, eraser: false, undo: [], strokes: 0, start: 0, used: false, ctx: null, w: 0, h: 0, pts: {} };
+(function buildDrawTools(){
+  $('drawColors').innerHTML = DRAW_COLORS.map(([c, n]) =>
+    `<button class="swatch" type="button" style="--c:${c}" data-c="${c}" aria-label="${n}" title="${n}"></button>`).join('');
+  $('drawSizes').innerHTML = DRAW_SIZES.map(([px, n], i) =>
+    `<button class="tool size" type="button" data-i="${i}" aria-label="${n}"><span class="dot" style="width:${Math.min(34, px)}px;height:${Math.min(34, px)}px"></span>${n}</button>`).join('');
+  M.$$('.swatch', $('drawColors')).forEach(b => b.onclick = () => { D.color = b.dataset.c; D.eraser = false; M.tone(660, 0.06, 'sine'); renderDrawTools(); });
+  M.$$('.tool.size', $('drawSizes')).forEach(b => b.onclick = () => { D.size = +b.dataset.i; M.tone(560, 0.06, 'sine'); renderDrawTools(); });
+})();
+function renderDrawTools(){
+  M.$$('.swatch', $('drawColors')).forEach(b => b.classList.toggle('on', !D.eraser && b.dataset.c === D.color));
+  M.$$('.tool.size', $('drawSizes')).forEach(b => {
+    b.classList.toggle('on', +b.dataset.i === D.size);
+    b.querySelector('.dot').style.background = D.eraser ? '#fff' : D.color;
+    b.querySelector('.dot').style.boxShadow = D.eraser ? '0 0 0 2px #2c3e50' : 'none';
+  });
+  $('eraserBtn').classList.toggle('on', D.eraser);
+  $('drawCanvas').style.cursor = D.eraser ? 'cell' : 'crosshair';
+}
+function drawEraser(){ D.eraser = !D.eraser; M.tone(440, 0.06, 'sine'); renderDrawTools(); }
+// Размерът на листа следва екрана; при промяна старата рисунка се пренася.
+function sizeDrawCanvas(){
+  const cv = $('drawCanvas'), dpr = window.devicePixelRatio || 1;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  if(!w || !h || (w === D.w && h === D.h && D.ctx)) return;
+  let old = null;
+  if(D.ctx && cv.width){ old = document.createElement('canvas'); old.width = cv.width; old.height = cv.height; old.getContext('2d').drawImage(cv, 0, 0); }
+  cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+  D.ctx = cv.getContext('2d'); D.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  D.ctx.lineCap = 'round'; D.ctx.lineJoin = 'round';
+  if(old) D.ctx.drawImage(old, 0, 0, old.width, old.height, 0, 0, w, h);
+  D.w = w; D.h = h; D.undo = [];
+}
+function openDraw(key){
+  M.markSeen(key || 'risuvane');
+  M.show('draw');
+  D.start = Date.now(); D.strokes = 0;
+  requestAnimationFrame(() => { sizeDrawCanvas(); renderDrawTools(); });
+  if(!D.used){ D.used = true; M.speak('Избери цвят и рисувай.'); }
+}
+window.addEventListener('resize', () => { if($('draw').classList.contains('active')) sizeDrawCanvas(); });
+function drawSnapshot(){
+  const cv = $('drawCanvas');
+  try{ D.undo.push(D.ctx.getImageData(0, 0, cv.width, cv.height)); }catch(e){}
+  if(D.undo.length > 20) D.undo.shift();
+}
+function drawUndo(){
+  const img = D.undo.pop();
+  if(!img){ M.tone(220, 0.1, 'sine'); return; }
+  D.ctx.putImageData(img, 0, 0);
+  M.tone(480, 0.08, 'sine');
+}
+// „Нов лист“ иска второ докосване, за да не се изтрие рисунката случайно.
+let clearArmed = null;
+function drawClear(){
+  const b = $('clearBtn');
+  if(!clearArmed){
+    b.classList.add('armed'); b.lastChild.textContent = 'Сигурен ли си?';
+    clearArmed = setTimeout(() => { clearArmed = null; b.classList.remove('armed'); b.lastChild.textContent = 'Нов лист'; }, 2500);
+    M.speak('Натисни пак, за да започнеш нов лист.');
+    return;
+  }
+  clearTimeout(clearArmed); clearArmed = null; b.classList.remove('armed'); b.lastChild.textContent = 'Нов лист';
+  drawSnapshot();
+  D.ctx.clearRect(0, 0, D.w, D.h);
+  M.tone(700, 0.15, 'triangle');
+}
+function drawSave(){
+  const cv = $('drawCanvas');
+  const out = document.createElement('canvas'); out.width = cv.width; out.height = cv.height;
+  const o = out.getContext('2d'); o.fillStyle = '#fff'; o.fillRect(0, 0, out.width, out.height); o.drawImage(cv, 0, 0);
+  const d = new Date(), pad = (n) => String(n).padStart(2, '0');
+  const a = document.createElement('a');
+  a.download = 'risunka-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + '.png';
+  a.href = out.toDataURL('image/png');
+  document.body.appendChild(a); a.click(); a.remove();
+  M.chime && M.chime();
+  M.speak('Рисунката е запазена.');
+}
+(function(){
+  const cv = $('drawCanvas');
+  const pos = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  const seg = (a, b) => {
+    const c = D.ctx;
+    c.globalCompositeOperation = D.eraser ? 'destination-out' : 'source-over';
+    c.strokeStyle = D.color;
+    c.lineWidth = DRAW_SIZES[D.size][0] * (D.eraser ? 1.8 : 1);
+    c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+    c.globalCompositeOperation = 'source-over';
+  };
+  cv.addEventListener('pointerdown', (e) => {
+    if(!D.ctx) sizeDrawCanvas();
+    try{ cv.setPointerCapture(e.pointerId); }catch(x){}
+    if(!Object.keys(D.pts).length) drawSnapshot();   // „Назад“ връща цялото движение
+    const p = pos(e); D.pts[e.pointerId] = p; seg(p, p); D.strokes++;
+    e.preventDefault();
+  });
+  cv.addEventListener('pointermove', (e) => {
+    const last = D.pts[e.pointerId]; if(!last) return;
+    const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+    let prev = last;
+    (evs.length ? evs : [e]).forEach(ev => { const p = pos(ev); seg(prev, p); prev = p; });
+    D.pts[e.pointerId] = prev;
+  });
+  ['pointerup', 'pointercancel'].forEach(t => cv.addEventListener(t, (e) => { delete D.pts[e.pointerId]; }));
+})();
+
 /* ================= Светлинки ================= */
 let lctx = null, parts = [], lRaf = null, lStart = 0, lTouches = 0;
 function openLights(){
@@ -456,11 +735,13 @@ const baseGoMenu = G.goMenu;
 window.goMenu = function(){
   if($('bubbles').classList.contains('active') && popped) store.log('balonche', popped === 1 ? '1 пукнато балонче' : popped + ' пукнати балончета');
   if($('lights').classList.contains('active') && lTouches) store.log('svetlinki', Math.max(1, Math.round((Date.now() - lStart) / 60000)) + ' мин рисуване със светлина');
+  if($('draw').classList.contains('active') && D.strokes) store.log('risuvane', Math.max(1, Math.round((Date.now() - D.start) / 60000)) + ' мин свободно рисуване');
   stopBreath();
   document.body.classList.remove('dark-top');
   baseGoMenu();
 };
 if(location.hash === '#dishane') openBreath();
+else if(location.hash === '#risuvane') openDraw();
 else M.show('menu');
 </script>
 </body>

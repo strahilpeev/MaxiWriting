@@ -345,7 +345,7 @@ M.NEW_GAMES = {
   'chetene.html': ['chuy', 'broisrichki', 'posleden', 'glavni', 'izrechenie'],
   'chisla-i-pari.html': ['umnozhenie', 'shabloni', 'figuri', 'kalendar'],
   'vnimanie.html': ['simon', 'lyavo', 'labirint'],
-  'dvizhenie.html': ['tochki'],
+  'dvizhenie.html': ['tochki', 'konturi', 'risuvane'],
   'govorya.html': ['bezopasnost', 'vreme']
 };
 const SEEN_KEY = 'maxiSeenNew_v1';
