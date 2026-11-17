@@ -97,7 +97,7 @@ function load(){
         st.month = [t.getFullYear(), t.getMonth()]; st.year = t.getFullYear();
         render();
       });
-  }).catch(() => fail('Няма връзка със сървъра.'));
+  }).catch((e) => { try{ console.error(e); }catch(x){} fail('Няма връзка със сървъра.'); });
   if(window.MaxiDB) go(window.MaxiDB);
   else window.addEventListener('maxidb-ready', () => go(window.MaxiDB), { once:true });
   setTimeout(() => { if(!D && !window.MaxiDB) fail('Няма връзка с интернет.'); }, 12000);
