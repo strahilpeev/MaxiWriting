@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node verify.mjs && node test/accounts.mjs && node test/accounts.mjs dist && node test/rewards.mjs && node test/rewards.mjs dist && node test/dvizhenie.mjs && node test/dvizhenie.mjs dist"
+    "test": "node verify.mjs && node test/accounts.mjs && node test/accounts.mjs dist && node test/rewards.mjs && node test/rewards.mjs dist && node test/dvizhenie.mjs && node test/dvizhenie.mjs dist && node test/all-games.mjs && node test/all-games.mjs dist && node test/stats.mjs && node test/stats.mjs dist"
   },
   "author": "",
   "license": "ISC",

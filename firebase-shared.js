@@ -148,6 +148,13 @@ function resendVerification() {
   return currentUser ? sendEmailVerification(currentUser) : Promise.resolve();
 }
 
+// Токен за сървъра на абонамента (api/*.php) — доказва кой е вписан.
+function idToken(force) {
+  return currentUser && !currentUser.isAnonymous
+    ? currentUser.getIdToken(!!force)
+    : Promise.reject(new Error("not-signed-in"));
+}
+
 function signOut() {
   return fbSignOut(auth);
 }
@@ -269,6 +276,7 @@ window.MaxiDB = {
   resetPassword,
   resendVerification,
   signOut,
+  idToken,
   listProfiles: (...a) => listProfiles_raw(...a).catch(markCorrupt),
   getProfile: (...a) => getProfile_raw(...a).catch(markCorrupt),
   upsertProfile: (...a) => upsertProfile_raw(...a).catch(markCorrupt),

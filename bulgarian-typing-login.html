@@ -851,6 +851,7 @@
   <p class="note">Пиши с клавиатура с кирилица (или латиница за EN/DE). При грешна буква тя се показва за кратко в червено и се чува как звучи, след което сама изчезва — просто продължи с правилната. Когато думата или изречението са изписани вярно, последната написана сричка се прочита първо, а после цялата дума/изречение. За всяка правилно написана дума получаваш точки (повече, ако няма нито една грешка), а нивото на "пътешественика" расте с натрупаните точки. Разделянето по срички е приблизително (по същия принцип, приложен и към английски/немски) и може да не е точно за всяка дума. Картинките идват от емоджита за познати думи или, ако няма такова, от Уикипедия (на съответния език) — а ако не бъде намерена подходяща снимка, се показва бележка. Думите на български са около 390 познати за децата неща (животни, храна, дом, играчки, природа, превозни средства…), всяка с картинка. В горните менюта се избира колко трудни да са (⭐ лесни — без струпани съгласни и трудни букви; ⭐⭐ средни; ⭐⭐⭐ трудни) и колко срички да имат; изборът се помни. Има и „Градове и герои“ с имена на места и личности. Режимите EN и DE предлагат над 150 думи всеки, с превод на български, срички и произношение — думите не са подредени по честота, а по теми (числа, цветове, семейство, храна, природа, глаголи и др.). Профилите и историята се пазят само локално, в браузъра на това устройство (без сървър) — паролата служи само за разграничаване между хора на едно устройство, не е истинска защита.</p>
 </main>
 
+<script src="maxi-points.js"></script>
 <script>
 /* ============ WORD BANK ============
    Curated by frequency tier. Tier 1 = function words & the most common
@@ -961,7 +962,8 @@ const THEMES_RAW = [
  "музика 🎵|песен 🎶|нота 🎵|пиано 🎹|китара 🎸|цигулка 🎻|барабан 🥁|тромпет 🎺|флейта 🪈|гайда 🎶|тъпан 🥁|хор 🎤|концерт 🎼|танц 💃|балет 🩰|театър 🎭|кино 🎬|картина 🖼️|рисунка 🎨|художник 🧑‍🎨|скулптура 🗿|глина 🏺|хартия 📄|мозайка 🧩|приказка 📖|стихотворение 📜|книга 📕|герой 🦸|юнак 🛡️|змей 🐉|принцеса 👸|джудже 🧙|вълшебник 🧙|фея 🧚"]
 ];
 const THEMES = {};
-THEMES_RAW.forEach(([key, icon, name, subject, raw]) => {
+// Темите са отделна част: ако нещо в тях се счупи, писането работи без тях.
+try{ THEMES_RAW.forEach(([key, icon, name, subject, raw]) => {
   const words = [];
   raw.split("|").forEach(it => {
     it = it.trim(); if(!it) return;
@@ -971,7 +973,7 @@ THEMES_RAW.forEach(([key, icon, name, subject, raw]) => {
     words.push({ w, e });
   });
   THEMES[key] = { icon, name, subject, words };
-});
+}); }catch(e){ try{ console.error('[Maxi] Темите са изключени:', e); }catch(x){} Object.keys(THEMES).forEach(k => delete THEMES[k]); }
 
 /* English & German vocabulary with Bulgarian translations, for the
    language toggle. Each entry: [word in that language, Bulgarian translation]. */
@@ -1443,13 +1445,9 @@ function addPoints(n){
 /* Натрупващи се звезди при поредни верни отговори — като поощрението
    в математическите приложения (звезда на всеки 5-ти пореден успех). */
 function renderStarsRow(animateLast){
-  starsRowEl.innerHTML = "";
-  for(let i=0;i<stars;i++){
-    const span = document.createElement("span");
-    span.textContent = "⭐";
-    if(animateLast && i === stars-1) span.className = "star-pop";
-    starsRowEl.appendChild(span);
-  }
+  // всеки 10 звезди → една по-голяма в друг цвят (MaxiPoints.renderStars), за да не излизат от екрана
+  if(window.MaxiPoints && MaxiPoints.renderStars){ MaxiPoints.renderStars(starsRowEl, stars, animateLast); return; }
+  starsRowEl.textContent = stars ? "⭐ " + stars : "";
 }
 
 function maybeAwardStar(){
@@ -1660,7 +1658,7 @@ const levelSelect = document.getElementById("levelSelect");
 const syllableSelect = document.getElementById("syllableSelect");
 const themeSelect = document.getElementById("themeSelect");
 // Менюто с темите, групирани по предмет.
-(function fillThemes(){
+try{ (function fillThemes(){
   const groups = {};
   Object.keys(THEMES).forEach(k => { const t = THEMES[k]; (groups[t.subject] = groups[t.subject] || []).push(k); });
   Object.keys(groups).forEach(subj => {
@@ -1673,7 +1671,8 @@ const themeSelect = document.getElementById("themeSelect");
     });
     themeSelect.appendChild(og);
   });
-})();
+})(); }catch(e){ try{ console.error('[Maxi] Менюто с темите е изключено:', e); }catch(x){} }
+if(!Object.keys(THEMES).length) themeSelect.style.display = "none";
 
 function setLanguage(newLang){
   lang = newLang;
@@ -1684,7 +1683,7 @@ function setLanguage(newLang){
   const isBg = lang === "bg";
   modeToggleWrap.style.display = isBg ? "" : "none";
   levelSelect.style.display = (isBg && mode === "word") ? "" : "none";
-  themeSelect.style.display = (isBg && mode === "word") ? "" : "none";
+  themeSelect.style.display = (isBg && mode === "word" && Object.keys(THEMES).length) ? "" : "none";
   syllableSelect.style.display = (mode === "word") ? "" : "none";
   imageToggleWrap.style.display = (isBg && mode === "sentence") ? "none" : "";
 
@@ -1701,7 +1700,7 @@ modeWordBtn.addEventListener("click", ()=>{
   modeWordBtn.classList.add("active");
   modeSentenceBtn.classList.remove("active");
   levelSelect.style.display = (lang === "bg") ? "" : "none";
-  themeSelect.style.display = (lang === "bg") ? "" : "none";
+  themeSelect.style.display = (lang === "bg" && Object.keys(THEMES).length) ? "" : "none";
   syllableSelect.style.display = "";
   imageToggleWrap.style.display = "";
   correctStreak = 0; streakCountEl.textContent = 0;
