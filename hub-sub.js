@@ -178,7 +178,8 @@ function bindCode(root){
    (например след проверка на абонамента), формата и списъкът не се губят. */
 let adminBox = null;
 function adminHtml(){
-  return `<div class="sub-title" style="margin-top:0.4rem">🎟️ Кодове за достъп <span class="sa-only">(виждате го само вие)</span></div>
+  return `<div class="sub-title" style="margin-top:0.4rem">📊 <a href="stats.html" target="_blank" rel="noopener">Статистика на посещенията и игрите</a> <span class="sa-only">(само за вас)</span></div>
+      <div class="sub-title" style="margin-top:0.8rem">🎟️ Кодове за достъп <span class="sa-only">(виждате го само вие)</span></div>
       <div class="sub-admin-row">
         <label>Брой <input class="sa-count" type="number" min="1" max="50" value="1"></label>
         <label>Важи <select class="sa-days">

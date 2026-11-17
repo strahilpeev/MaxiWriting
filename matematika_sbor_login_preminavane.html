@@ -766,13 +766,9 @@ function updateStreakDisplay() {
 
 function renderStars(animateLast) {
   const container = document.getElementById('stars');
-  container.innerHTML = '';
-  for (let i = 0; i < stars; i++) {
-    const span = document.createElement('span');
-    span.textContent = '⭐';
-    if (animateLast && i === stars - 1) span.className = 'star-pop';
-    container.appendChild(span);
-  }
+  // всеки 10 звезди → една по-голяма в друг цвят, за да не излизат от екрана
+  if (window.MaxiPoints && MaxiPoints.renderStars) { MaxiPoints.renderStars(container, stars, animateLast); return; }
+  container.textContent = stars ? '⭐ ' + stars : '';
 }
 
 /* ================== Звук ================== */

@@ -10,12 +10,17 @@ declare(strict_types=1);
 
 const MAXI_PRIVATE = '/storage/tapbooke/maxi-private';
 
+function maxi_env(): string {
+    $host = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
+    return (strpos($host, 'test.') === 0 || $host === 'localhost' || strpos($host, 'localhost:') === 0) ? 'test' : 'live';
+}
+function maxi_config_file(): string { return getenv('MAXI_CONFIG') ?: (MAXI_PRIVATE . '/config-' . maxi_env() . '.php'); }
+
 function maxi_config(): array {
     static $cfg = null;
     if ($cfg !== null) return $cfg;
-    $host = strtolower((string)($_SERVER['HTTP_HOST'] ?? ''));
-    $env = (strpos($host, 'test.') === 0 || $host === 'localhost' || strpos($host, 'localhost:') === 0) ? 'test' : 'live';
-    $file = getenv('MAXI_CONFIG') ?: (MAXI_PRIVATE . "/config-$env.php");
+    $env = maxi_env();
+    $file = maxi_config_file();
     if (!is_file($file)) maxi_fail(503, 'not-configured');
     $cfg = require $file;
     $cfg['env'] = $env;
@@ -274,3 +279,42 @@ function maxi_code_new(array $codes): string {
     } while (isset($codes[$k]));
     return $k;
 }
+
+/* ---------------- Статистика ----------------
+   Анонимно броене на посещения и игри. Устройството праща случаен ключ (без имена,
+   имейли или IP); сървърът пази само съкратен HMAC от него, за да брои „различни
+   потребители“. Файлове: data_dir/stats/ГГГГ-ММ.json
+     { "2026-11-17": { "v": 12, "vu": {"a1b2…":1}, "g": { "dvizhenie/konturi": { "n": 5, "u": {"a1b2…":1} } } } }
+   Работи и без config (тогава data_dir = maxi-private/data-<env>). */
+
+function maxi_data_dir(): string {
+    if (is_file(maxi_config_file())) return maxi_config()['data_dir'];
+    $d = MAXI_PRIVATE . '/data-' . maxi_env();
+    if (!is_dir($d)) @mkdir($d, 0700, true);
+    return $d;
+}
+function maxi_stats_dir(): string {
+    $d = maxi_data_dir() . '/stats';
+    if (!is_dir($d)) @mkdir($d, 0700, true);
+    return $d;
+}
+function maxi_stats_salt(): string {
+    $f = maxi_stats_dir() . '/salt.txt';
+    if (!is_file($f)) { file_put_contents($f, bin2hex(random_bytes(16)), LOCK_EX); @chmod($f, 0600); }
+    return trim((string)file_get_contents($f));
+}
+// JSON файл под заключване: $fn получава масива по референция.
+function maxi_json_tx(string $file, callable $fn) {
+    $h = fopen($file, 'c+');
+    if (!$h) maxi_fail(500, 'storage');
+    flock($h, LOCK_EX);
+    $data = json_decode((string)stream_get_contents($h), true);
+    if (!is_array($data)) $data = [];
+    $r = $fn($data);
+    ftruncate($h, 0); rewind($h);
+    fwrite($h, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    fflush($h); flock($h, LOCK_UN); fclose($h);
+    @chmod($file, 0600);
+    return $r;
+}
+

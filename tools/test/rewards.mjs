@@ -22,6 +22,8 @@ const server = http.createServer((q, r) => {
 const exe = ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome'].find(fs.existsSync);
 const browser = await chromium.launch({ executablePath: exe });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
+// Тези тестове натискат плочките на приложенията — подредба „по приложения“.
+await ctx.addInitScript(() => { try{ if(!localStorage.getItem('hubLayout_v1')) localStorage.setItem('hubLayout_v1', '"apps"'); }catch(e){} });
 await ctx.route('**/firebase-shared.js*', (r) => r.fulfill({ contentType: 'text/javascript', body: MOCK }));
 await ctx.route(/^https:/, (r) => r.abort());
 // Броим звуците и печата, без да пускаме истински.

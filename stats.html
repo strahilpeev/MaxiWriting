@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Статистика — Моите учебни игри</title>
+<meta name="robots" content="noindex, nofollow">
+<script src="maxi-common.js"></script>
+<style>
+  :root{ --ink:#1f2d3d; --soft:#5b6b7c; --line:#dfe6ee; --bg:#f4f7fa; --card:#fff; --v:#2f80c9; --u:#1b8a6b; --p:#c47a12; --bad:#c0392b; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; font-family:system-ui, "Segoe UI", Roboto, Arial, sans-serif; color:var(--ink); background:var(--bg); }
+  header{ display:flex; align-items:center; gap:1rem; padding:1rem clamp(1rem,3vw,2rem); background:#fff; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:2; }
+  header h1{ font-size:1.3rem; margin:0; margin-right:auto; }
+  header a{ color:var(--v); text-decoration:none; font-weight:600; }
+  main{ max-width:1100px; margin:0 auto; padding:1rem clamp(1rem,3vw,2rem) 3rem; display:grid; gap:1rem; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:1rem 1.2rem; }
+  .card h2{ font-size:1.05rem; margin:0 0 0.7rem; display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap; }
+  .card h2 .sp{ margin-left:auto; }
+  .kpis{ display:grid; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); gap:0.8rem; }
+  .kpi{ background:var(--bg); border-radius:12px; padding:0.8rem 1rem; }
+  .kpi .l{ font-size:0.82rem; color:var(--soft); }
+  .kpi .n{ font-size:1.6rem; font-weight:700; }
+  .kpi .s{ font-size:0.8rem; color:var(--soft); }
+  .nav{ display:inline-flex; gap:0.3rem; align-items:center; font-weight:600; font-size:0.95rem; }
+  button{ font:inherit; border:1px solid var(--line); background:#fff; border-radius:10px; padding:0.35rem 0.75rem; cursor:pointer; color:var(--ink); }
+  button.on{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  button:disabled{ opacity:0.4; cursor:default; }
+  .legend{ display:flex; gap:1rem; font-size:0.82rem; color:var(--soft); margin:0.2rem 0 0.4rem; flex-wrap:wrap; }
+  .legend i{ display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
+  svg.chart{ width:100%; height:auto; display:block; }
+  svg.chart text{ font-size:11px; fill:var(--soft); }
+  svg.chart .bar{ cursor:pointer; }
+  svg.chart .bar:hover rect{ opacity:0.8; }
+  .daybox{ margin-top:0.6rem; padding:0.7rem 0.9rem; background:var(--bg); border-radius:12px; font-size:0.92rem; }
+  table{ width:100%; border-collapse:collapse; font-size:0.92rem; }
+  th, td{ text-align:left; padding:0.45rem 0.4rem; border-bottom:1px solid var(--line); vertical-align:middle; }
+  th{ font-size:0.8rem; color:var(--soft); font-weight:600; }
+  td.num, th.num{ text-align:right; white-space:nowrap; }
+  tr.g{ cursor:pointer; } tr.g:hover td{ background:#f7fafc; }
+  tr.sel td{ background:#eef5fc; }
+  .barcell{ width:30%; }
+  .mini{ height:10px; border-radius:5px; background:var(--p); min-width:2px; }
+  .tag{ display:inline-block; font-size:0.72rem; font-weight:700; padding:0.1rem 0.5rem; border-radius:999px; margin-left:0.4rem; }
+  .tag.top{ background:#e2f4ea; color:#1b6b45; } .tag.low{ background:#fdecea; color:var(--bad); }
+  .w{ font-size:0.78rem; color:var(--soft); }
+  .two{ display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:1rem; }
+  ol.rank{ margin:0; padding-left:1.3rem; } ol.rank li{ margin:0.25rem 0; }
+  .msg{ padding:2rem 1rem; text-align:center; color:var(--soft); font-size:1.05rem; }
+  .note{ font-size:0.8rem; color:var(--soft); }
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 Статистика</h1>
+  <span class="note" id="who"></span>
+  <a href="app.html">↩ Към игрите</a>
+</header>
+<main id="main"><div class="msg" id="msg">Зареждане…</div></main>
+
+<script type="module" src="firebase-shared.js?v=21"></script>
+<script>
+/* Статистика за собственика: посещения по дни (месец/година) и игри.
+   Данните идват от api/stats.php (само за admin_emails). Всичко е анонимно. */
+(function(){
+'use strict';
+const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const MONTHS = ['януари','февруари','март','април','май','юни','юли','август','септември','октомври','ноември','декември'];
+const MON3 = ['яну','фев','мар','апр','май','юни','юли','авг','сеп','окт','ное','дек'];
+const pad = (n) => String(n).padStart(2, '0');
+const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const fmtDay = (s) => { const [y, m, d] = s.split('-'); return (+d) + ' ' + MONTHS[+m - 1]; };
+const num = (n) => Number(n || 0).toLocaleString('bg-BG');
+const GAMES = (window.Maxi && Maxi.GAMES) || [];
+const WORLDS = Object.fromEntries(((window.Maxi && Maxi.WORLDS) || []).map(w => [w.id, w]));
+const gname = (id) => { const g = GAMES.find(x => x.id === id); return g ? g.name : id; };
+const gicon = (id) => { const g = GAMES.find(x => x.id === id); return g ? g.icon : '🎮'; };
+
+let D = null;                              // отговорът на сървъра
+const st = { month: null, year: null, period: 30, game: null, day: null };
+
+function fail(t){ $('main').innerHTML = '<div class="msg">' + t + '</div>'; }
+
+function load(){
+  const go = (db) => db.ready.then(() => {
+    const u = db.user();
+    if(!u || u.anonymous){ fail('Влезте в <a href="app.html">игрите</a> с акаунта на собственика и отворете тази страница пак.'); return; }
+    $('who').textContent = u.email;
+    return db.idToken().then(tok => fetch('api/stats.php', { method:'POST', cache:'no-store',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + tok }, body: JSON.stringify({ days: 800 }) }))
+      .then(r => r.json().catch(() => ({ ok:false, error:'http-' + r.status })))
+      .then(j => {
+        if(!j.ok){ fail(j.error === 'not-admin' ? 'Статистиката е само за собственика.' : 'Не успях да заредя статистиката (' + esc(j.error) + ').'); return; }
+        D = j;
+        const t = new Date(j.today + 'T12:00:00');
+        st.month = [t.getFullYear(), t.getMonth()]; st.year = t.getFullYear();
+        render();
+      });
+  }).catch(() => fail('Няма връзка със сървъра.'));
+  if(window.MaxiDB) go(window.MaxiDB);
+  else window.addEventListener('maxidb-ready', () => go(window.MaxiDB), { once:true });
+  setTimeout(() => { if(!D && !window.MaxiDB) fail('Няма връзка с интернет.'); }, 12000);
+}
+
+/* ---------- сметки ---------- */
+const day = (s) => D.days[s] || { v:0, vu:0, p:0, pu:0, g:{} };
+function lastDays(n){
+  const out = [], t = new Date(D.today + 'T12:00:00');
+  for(let i = n - 1; i >= 0; i--){ const d = new Date(t); d.setDate(t.getDate() - i); out.push(ymd(d)); }
+  return out;
+}
+function sum(list, k){ return list.reduce((a, s) => a + day(s)[k], 0); }
+
+/* ---------- SVG стълбове ---------- */
+// series: [{ key, color, label }]; rows: [{ label, title, values:{key:n}, id }]
+function bars(rows, series, opts){
+  const W = 1000, H = 230, L = 34, B = 26, T = 10;
+  const max = Math.max(1, ...rows.flatMap(r => series.map(s => r.values[s.key] || 0)));
+  const step = (W - L) / rows.length, bw = Math.max(2, step * 0.8 / series.length);
+  const nice = Math.pow(10, Math.floor(Math.log10(max))), top = Math.ceil(max / nice) * nice;
+  let g = '';
+  for(let i = 0; i <= 4; i++){
+    const v = Math.round(top * i / 4), y = H - B - (H - B - T) * i / 4;
+    g += `<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="#e8edf2"/><text x="${L - 6}" y="${y + 4}" text-anchor="end">${v}</text>`;
+  }
+  rows.forEach((r, i) => {
+    const x0 = L + i * step + step * 0.1;
+    let inner = '';
+    series.forEach((s, k) => {
+      const v = r.values[s.key] || 0, h = (H - B - T) * v / top;
+      inner += `<rect x="${(x0 + k * bw).toFixed(1)}" y="${(H - B - h).toFixed(1)}" width="${(bw - 1).toFixed(1)}" height="${Math.max(v ? 1.5 : 0, h).toFixed(1)}" rx="2" fill="${s.color}"${r.sel ? ' stroke="#1f2d3d" stroke-width="1.5"' : ''}/>`;
+    });
+    const showLbl = rows.length <= 12 || (i % Math.ceil(rows.length / 16) === 0);
+    g += `<g class="bar" data-id="${esc(r.id || '')}"><title>${esc(r.title)}</title><rect x="${L + i * step}" y="${T}" width="${step}" height="${H - B - T}" fill="transparent"/>${inner}</g>`;
+    if(showLbl) g += `<text x="${(L + i * step + step / 2).toFixed(1)}" y="${H - 8}" text-anchor="middle">${esc(r.label)}</text>`;
+  });
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts && opts.aria || 'графика')}">${g}</svg>`;
+}
+const legend = (series) => '<div class="legend">' + series.map(s => `<span><i style="background:${s.color}"></i>${s.label}</span>`).join('') + '</div>';
+
+/* ---------- изглед ---------- */
+function render(){
+  const t7 = lastDays(7), t30 = lastDays(30), t365 = lastDays(365), today = day(D.today);
+  const P = D.periods;
+  let h = `<section class="card"><h2>Накратко</h2><div class="kpis">
+    <div class="kpi"><div class="l">Днес</div><div class="n">${num(today.v)}</div><div class="s">посещения · ${num(today.vu)} потребители · ${num(today.p)} игри</div></div>
+    <div class="kpi"><div class="l">Последните 7 дни</div><div class="n">${num(sum(t7, 'v'))}</div><div class="s">посещения · ${num(P['7'].users)} различни потребители</div></div>
+    <div class="kpi"><div class="l">Последните 30 дни</div><div class="n">${num(sum(t30, 'v'))}</div><div class="s">посещения · ${num(P['30'].users)} различни потребители</div></div>
+    <div class="kpi"><div class="l">Последната година</div><div class="n">${num(sum(t365, 'v'))}</div><div class="s">посещения · ${num(P['365'].users)} различни потребители</div></div>
+  </div><p class="note">„Потребител“ е дете (профил) на едно устройство. Посещение е отваряне на игрите; отваряне отново до 30 минути се брои като същото посещение.</p></section>`;
+
+  // месец по дни
+  const [Y, Mo] = st.month, dim = new Date(Y, Mo + 1, 0).getDate();
+  const mRows = [];
+  for(let d = 1; d <= dim; d++){
+    const s = Y + '-' + pad(Mo + 1) + '-' + pad(d), x = day(s);
+    mRows.push({ id: s, label: d, sel: st.day === s, values: { v: x.v, vu: x.vu, p: x.p }, title: `${fmtDay(s)}: ${x.v} посещения, ${x.vu} потребители, ${x.p} игри` });
+  }
+  const mSer = [{ key:'v', color:'var(--v)', label:'посещения' }, { key:'vu', color:'var(--u)', label:'потребители' }, { key:'p', color:'var(--p)', label:'пуснати игри' }];
+  const firstM = D.from.slice(0, 7), curM = D.today.slice(0, 7), thisM = Y + '-' + pad(Mo + 1);
+  h += `<section class="card"><h2>По дни <span class="sp nav"><button id="mPrev" ${thisM <= firstM ? 'disabled' : ''}>◀</button>
+    <span>${MONTHS[Mo]} ${Y}</span><button id="mNext" ${thisM >= curM ? 'disabled' : ''}>▶</button></span></h2>
+    ${legend(mSer)}${bars(mRows, mSer, { aria:'посещения по дни' })}<div id="dayBox"></div>
+    <p class="note">Докоснете ден, за да видите кои игри са играни.</p></section>`;
+
+  // година по месеци
+  const yRows = [];
+  for(let m = 0; m < 12; m++){
+    const pre = st.year + '-' + pad(m + 1);
+    const list = Object.keys(D.days).filter(s => s.startsWith(pre));
+    yRows.push({ id: pre, label: MON3[m], values: { v: sum(list, 'v'), p: sum(list, 'p'), d: list.filter(s => day(s).v).length },
+      title: `${MONTHS[m]} ${st.year}: ${sum(list, 'v')} посещения, ${sum(list, 'p')} игри, активни дни ${list.filter(s => day(s).v).length}` });
+  }
+  const ySer = [{ key:'v', color:'var(--v)', label:'посещения' }, { key:'p', color:'var(--p)', label:'пуснати игри' }];
+  h += `<section class="card"><h2>По месеци <span class="sp nav"><button id="yPrev" ${String(st.year) <= D.from.slice(0, 4) ? 'disabled' : ''}>◀</button>
+    <span>${st.year}</span><button id="yNext" ${String(st.year) >= D.today.slice(0, 4) ? 'disabled' : ''}>▶</button></span></h2>
+    ${legend(ySer)}${bars(yRows, ySer, { aria:'посещения по месеци' })}</section>`;
+
+  // игри
+  const per = st.period, list = lastDays(per), stats = {};
+  GAMES.forEach(g => { stats[g.id] = { n: 0, days: 0 }; });
+  list.forEach(s => Object.entries(day(s).g).forEach(([id, [n]]) => {
+    stats[id] = stats[id] || { n: 0, days: 0 }; stats[id].n += n; if(n) stats[id].days++;
+  }));
+  const rows = Object.entries(stats).map(([id, x]) => ({ id, n: x.n, days: x.days, users: (P[String(per)].games || {})[id] || 0 }))
+    .sort((a, b) => b.n - a.n || b.users - a.users || gname(a.id).localeCompare(gname(b.id), 'bg'));
+  const maxN = Math.max(1, ...rows.map(r => r.n));
+  const played = rows.filter(r => r.n), top = played.slice(0, 5), low = rows.slice().reverse().slice(0, 5);
+  const topSet = new Set(top.map(r => r.id)), lowSet = new Set(low.filter(r => !topSet.has(r.id)).map(r => r.id));
+  h += `<section class="card"><h2>Игри <span class="sp nav">${[7, 30, 365].map(p => `<button data-per="${p}" class="${p === per ? 'on' : ''}">${p === 365 ? 'година' : p + ' дни'}</button>`).join('')}</span></h2>
+    <div class="two">
+      <div><b>⭐ Най-предпочитани</b><ol class="rank">${top.length ? top.map(r => `<li>${gicon(r.id)} ${esc(gname(r.id))} — ${num(r.n)} пъти, ${num(r.users)} потребители</li>`).join('') : '<li>Още няма игри.</li>'}</ol></div>
+      <div><b>💤 Най-малко играни</b><ol class="rank">${low.map(r => `<li>${gicon(r.id)} ${esc(gname(r.id))} — ${r.n ? num(r.n) + ' пъти' : 'не е играна'}</li>`).join('')}</ol></div>
+    </div>
+    <table style="margin-top:0.8rem"><tr><th>Игра</th><th class="num">Пъти</th><th class="num">На ден</th><th class="num">Потребители</th><th class="num">Дни</th><th class="barcell"></th></tr>
+    ${rows.map(r => `<tr class="g${st.game === r.id ? ' sel' : ''}" data-g="${esc(r.id)}"><td>${gicon(r.id)} ${esc(gname(r.id))}${topSet.has(r.id) ? '<span class="tag top">топ</span>' : ''}${lowSet.has(r.id) ? '<span class="tag low">рядко</span>' : ''}
+      <div class="w">${esc((WORLDS[(GAMES.find(g => g.id === r.id) || {}).world] || {}).name || '')}</div></td>
+      <td class="num">${num(r.n)}</td><td class="num">${(r.n / per).toFixed(r.n / per < 10 ? 1 : 0).replace('.', ',')}</td><td class="num">${num(r.users)}</td><td class="num">${r.days}</td>
+      <td class="barcell"><div class="mini" style="width:${(100 * r.n / maxN).toFixed(1)}%"></div></td></tr>`).join('')}</table>
+    <div id="gameBox"></div>
+    <p class="note">„На ден“ е средно за периода. „Потребители“ са различните деца, играли поне веднъж. Докоснете игра за графика по дни.</p></section>`;
+  $('main').innerHTML = h;
+
+  // събития
+  const shiftM = (k) => { let [y, m] = st.month; m += k; if(m < 0){ m = 11; y--; } if(m > 11){ m = 0; y++; } st.month = [y, m]; st.day = null; render(); };
+  $('mPrev').onclick = () => shiftM(-1); $('mNext').onclick = () => shiftM(1);
+  $('yPrev').onclick = () => { st.year--; render(); }; $('yNext').onclick = () => { st.year++; render(); };
+  document.querySelectorAll('[data-per]').forEach(b => b.onclick = () => { st.period = +b.dataset.per; render(); });
+  document.querySelectorAll('section:nth-of-type(2) .bar').forEach(b => b.onclick = () => { st.day = b.dataset.id; render(); });
+  document.querySelectorAll('tr.g').forEach(tr => tr.onclick = () => { st.game = st.game === tr.dataset.g ? null : tr.dataset.g; render(); });
+  if(st.day) renderDay(st.day);
+  if(st.game) renderGame(st.game);
+}
+function renderDay(s){
+  const x = day(s), list = Object.entries(x.g).sort((a, b) => b[1][0] - a[1][0]);
+  $('dayBox').innerHTML = `<div class="daybox"><b>${fmtDay(s)}</b>: ${num(x.v)} посещения от ${num(x.vu)} потребители, ${num(x.p)} пуснати игри.
+    ${list.length ? '<table style="margin-top:0.4rem"><tr><th>Игра</th><th class="num">Пъти</th><th class="num">Потребители</th></tr>' +
+      list.map(([id, [n, u]]) => `<tr><td>${gicon(id)} ${esc(gname(id))}</td><td class="num">${n}</td><td class="num">${u}</td></tr>`).join('') + '</table>' : ''}</div>`;
+}
+function renderGame(id){
+  const list = lastDays(Math.min(st.period, 60));
+  const rows = list.map(s => { const g = day(s).g[id] || [0, 0]; return { id: s, label: +s.slice(8), values: { n: g[0], u: g[1] }, title: `${fmtDay(s)}: ${g[0]} пъти от ${g[1]} потребители` }; });
+  const ser = [{ key:'n', color:'var(--p)', label:'пъти' }, { key:'u', color:'var(--u)', label:'потребители' }];
+  $('gameBox').innerHTML = `<div class="daybox"><b>${gicon(id)} ${esc(gname(id))}</b> — по дни (последните ${list.length})${legend(ser)}${bars(rows, ser, { aria: gname(id) + ' по дни' })}</div>`;
+}
+load();
+})();
+</script>
+</body>
+</html>

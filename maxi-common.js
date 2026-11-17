@@ -555,6 +555,153 @@ M.parentGate = function(onOk, title){
    #fb, #hintBtn, #nextBtn и екрани #menu / #play.
    Инсталира глобални функции (openMode, newRound, complete, miss…),
    за да са удобни от HTML и от кода на режимите. */
+/* ================= Каталог на игрите =================
+   Всички игри на едно място: id за статистиката (приложение/игра), файл, икона, име
+   и „свят“ на началния екран. Нова игра → нов ред тук. */
+M.WORLDS = [
+  { id:'cheta',    icon:'📖', name:'Чета',           sub:'букви, срички, думи',   col:'#2f80c9', bg:'#e3f0fb' },
+  { id:'pisha',    icon:'✏️', name:'Пиша и рисувам', sub:'пръстче, писане, рисуване', col:'#c2457a', bg:'#fbe6ef' },
+  { id:'smyatam',  icon:'🔢', name:'Смятам',         sub:'числа, пари, часовник', col:'#c47a12', bg:'#fdf0d9' },
+  { id:'mislya',   icon:'🧩', name:'Мисля и помня',  sub:'памет и внимание',      col:'#6c55c9', bg:'#ecebfd' },
+  { id:'govorya',  icon:'💬', name:'Говоря',         sub:'чувства, моят ден',     col:'#1b8a6b', bg:'#dff4ec' },
+  { id:'pochivam', icon:'🌿', name:'Почивам',        sub:'дишане, балончета',     col:'#4f8a1f', bg:'#e8f3dc' }
+];
+M.GAMES = [
+  // [id, файл, игра в файла (или ''), икона, име, свят]
+  ['srichki', 'srichki-razmer.html', '', '📖', 'Срички на глас', 'cheta'],
+  ['chetene/kartinka', 'chetene.html', 'kartinka', '🐱', 'Коя е думата?', 'cheta'],
+  ['chetene/duma', 'chetene.html', 'duma', '🔤', 'Прочети и намери', 'cheta'],
+  ['chetene/zvuk', 'chetene.html', 'zvuk', '🅰️', 'Първият звук', 'cheta'],
+  ['chetene/posleden', 'chetene.html', 'posleden', '🔚', 'Последният звук', 'cheta'],
+  ['chetene/chuy', 'chetene.html', 'chuy', '👂', 'Чуй сричката', 'cheta'],
+  ['chetene/broisrichki', 'chetene.html', 'broisrichki', '👏', 'Колко срички?', 'cheta'],
+  ['chetene/srichki', 'chetene.html', 'srichki', '🧩', 'Сглоби думата', 'cheta'],
+  ['chetene/rimi', 'chetene.html', 'rimi', '🎵', 'Рими', 'cheta'],
+  ['chetene/glavni', 'chetene.html', 'glavni', 'Аа', 'Голяма и малка', 'cheta'],
+  ['chetene/izrechenie', 'chetene.html', 'izrechenie', '📝', 'Подреди изречението', 'cheta'],
+  ['pisane', 'bulgarian-typing-login.html', '', '⌨️', 'Пиши и говори', 'pisha'],
+  ['dvizhenie/prosledi', 'dvizhenie.html', 'prosledi', '✍️', 'Проследи букви', 'pisha'],
+  ['dvizhenie/konturi', 'dvizhenie.html', 'konturi', '🏠', 'Проследи предмет', 'pisha'],
+  ['dvizhenie/tochki', 'dvizhenie.html', 'tochki', '1·2·3', 'Свържи точките', 'pisha'],
+  ['dvizhenie/risuvane', 'dvizhenie.html', 'risuvane', '🎨', 'Рисувай свободно', 'pisha'],
+  ['sbor', 'matematika_sbor_login_preminavane.html', '', '➕', 'Събиране', 'smyatam'],
+  ['izvazhdane', 'matematika_izvazhdane_login_zaemane.html', '', '➖', 'Изваждане', 'smyatam'],
+  ['pari/broene', 'chisla-i-pari.html', 'broene', '🍎', 'Броене', 'smyatam'],
+  ['pari/sravnenie', 'chisla-i-pari.html', 'sravnenie', '⚖️', 'По-малко или повече', 'smyatam'],
+  ['pari/prava', 'chisla-i-pari.html', 'prava', '📏', 'Числова права', 'smyatam'],
+  ['pari/umnozhenie', 'chisla-i-pari.html', 'umnozhenie', '✖️', 'Умножение', 'smyatam'],
+  ['pari/shabloni', 'chisla-i-pari.html', 'shabloni', '🔴', 'Какво следва?', 'smyatam'],
+  ['pari/figuri', 'chisla-i-pari.html', 'figuri', '🔺', 'Фигури и цветове', 'smyatam'],
+  ['pari/chasovnik', 'chisla-i-pari.html', 'chasovnik', '🕒', 'Часовник', 'smyatam'],
+  ['pari/kalendar', 'chisla-i-pari.html', 'kalendar', '📅', 'Дни, месеци, сезони', 'smyatam'],
+  ['pari/razpoznavane', 'chisla-i-pari.html', 'razpoznavane', '🪙', 'Монети и банкноти', 'smyatam'],
+  ['pari/kolko', 'chisla-i-pari.html', 'kolko', '💰', 'Колко пари има?', 'smyatam'],
+  ['pari/plati', 'chisla-i-pari.html', 'plati', '🛒', 'Плати точно', 'smyatam'],
+  ['pari/resto', 'chisla-i-pari.html', 'resto', '💶', 'Колко е рестото?', 'smyatam'],
+  ['pari/stigat', 'chisla-i-pari.html', 'stigat', '🤔', 'Стигат ли парите?', 'smyatam'],
+  ['vnimanie/memory', 'vnimanie.html', 'memory', '🃏', 'Намери двойките', 'mislya'],
+  ['vnimanie/sortirane', 'vnimanie.html', 'sortirane', '🧺', 'Подреди в кошниците', 'mislya'],
+  ['vnimanie/razlichno', 'vnimanie.html', 'razlichno', '🔍', 'Кое е различното?', 'mislya'],
+  ['vnimanie/lipsva', 'vnimanie.html', 'lipsva', '❓', 'Какво липсва?', 'mislya'],
+  ['vnimanie/poredica', 'vnimanie.html', 'poredica', '🔢', 'Какво става после?', 'mislya'],
+  ['vnimanie/simon', 'vnimanie.html', 'simon', '🔴', 'Повтори реда', 'mislya'],
+  ['vnimanie/lyavo', 'vnimanie.html', 'lyavo', '⬅️', 'Ляво и дясно', 'mislya'],
+  ['vnimanie/labirint', 'vnimanie.html', 'labirint', '🐭', 'Лабиринт', 'mislya'],
+  ['govorya/aac', 'govorya.html', 'aac', '🗣️', 'Моето табло', 'govorya'],
+  ['govorya/grafik', 'govorya.html', 'grafik', '📅', 'Моят ден', 'govorya'],
+  ['govorya/chuvstva', 'govorya.html', 'chuvstva', '💛', 'Как се чувствам?', 'govorya'],
+  ['govorya/emocii', 'govorya.html', 'emocii', '😀', 'Познай емоцията', 'govorya'],
+  ['govorya/bezopasnost', 'govorya.html', 'bezopasnost', '🚦', 'Светофар и безопасност', 'govorya'],
+  ['govorya/vreme', 'govorya.html', 'vreme', '☂️', 'Облечи се за времето', 'govorya'],
+  ['govorya/taimer', 'govorya.html', 'taimer', '⏳', 'Таймер', 'govorya'],
+  ['dvizhenie/dishane', 'dvizhenie.html', 'dishane', '🌬️', 'Дишай с мен', 'pochivam'],
+  ['dvizhenie/balonche', 'dvizhenie.html', 'balonche', '🫧', 'Балончета', 'pochivam'],
+  ['dvizhenie/svetlinki', 'dvizhenie.html', 'svetlinki', '✨', 'Светлинки', 'pochivam']
+].map(([id, file, mode, icon, name, world]) => ({ id, file, mode, icon, name, world }));
+M.gameById = (id) => M.GAMES.find(g => g.id === id) || null;
+const APP_SHORT = { 'chetene.html':'chetene', 'chisla-i-pari.html':'pari', 'vnimanie.html':'vnimanie', 'govorya.html':'govorya', 'dvizhenie.html':'dvizhenie' };
+
+/* ================= Анонимна статистика =================
+   Брои посещенията (отваряне на хъба) и игрите. Пази опашка на устройството и я
+   праща на api/track.php, когато има интернет. Без имена и имейли: само случаен ключ
+   на устройството + номера на профила. Изключена е извън tapnime.eu (тестовете я
+   включват с __statsForce). */
+const ST_Q = 'maxiStatsQ_v1', ST_DEV = 'maxiDev_v1', ST_LAST = 'maxiStatsLast_v1';
+const S = M.Stats = {};
+S.enabled = function(){
+  try{ if(localStorage.getItem('__statsForce') === '1') return true; }catch(e){}
+  return /(^|\.)tapnime\.eu$/i.test(location.hostname);
+};
+const lsGet = (k, d) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; }catch(e){ return d; } };
+const lsSet = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+function devKey(){
+  let k = lsGet(ST_DEV, '');
+  if(!/^[A-Za-z0-9_-]{16,40}$/.test(k)){
+    const a = new Uint8Array(15);
+    (window.crypto && crypto.getRandomValues) ? crypto.getRandomValues(a) : a.forEach((x, i) => a[i] = Math.random() * 256);
+    k = btoa(String.fromCharCode.apply(null, a)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+    lsSet(ST_DEV, k);
+  }
+  return k;
+}
+function userKey(){
+  const p = lsGet('hubActiveProfile_v1', null);
+  const pid = p && p.id ? String(p.id).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 20) : '';
+  return (devKey() + (pid ? '_' + pid : '')).slice(0, 64);
+}
+function today(){ const d = new Date(), z = (n) => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()); }
+let flushTimer = null, flushing = false;
+function push(ev){
+  if(!S.enabled()) return;
+  ev.d = today(); ev.u = userKey();
+  const q = lsGet(ST_Q, []);
+  q.push(ev);
+  if(q.length > 500) q.splice(0, q.length - 500);
+  lsSet(ST_Q, q);
+  clearTimeout(flushTimer); flushTimer = setTimeout(S.flush, 2000);
+}
+S.flush = function(){
+  if(!S.enabled() || flushing || (navigator.onLine === false)) return Promise.resolve();
+  const q = lsGet(ST_Q, []);
+  if(!q.length) return Promise.resolve();
+  const batch = q.slice(0, 100);
+  flushing = true;
+  return fetch('api/track.php', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ e: batch }), keepalive:true, cache:'no-store' })
+    .then(r => {
+      // приети (2xx) или безсмислени за повторение (4xx) → махаме ги от опашката
+      if(r.ok || (r.status >= 400 && r.status < 500)){
+        const now = lsGet(ST_Q, []); now.splice(0, batch.length); lsSet(ST_Q, now);
+        if(r.ok && now.length) setTimeout(S.flush, 500);
+      }
+    })
+    .catch(() => {})
+    .then(() => { flushing = false; });
+};
+// Посещение: отваряне на хъба (повторно отваряне до 30 мин е същото посещение).
+S.visit = function(){
+  const last = lsGet(ST_LAST, {});
+  if(last.v && Date.now() - last.v < 30 * 60000){ last.v = Date.now(); lsSet(ST_LAST, last); return; }
+  last.v = Date.now(); lsSet(ST_LAST, last);
+  push({ t:'v' });
+};
+// Игра: една и съща игра до 1 мин е едно пускане.
+S.game = function(id){
+  if(!id || !/^[a-z0-9_-]{1,32}(\/[a-z0-9_-]{1,32})?$/.test(id)) return;
+  const last = lsGet(ST_LAST, {});
+  last.g = last.g || {};
+  if(last.g[id] && Date.now() - last.g[id] < 60000) return;
+  last.g[id] = Date.now();
+  Object.keys(last.g).forEach(k => { if(Date.now() - last.g[k] > 3600000) delete last.g[k]; });
+  lsSet(ST_LAST, last);
+  push({ t:'g', g:id });
+};
+S.gameHere = (key) => { const a = APP_SHORT[thisFile()]; if(a) S.game(a + '/' + key); };
+if(typeof window !== 'undefined'){
+  window.addEventListener('online', () => S.flush());
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') S.flush(); });
+  setTimeout(() => S.flush(), 3000);
+}
+
 /* ================= Изолация на игрите =================
    Игрите в едно приложение са в един файл и делят общия код. За да не може грешка
    в една игра да спре другите:
@@ -587,7 +734,7 @@ M.guard = function(key, fn){
   if(typeof fn !== 'function') return function(){ M.gameDown(key); };
   return function(){
     if(M.brokenGames[key]){ M.gameDown(key); return; }
-    try{ return fn.apply(this, arguments); }
+    try{ const r = fn.apply(this, arguments); M.Stats.gameHere(key); return r; }
     catch(e){
       try{ console.error('[Maxi] Грешка в „' + key + '“:', e); }catch(x){}
       M.show('menu');
@@ -602,9 +749,19 @@ M.createGame = function(store, modes, opts){
   store.rec.extra.levels = store.rec.extra.levels || {};
   const G = { mode:null, level:0, roundId:0, mistakes:0, promptSpeech:'', hintFn:null, modes, store };
 
-  G.goMenu = function(){ G.roundId++; M.stopSpeech(); if(G.onLeave) G.onLeave(); G.onLeave = null; M.show('menu'); };
+  // Отворена направо от хъба (app.html → файл#g=игра): „Назад“ връща в хъба, не в менюто тук.
+  G.deep = false;
+  G.goMenu = function(){
+    G.roundId++; M.stopSpeech(); if(G.onLeave) G.onLeave(); G.onLeave = null;
+    if(G.deep){
+      G.deep = false;
+      try{ if(window.parent !== window && typeof window.parent.closeApp === 'function'){ window.parent.closeApp(); return; } }catch(e){}
+    }
+    M.show('menu');
+  };
   G.openMode = function(key){
     if(!modes[key] || M.brokenGames[key]){ M.gameDown(key); return; }
+    M.Stats.gameHere(key);
     G.mode = key;
     M.markSeen(key);
     const lv = modes[key].levels || [];
@@ -725,6 +882,13 @@ M.createGame = function(store, modes, opts){
   ['goMenu','openMode','newRound','setPrompt','sayPrompt','setHint','hint','complete','miss','optionButtons','numberOptions','lockOptions']
     .forEach(k => { window[k] = G[k]; });
   M.bindBadges(store);
+  // file.html#g=игра → отваряме направо тази игра (плочката ѝ — и за игрите извън MODES).
+  setTimeout(() => {
+    const m = /^#g=(\w+)$/.exec(location.hash || '');
+    if(!m) return;
+    const tile = tilesOf(m[1])[0];
+    if(tile){ G.deep = true; tile.click(); }
+  }, 0);
   return G;
 };
 

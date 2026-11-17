@@ -236,6 +236,32 @@ try {
   chk(r.code === 429 && r.j.error === 'too-many', '11-ти опит след 10 грешни → изчакване (дори с верен код)');
   chk(fs.existsSync(path.join(DATA, 'codes.json')) && (fs.statSync(path.join(DATA, 'codes.json')).mode & 0o077) === 0, 'codes.json е достъпен само за сървъра (0600)');
 
+  // статистика: анонимни посещения и игри
+  const dd = (k) => { const d = new Date(Date.now() + k * 86400000); return d.toLocaleDateString('sv-SE', { timeZone: 'Europe/Sofia' }); };
+  const T0 = dd(0), T1 = dd(-1);
+  const tr = (e) => fetch('http://127.0.0.1:8794/api/track.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ e }) });
+  r = await tr([
+    { t: 'v', d: T0, u: 'deviceAAAA_p1' }, { t: 'v', d: T0, u: 'deviceAAAA_p1' }, { t: 'v', d: T0, u: 'deviceBBBB_p7' },
+    { t: 'g', g: 'dvizhenie/konturi', d: T0, u: 'deviceAAAA_p1' }, { t: 'g', g: 'dvizhenie/konturi', d: T0, u: 'deviceBBBB_p7' },
+    { t: 'g', g: 'dvizhenie/konturi', d: T0, u: 'deviceBBBB_p7' }, { t: 'g', g: 'pisane', d: T1, u: 'deviceAAAA_p1' },
+    { t: 'v', d: T1, u: 'deviceAAAA_p1' },
+    // боклук — пропуска се
+    { t: 'x', d: T0, u: 'deviceAAAA_p1' }, { t: 'g', g: '../etc', d: T0, u: 'deviceAAAA_p1' }, { t: 'v', d: '2001-01-01', u: 'deviceAAAA_p1' },
+    { t: 'v', d: T0, u: 'короткo' }, { t: 'g', g: 'A/B', d: T0, u: 'deviceAAAA_p1' }
+  ]);
+  chk(r.status === 204, 'track.php приема събития без вход (204)');
+  chk((await tr('нещо')).status === 400, 'track.php: лоши данни → 400');
+  const sfiles = fs.readdirSync(path.join(DATA, 'stats'));
+  const raw = fs.readFileSync(path.join(DATA, 'stats', T0.slice(0, 7) + '.json'), 'utf8');
+  chk(!/device/.test(raw) && sfiles.includes('salt.txt'), 'на сървъра няма ключовете на устройствата — само съкратен HMAC');
+  chk((await call('stats.php', token({}), {})).code === 403, 'родител не вижда статистиката → 403');
+  r = await call('stats.php', OWN, { days: 30 });
+  const s0 = r.j.days[T0], s1 = r.j.days[T1];
+  chk(r.code === 200 && s0.v === 3 && s0.vu === 2, 'днес: 3 посещения от 2 потребители (' + (s0 && s0.v) + '/' + (s0 && s0.vu) + ')');
+  chk(s0.g['dvizhenie/konturi'][0] === 3 && s0.g['dvizhenie/konturi'][1] === 2 && s0.p === 3 && s0.pu === 2, 'игра днес: 3 пъти от 2 потребители');
+  chk(s1.v === 1 && s1.g['pisane'][0] === 1 && !('A/B' in s0.g) && !('../etc' in s0.g), 'вчера отделно; невалидните игри са пропуснати');
+  chk(r.j.periods['7'].users === 2 && r.j.periods['7'].games['dvizhenie/konturi'] === 2 && r.j.periods['7'].games['pisane'] === 1, 'за 7 дни: 2 различни потребители, по игри — също');
+
   // защитени файлове
   const lib = await fetch('http://127.0.0.1:8794/api/lib.php');
   const libText = await lib.text();

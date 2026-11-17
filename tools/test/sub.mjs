@@ -28,6 +28,8 @@ const mockCodes = [{ code: 'MAXI-ABCD-2345', created: 1, days: null, note: '', u
 
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
+// Тези тестове натискат плочките на приложенията — подредба „по приложения“.
+await ctx.addInitScript(() => { try{ if(!localStorage.getItem('hubLayout_v1')) localStorage.setItem('hubLayout_v1', '"apps"'); }catch(e){} });
 await ctx.route('**/firebase-shared.js*', (r) => r.fulfill({ contentType: 'text/javascript', body: MOCK }));
 await ctx.route('**/api/*.php', (r) => {
   const file = new URL(r.request().url()).pathname.split('/').pop();

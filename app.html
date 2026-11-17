@@ -19,7 +19,7 @@
 <script src="maxi-points.js"></script>
 <script src="maxi-common.js"></script>
 <script src="hub-rewards.js?v=24"></script>
-<script src="hub-sub.js?v=4"></script>
+<script src="hub-sub.js?v=5"></script>
 
 <style>
   :root{
@@ -230,6 +230,37 @@
   .tile.vnimanie{ background:linear-gradient(160deg,#b28be0,#7a52b3); }
   .tile.govorya{ background:linear-gradient(160deg,#5cc6c0,#2a8c86); }
   .tile.dvizhenie{ background:linear-gradient(160deg,#7fb3d5,#3c6e9e); }
+
+  /* ---------- Светове: игрите по това, което детето прави ---------- */
+  .worlds-wrap{ width:100%; max-width:1100px; display:flex; flex-direction:column; gap:clamp(0.8rem,2vw,1.2rem); }
+  .continue-btn{ align-self:center; display:flex; align-items:center; gap:0.7rem; border:none; border-radius:999px; background:#fff;
+    padding:0.7rem 1.4rem; font:inherit; font-size:clamp(1rem,2.2vw,1.25rem); font-weight:700; cursor:pointer; box-shadow:var(--card-shadow); color:#2c3e50; }
+  .continue-btn .ci{ font-size:1.6em; line-height:1; }
+  .continue-btn[hidden], .worlds[hidden], #world-view[hidden], .worlds-wrap[hidden]{ display:none; }
+  .worlds{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:clamp(0.8rem,2.4vw,1.8rem); }
+  @media (max-width:640px), (orientation:portrait) and (max-width:900px){ .worlds{ grid-template-columns:repeat(2, minmax(0,1fr)); } }
+  .world{ position:relative; border:none; border-radius:28px; cursor:pointer; color:#fff; box-shadow:var(--card-shadow);
+    min-height:clamp(150px, 21vw, 220px); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.4rem;
+    padding:1rem; font:inherit; transition:transform .15s ease; -webkit-tap-highlight-color:transparent; }
+  .world:active{ transform:scale(0.96); }
+  .world .wi{ font-size:clamp(3rem, 8vw, 5rem); line-height:1; }
+  .world .wl{ font-size:clamp(1.25rem, 3vw, 1.9rem); font-weight:800; text-align:center; }
+  .world .ws{ font-size:clamp(0.8rem, 1.6vw, 1rem); opacity:0.92; text-align:center; }
+  .world-head{ display:flex; align-items:center; gap:0.8rem; border-radius:24px; padding:0.6rem 1rem; color:#fff; box-shadow:var(--card-shadow); }
+  .world-head .wb{ border:none; background:rgba(255,255,255,0.25); color:#fff; border-radius:999px; font:inherit; font-weight:800;
+    font-size:clamp(1rem,2.2vw,1.2rem); padding:0.55rem 1.1rem; cursor:pointer; }
+  .world-head .wi{ font-size:2.4rem; } .world-head h2{ margin:0; font-size:clamp(1.3rem,3vw,1.9rem); }
+  .wgames{ display:grid; grid-template-columns:repeat(auto-fill, minmax(clamp(150px,20vw,210px), 1fr)); gap:clamp(0.7rem,2vw,1.2rem); }
+  .wgame{ position:relative; border:4px solid transparent; border-radius:24px; cursor:pointer; min-height:clamp(120px,15vw,160px);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.4rem; padding:0.8rem; font:inherit;
+    box-shadow:var(--card-shadow); transition:transform .15s ease; -webkit-tap-highlight-color:transparent; }
+  .wgame:active{ transform:scale(0.95); }
+  .wgame .gi{ font-size:clamp(2.2rem,5vw,3.2rem); line-height:1; font-weight:800; }
+  .wgame .gl{ font-size:clamp(1rem,2vw,1.2rem); font-weight:700; text-align:center; }
+  .layout-toggle{ align-self:center; border:none; background:transparent; color:#5b6b7c; font:inherit; font-size:0.9rem; text-decoration:underline; cursor:pointer; padding:0.4rem; }
+  #menu.layout-worlds > .tiles{ display:none; }
+  #menu.layout-apps .worlds-wrap > :not(.layout-toggle){ display:none; }
+  #menu.layout-apps .worlds-wrap{ order:3; }
 
   /* ---------- PROGRESS / HISTORY CARD ---------- */
   .progress-card{
@@ -700,6 +731,15 @@
     </div>
     <div class="sub-banner" id="sub-banner" hidden onclick="openAdmin()"></div>
     <h1 id="menu-greeting">Какво искаш да поиграем днес? 🌟</h1>
+    <div class="worlds-wrap" id="worlds-wrap">
+      <button class="continue-btn" id="continue-btn" type="button" hidden></button>
+      <div class="worlds" id="worlds"></div>
+      <div id="world-view" hidden>
+        <div class="world-head" id="world-head"></div>
+        <div class="wgames" id="wgames" style="margin-top:1rem"></div>
+      </div>
+      <button class="layout-toggle" id="layout-toggle" type="button"></button>
+    </div>
     <div class="tiles">
       <button class="tile srichki" onclick="openApp('srichki-razmer.html')">
         <span class="icon">📖</span>
@@ -874,7 +914,65 @@
     if(el === menu) refreshNewBadges();
   }
   // „✨ N нови“ върху плочките на приложенията, докато има неотворени нови игри.
+  /* ---- Светове: 6 големи плочки по умения → игрите вътре, всяка се отваря направо ---- */
+  const WORLDS_ON = true;   // false → само старата подредба по приложения
+  const LAYOUT_KEY = 'hubLayout_v1', LAST_KEY = 'hubLastGame_v1';
+  let openWorld = null;
+  const hubLayout = () => { try{ return JSON.parse(localStorage.getItem(LAYOUT_KEY)) === 'apps' ? 'apps' : 'worlds'; }catch(e){ return 'worlds'; } };
+  const unseenIn = (g) => !!(window.Maxi && Maxi.unseenNew && g.mode && Maxi.unseenNew(g.file).includes(g.mode));
+  function worldBg(w){ return 'linear-gradient(160deg,' + w.col + 'bb,' + w.col + ')'; }
+  function renderWorlds(){
+    if(!WORLDS_ON || !window.Maxi || !Maxi.WORLDS){ menu.classList.add('layout-apps'); document.getElementById('worlds-wrap').hidden = true; return; }
+    menu.classList.toggle('layout-worlds', hubLayout() === 'worlds');
+    menu.classList.toggle('layout-apps', hubLayout() === 'apps');
+    document.getElementById('layout-toggle').textContent = hubLayout() === 'worlds' ? '🗂️ Подредба по приложения (за родители)' : '🌍 Подредба по светове';
+    const box = document.getElementById('worlds');
+    box.innerHTML = Maxi.WORLDS.map(w => {
+      const n = Maxi.GAMES.filter(g => g.world === w.id && unseenIn(g)).length;
+      return `<button class="world" type="button" data-w="${w.id}" style="background:${worldBg(w)}"><span class="wi">${w.icon}</span>` +
+        `<span class="wl">${escapeHtml(w.name)}</span><span class="ws">${escapeHtml(w.sub)}</span>` +
+        (n ? `<span class="tile-new">✨ ${n} ${n === 1 ? 'нова' : 'нови'}</span>` : '') + '</button>';
+    }).join('');
+    box.querySelectorAll('.world').forEach(b => b.onclick = () => showWorld(b.dataset.w, true));
+    // „Продължи“ — последната игра на това дете
+    const btn = document.getElementById('continue-btn');
+    let last = null; try{ const a = getActiveProfile(); last = (JSON.parse(localStorage.getItem(LAST_KEY)) || {})[a ? a.id : '-']; }catch(e){}
+    const g = last && Maxi.gameById(last);
+    btn.hidden = !g;
+    if(g){ btn.innerHTML = `<span class="ci">▶</span> Продължи: <span class="ci">${g.icon}</span> ${escapeHtml(g.name)}`; btn.onclick = () => openGame(g.id); }
+    if(openWorld) showWorld(openWorld, false); else { box.hidden = false; document.getElementById('world-view').hidden = true; }
+  }
+  function showWorld(id, speak){
+    const w = Maxi.WORLDS.find(x => x.id === id); if(!w) return;
+    openWorld = id;
+    document.getElementById('worlds').hidden = true;
+    document.getElementById('continue-btn').hidden = true;
+    const head = document.getElementById('world-head');
+    head.style.background = worldBg(w);
+    head.innerHTML = `<button class="wb" type="button">← Назад</button><span class="wi">${w.icon}</span><h2>${escapeHtml(w.name)}</h2>`;
+    head.querySelector('.wb').onclick = closeWorld;
+    const list = Maxi.GAMES.filter(g => g.world === id);
+    const grid = document.getElementById('wgames');
+    grid.innerHTML = list.map(g => `<button class="wgame" type="button" data-g="${g.id}" style="background:${w.bg};color:${w.col};border-color:${w.col}33">` +
+      `<span class="gi">${g.icon}</span><span class="gl">${escapeHtml(g.name)}</span>` +
+      (unseenIn(g) ? '<span class="tile-new">✨ НОВО</span>' : '') + '</button>').join('');
+    grid.querySelectorAll('.wgame').forEach(b => b.onclick = () => openGame(b.dataset.g));
+    document.getElementById('world-view').hidden = false;
+    if(speak && window.Maxi && Maxi.speak) Maxi.speak(w.name);
+  }
+  function closeWorld(){ openWorld = null; renderWorlds(); }
+  function openGame(id){
+    const g = Maxi.gameById(id); if(!g) return;
+    try{ const a = getActiveProfile(), all = JSON.parse(localStorage.getItem(LAST_KEY)) || {}; all[a ? a.id : '-'] = id; localStorage.setItem(LAST_KEY, JSON.stringify(all)); }catch(e){}
+    openApp(g.file, g.mode || undefined);
+  }
+  document.getElementById('layout-toggle').onclick = () => {
+    try{ localStorage.setItem(LAYOUT_KEY, JSON.stringify(hubLayout() === 'worlds' ? 'apps' : 'worlds')); }catch(e){}
+    openWorld = null; renderWorlds();
+  };
+
   function refreshNewBadges(){
+    try{ renderWorlds(); }catch(e){ try{ console.error('[Maxi] Световете:', e); }catch(x){} }
     if(!window.Maxi || !Maxi.unseenNew) return;
     document.querySelectorAll('#menu .tile').forEach(t => {
       const m = (t.getAttribute('onclick') || '').match(/openApp\('([^']+)'\)/);
@@ -1124,12 +1222,15 @@
     catch(e){ frame.src = url; }
   }
 
-  function openApp(src){
+  const SINGLE_GAME_APPS = ['srichki-razmer.html', 'matematika_sbor_login_preminavane.html', 'matematika_izvazhdane_login_zaemane.html', 'bulgarian-typing-login.html'];
+  // game: отваря направо игра в приложението (файл#g=игра) — от „световете“ на началния екран
+  function openApp(src, game){
     // Абонамент: след пробния период игрите се отключват от родител
     if(window.Sub && !Sub.canPlay()){ Sub.showWall(); Sub.refresh(); return; }
     const active = getActiveProfile();
     if(window.Rewards) Rewards.noteOpen(src);
-    const url = active ? (src + '?hubUser=' + encodeURIComponent(active.name)) : src;
+    const url = (active ? (src + '?hubUser=' + encodeURIComponent(active.name)) : src) + (game ? '#g=' + encodeURIComponent(game) : '');
+    if(window.Maxi && Maxi.Stats && SINGLE_GAME_APPS.includes(src)) Maxi.Stats.game(APP_KEY_BY_SRC[src]);
     setFrameUrl(url);
     appScreen.classList.add('active');
     if(active){
@@ -1579,6 +1680,7 @@
     }
     if(isActive(parentScreen)){ closeParentPanel(); return true; }
     if(isActive(adminScreen) || isActive(newProfileScreen)){ showProfileScreen(); return true; }
+    if(isActive(menu) && openWorld){ closeWorld(); return true; }
     if(isActive(menu)){ showProfileScreen(); return true; }
     if(isActive(loginScreen)) return false;
     return false; // изборът на профил е най-горното ниво
@@ -1769,6 +1871,8 @@
   }
 
   if(isLegacyAnon(getAccount())) toLocalMode();
+  // Анонимна статистика: едно посещение при отваряне на хъба.
+  try{ if(window.Maxi && Maxi.Stats) Maxi.Stats.visit(); }catch(e){}
   if(getAccount()){
     // Устройството вече е вписано — детето играе веднага, дори офлайн.
     startPlaying();

@@ -22,6 +22,8 @@ const exe = ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome'].find(fs.exist
 const browser = await chromium.launch({ executablePath: exe });
 // Без service worker: иначе той сервира кеширания модул и „офлайн“ не е истински.
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
+// Тези тестове натискат плочките на приложенията — подредба „по приложения“.
+await ctx.addInitScript(() => { try{ if(!localStorage.getItem('hubLayout_v1')) localStorage.setItem('hubLayout_v1', '"apps"'); }catch(e){} });
 let offline = false;
 await ctx.route('**/firebase-shared.js*', (r) => offline ? r.abort() : r.fulfill({ contentType: 'text/javascript', body: MOCK }));
 await ctx.route(/^https:/, (r) => r.abort());
